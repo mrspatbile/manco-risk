@@ -8,6 +8,7 @@ Provides:
 - Position validation framework
 """
 
+from manco_risk.etl.exceptions import PositionValidationFailure
 from manco_risk.etl.position_loader import PositionInput, PositionLoader
 from manco_risk.etl.position_mapper import PositionMapper
 from manco_risk.etl.position_validator import (
@@ -25,4 +26,5 @@ __all__ = [
     "ValidationIssue",
     "ValidationResult",
     "ValidationSeverity",
+    "PositionValidationFailure",
 ]

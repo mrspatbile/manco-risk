@@ -16,11 +16,8 @@ from manco_risk.database import (
     create_database_engine,
     initialize_database,
 )
-from manco_risk.etl import PositionInput, PositionMapper
-from manco_risk.etl.exceptions import (
-    FundNotFoundError,
-    InstrumentNotFoundError,
-)
+from manco_risk.etl import PositionInput, PositionMapper, PositionValidationFailure
+from manco_risk.etl.exceptions import FundNotFoundError
 
 
 @pytest.fixture
@@ -143,12 +140,17 @@ class TestPositionMapperPersistence:
         )
         fund = fund_repository.insert(fund)
 
-        for isin in ["IE00B4L5Y983", "US0378331005"]:
+        # Create instruments with matching currencies
+        instruments_data = [
+            ("IE00B4L5Y983", "EUR"),
+            ("US0378331005", "USD"),
+        ]
+        for isin, currency in instruments_data:
             instrument = Instrument(
                 isin=isin,
                 instrument_name=f"Test {isin}",
                 asset_class="Equity",
-                currency="EUR",
+                currency=currency,
             )
             instrument_repository.insert(instrument)
 
@@ -252,12 +254,17 @@ class TestPositionMapperPersistence:
         )
         fund = fund_repository.insert(fund)
 
-        for i, isin in enumerate(["IE00B4L5Y983", "US0378331005", "DE0005933931"]):
+        instruments_data = [
+            ("IE00B4L5Y983", "EUR"),
+            ("US0378331005", "USD"),
+            ("DE0005933931", "EUR"),
+        ]
+        for isin, currency in instruments_data:
             instrument = Instrument(
                 isin=isin,
                 instrument_name=f"Test {isin}",
                 asset_class="Equity",
-                currency="EUR",
+                currency=currency,
             )
             instrument_repository.insert(instrument)
 
@@ -315,6 +322,270 @@ class TestPositionMapperPersistence:
         positions = position_repository.find_by_snapshot(snapshot1_id)
         assert len(positions) == 3
 
+    def test_persist_positions_currency_mismatch_blocks_persistence(
+        self,
+        mapper: PositionMapper,
+        fund_repository: FundRepository,
+        instrument_repository: InstrumentRepository,
+        position_snapshot_repository: PositionSnapshotRepository,
+        position_repository: PositionRepository,
+    ) -> None:
+        """Currency mismatch between position and instrument blocks persistence."""
+        # Setup
+        fund = Fund(
+            fund_name="Test Fund",
+            base_currency="EUR",
+            domicile="Luxembourg",
+            fund_regime="AIFM",
+        )
+        fund = fund_repository.insert(fund)
+
+        instrument = Instrument(
+            isin="IE00B4L5Y983",
+            instrument_name="MSCI World ETF",
+            asset_class="Equity",
+            currency="EUR",
+        )
+        instrument_repository.insert(instrument)
+
+        # Position with mismatched currency
+        position_input = PositionInput(
+            fund_name="Test Fund",
+            valuation_date=date(2025, 1, 15),
+            isin="IE00B4L5Y983",
+            quantity=Decimal("100"),
+            market_value=Decimal("12500"),
+            currency="USD",  # Mismatch: instrument is EUR
+        )
+
+        # Should raise PositionValidationFailure
+        with pytest.raises(PositionValidationFailure) as exc_info:
+            mapper.persist_positions([position_input])
+
+        # Verify validation results contain CURRENCY_MISMATCH error
+        result = exc_info.value.validation_results[0]
+        assert not result.is_valid
+        assert any(issue.code == "CURRENCY_MISMATCH" for issue in result.issues)
+
+        # Verify no snapshot was created
+        snapshots = position_snapshot_repository.find_by_fund_and_date(
+            fund.fund_id, date(2025, 1, 15)
+        )
+        assert snapshots is None
+
+    def test_persist_positions_negative_market_value_blocks_persistence(
+        self,
+        mapper: PositionMapper,
+        fund_repository: FundRepository,
+        instrument_repository: InstrumentRepository,
+        position_snapshot_repository: PositionSnapshotRepository,
+        position_repository: PositionRepository,
+    ) -> None:
+        """Negative market value blocks persistence."""
+        # Setup
+        fund = Fund(
+            fund_name="Test Fund",
+            base_currency="EUR",
+            domicile="Luxembourg",
+            fund_regime="AIFM",
+        )
+        fund = fund_repository.insert(fund)
+
+        instrument = Instrument(
+            isin="IE00B4L5Y983",
+            instrument_name="MSCI World ETF",
+            asset_class="Equity",
+            currency="EUR",
+        )
+        instrument_repository.insert(instrument)
+
+        # Position with negative market value
+        position_input = PositionInput(
+            fund_name="Test Fund",
+            valuation_date=date(2025, 1, 15),
+            isin="IE00B4L5Y983",
+            quantity=Decimal("100"),
+            market_value=Decimal("-500"),  # Negative
+            currency="EUR",
+        )
+
+        # Should raise PositionValidationFailure
+        with pytest.raises(PositionValidationFailure) as exc_info:
+            mapper.persist_positions([position_input])
+
+        # Verify validation results contain NEGATIVE_MARKET_VALUE error
+        result = exc_info.value.validation_results[0]
+        assert not result.is_valid
+        assert any(issue.code == "NEGATIVE_MARKET_VALUE" for issue in result.issues)
+
+        # Verify no snapshot was created
+        snapshots = position_snapshot_repository.find_by_fund_and_date(
+            fund.fund_id, date(2025, 1, 15)
+        )
+        assert snapshots is None
+
+    def test_persist_positions_duplicate_blocks_persistence(
+        self,
+        mapper: PositionMapper,
+        fund_repository: FundRepository,
+        instrument_repository: InstrumentRepository,
+        position_snapshot_repository: PositionSnapshotRepository,
+        position_repository: PositionRepository,
+    ) -> None:
+        """Duplicate position in batch blocks persistence."""
+        # Setup
+        fund = Fund(
+            fund_name="Test Fund",
+            base_currency="EUR",
+            domicile="Luxembourg",
+            fund_regime="AIFM",
+        )
+        fund = fund_repository.insert(fund)
+
+        instrument = Instrument(
+            isin="IE00B4L5Y983",
+            instrument_name="MSCI World ETF",
+            asset_class="Equity",
+            currency="EUR",
+        )
+        instrument_repository.insert(instrument)
+
+        # Duplicate positions
+        positions = [
+            PositionInput(
+                fund_name="Test Fund",
+                valuation_date=date(2025, 1, 15),
+                isin="IE00B4L5Y983",
+                quantity=Decimal("100"),
+                market_value=Decimal("12500"),
+                currency="EUR",
+            ),
+            PositionInput(
+                fund_name="Test Fund",
+                valuation_date=date(2025, 1, 15),
+                isin="IE00B4L5Y983",
+                quantity=Decimal("50"),
+                market_value=Decimal("6250"),
+                currency="EUR",
+            ),
+        ]
+
+        # Should raise PositionValidationFailure
+        with pytest.raises(PositionValidationFailure) as exc_info:
+            mapper.persist_positions(positions)
+
+        # Verify both validation results have DUPLICATE_POSITION error
+        assert len(exc_info.value.validation_results) == 2
+        for result in exc_info.value.validation_results:
+            assert not result.is_valid
+            assert any(issue.code == "DUPLICATE_POSITION" for issue in result.issues)
+
+        # Verify no snapshot was created
+        snapshots = position_snapshot_repository.find_by_fund_and_date(
+            fund.fund_id, date(2025, 1, 15)
+        )
+        assert snapshots is None
+
+    def test_persist_positions_zero_quantity_warning_allows_persistence(
+        self,
+        mapper: PositionMapper,
+        fund_repository: FundRepository,
+        instrument_repository: InstrumentRepository,
+        position_repository: PositionRepository,
+        position_snapshot_repository: PositionSnapshotRepository,
+    ) -> None:
+        """Zero quantity (warning) does not block persistence."""
+        # Setup
+        fund = Fund(
+            fund_name="Test Fund",
+            base_currency="EUR",
+            domicile="Luxembourg",
+            fund_regime="AIFM",
+        )
+        fund = fund_repository.insert(fund)
+
+        instrument = Instrument(
+            isin="IE00B4L5Y983",
+            instrument_name="MSCI World ETF",
+            asset_class="Equity",
+            currency="EUR",
+        )
+        instrument_repository.insert(instrument)
+
+        # Position with zero quantity
+        position_input = PositionInput(
+            fund_name="Test Fund",
+            valuation_date=date(2025, 1, 15),
+            isin="IE00B4L5Y983",
+            quantity=Decimal("0"),  # Zero quantity warning
+            market_value=Decimal("12500"),
+            currency="EUR",
+        )
+
+        # Should NOT raise; persistence should succeed
+        mapper.persist_positions([position_input])
+
+        # Verify snapshot and position were created
+        snapshot = position_snapshot_repository.find_by_fund_and_date(
+            fund.fund_id, date(2025, 1, 15)
+        )
+        assert snapshot is not None
+        assert snapshot.num_positions == 1
+
+        positions = position_repository.find_by_snapshot(snapshot.position_snapshot_id)
+        assert len(positions) == 1
+        assert positions[0].quantity == Decimal("0")
+
+    def test_persist_positions_zero_market_value_warning_allows_persistence(
+        self,
+        mapper: PositionMapper,
+        fund_repository: FundRepository,
+        instrument_repository: InstrumentRepository,
+        position_repository: PositionRepository,
+        position_snapshot_repository: PositionSnapshotRepository,
+    ) -> None:
+        """Zero market value (warning) does not block persistence."""
+        # Setup
+        fund = Fund(
+            fund_name="Test Fund",
+            base_currency="EUR",
+            domicile="Luxembourg",
+            fund_regime="AIFM",
+        )
+        fund = fund_repository.insert(fund)
+
+        instrument = Instrument(
+            isin="IE00B4L5Y983",
+            instrument_name="MSCI World ETF",
+            asset_class="Equity",
+            currency="EUR",
+        )
+        instrument_repository.insert(instrument)
+
+        # Position with zero market value
+        position_input = PositionInput(
+            fund_name="Test Fund",
+            valuation_date=date(2025, 1, 15),
+            isin="IE00B4L5Y983",
+            quantity=Decimal("100"),
+            market_value=Decimal("0"),  # Zero market value warning
+            currency="EUR",
+        )
+
+        # Should NOT raise; persistence should succeed
+        mapper.persist_positions([position_input])
+
+        # Verify snapshot and position were created
+        snapshot = position_snapshot_repository.find_by_fund_and_date(
+            fund.fund_id, date(2025, 1, 15)
+        )
+        assert snapshot is not None
+        assert snapshot.num_positions == 1
+
+        positions = position_repository.find_by_snapshot(snapshot.position_snapshot_id)
+        assert len(positions) == 1
+        assert positions[0].market_value == Decimal("0")
+
 
 class TestPositionMapperErrors:
     """Tests for error handling in position mapping."""
@@ -348,12 +619,14 @@ class TestPositionMapperErrors:
         with pytest.raises(FundNotFoundError, match="Unknown Fund"):
             mapper.persist_positions([position_input])
 
-    def test_persist_positions_instrument_not_found(
+    def test_persist_positions_unknown_isin_validation_error(
         self,
         mapper: PositionMapper,
         fund_repository: FundRepository,
+        position_snapshot_repository: PositionSnapshotRepository,
+        position_repository: PositionRepository,
     ) -> None:
-        """Raise InstrumentNotFoundError for unknown ISIN."""
+        """Unknown ISIN blocks persistence through validation error."""
         # Setup: create fund but not instrument
         fund = Fund(
             fund_name="Test Fund",
@@ -373,9 +646,21 @@ class TestPositionMapperErrors:
             currency="EUR",
         )
 
-        # Should raise InstrumentNotFoundError
-        with pytest.raises(InstrumentNotFoundError, match="INVALID_ISIN"):
+        # Should raise PositionValidationFailure
+        with pytest.raises(PositionValidationFailure) as exc_info:
             mapper.persist_positions([position_input])
+
+        # Verify validation results contain UNKNOWN_INSTRUMENT error
+        assert len(exc_info.value.validation_results) == 1
+        result = exc_info.value.validation_results[0]
+        assert not result.is_valid
+        assert any(issue.code == "UNKNOWN_INSTRUMENT" for issue in result.issues)
+
+        # Verify no snapshot was created
+        snapshots = position_snapshot_repository.find_by_fund_and_date(
+            fund.fund_id, date(2025, 1, 15)
+        )
+        assert snapshots is None
 
     def test_persist_positions_empty_list(self, mapper: PositionMapper) -> None:
         """Handle empty position list gracefully."""
@@ -407,12 +692,17 @@ class TestPositionMapperIntegration:
         )
         fund = fund_repository.insert(fund)
 
-        for isin in ["IE00B4L5Y983", "US0378331005"]:
+        # Create instruments with matching currencies
+        instruments_data = [
+            ("IE00B4L5Y983", "EUR"),
+            ("US0378331005", "USD"),
+        ]
+        for isin, currency in instruments_data:
             instrument = Instrument(
                 isin=isin,
                 instrument_name=f"Test {isin}",
                 asset_class="Equity",
-                currency="EUR",
+                currency=currency,
             )
             instrument_repository.insert(instrument)
 

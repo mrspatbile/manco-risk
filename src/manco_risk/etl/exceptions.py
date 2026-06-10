@@ -43,3 +43,23 @@ class InstrumentNotFoundError(PositionIngestionError):
     """Instrument (by ISIN) not found in database."""
 
     pass
+
+
+class PositionValidationFailure(PositionIngestionError):
+    """Position validation found blocking errors.
+
+    Carries validation results for detailed inspection by the caller.
+    """
+
+    def __init__(self, message: str, validation_results: list) -> None:
+        """Initialize validation failure exception.
+
+        Parameters
+        ----------
+        message : str
+            Summary message about validation failure.
+        validation_results : list
+            Detailed validation results (list[ValidationResult] from position_validator).
+        """
+        super().__init__(message)
+        self.validation_results = validation_results
