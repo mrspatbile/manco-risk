@@ -1,0 +1,17 @@
+Read the following documents in full before doing anything:
+
+- CLAUDE.md
+- meta/project_spec.md
+- meta/conventions.md
+
+Then:
+
+1. State the current module and corresponding Linear issue.
+2. Confirm the current state of the repository.
+3. Identify any existing patterns relevant to the task.
+4. If the prototype repository (`../manco-risk-mngmt`) is relevant, explain exactly what information will be referenced and why.
+5. Explain the proposed implementation approach.
+6. List any new files, modules, dependencies or architectural changes.
+7. Wait for approval before creating, modifying or deleting files.
+
+Do not implement anything until the approach has been reviewed and approved.

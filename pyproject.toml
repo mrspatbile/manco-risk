@@ -1,0 +1,78 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "manco-risk"
+version = "0.1.0"
+description = ""
+readme = "README.md"
+requires-python = ">=3.13"
+authors = [
+    {name = "mrspatbile"}
+]
+license = {text = "MIT"}
+
+dependencies = [
+    # Add project dependencies here after defining them.
+    # Then run: pip install -e '.[dev]'
+    #
+    # Examples:
+    # "pandas>=2.0.0",
+    # "pydantic>=2.0.0",
+    # "streamlit>=1.28.0",
+    # "scikit-learn>=1.4.0",
+]
+
+
+# uncomment here and comment below if not using uv exclusivelly
+# [project.optional-dependencies] # uses also pip
+[dependency-groups] # full uv use only
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "ruff>=0.5.0",
+    "mypy>=1.0.0",
+    "pre-commit>=4.0.0",
+
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+addopts = "-v --tb=short"
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = [
+    "E",  # pycodestyle errors
+    "F",  # pyflakes errors
+    "W",  # pycodestyle warnings
+    "I",  # import sorting
+]
+ignore = [
+    "E501",  # line-too-long
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.mypy]
+python_version = "3.13"
+warn_return_any = true
+warn_unused_configs = true
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+strict_equality = true
