@@ -236,3 +236,48 @@ Fund files
 ```
 
 Each step is independent and testable in isolation.
+
+### Market Data Adjustments
+
+External data providers may contain known anomalies, missing values, inconsistent conventions or fields that are technically correct but unsuitable for risk calculations.
+
+Provider implementations may apply documented transformations, validations or overrides before exposing data through the market data interface.
+
+Examples:
+
+- market index beta reported as `0.0` when the expected value is approximately `1.0`
+- missing modified duration for fixed income instruments
+- inconsistent currency codes (`US$`, `USD`, `US DOLLAR`)
+- missing or stale ratings
+- inconsistent maturity formats
+- provider-specific representations of bond prices
+- invalid negative prices
+- duplicated observations for the same date
+
+Example:
+
+A market index ETF may be returned by a provider with:
+
+```text
+ticker = SPY US Equity
+beta = 0.0
+```
+
+The provider may apply a documented override:
+
+```text
+ticker = SPY US Equity
+beta = 1.0
+```
+
+before returning the data through the market data interface.
+
+All adjustments must be:
+
+- documented
+- provider-specific
+- testable
+- traceable to the original source value
+- applied before data reaches downstream modules
+
+Risk engines, reporting modules, ETL processes and UI layers must not implement provider-specific corrections. Data quality adjustments belong to the market data provider layer.

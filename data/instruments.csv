@@ -1,0 +1,15 @@
+security_id,name,asset_class,currency,maturity_date,coupon_rate,modified_duration_years,beta
+SPY US Equity,SPDR S&P 500 ETF,Equity,USD,,,,1.00
+AAPL US Equity,Apple Inc,Equity,USD,,,,
+MSFT US Equity,Microsoft Corp,Equity,USD,,,,0.95
+JPM US Equity,JPMorgan Chase,Equity,USD,,,,1.05
+GLD US Equity,SPDR Gold Shares,Equity,USD,,,,0.15
+TLT US Equity,iShares 20+ Year Treasury,Equity,USD,,,16.40,
+US912828YK09 Govt,US Treasury 2.875 05/15/28,Bond,USD,2028-05-15,0.02875,2.31,
+US912810TM79 Govt,US Treasury 4.25 02/15/54,Bond,USD,2054-02-15,0.0425,17.82,
+DBR 0 08/15/29 Govt,German Bund 0% 08/15/29,Bond,EUR,2029-08-15,0.00,3.98,
+XS2543791470 Corp,LVMH 3.5 06/15/31,Bond,EUR,2031-06-15,0.035,4.71,
+EURUSD Curncy,Euro / US Dollar,FX,USD,,,,
+GBPUSD Curncy,British Pound / US Dollar,FX,USD,,,,
+SPX Index,S&P 500 Index,Index,USD,,,,1.00
+SX5E Index,Euro Stoxx 50,Index,EUR,,,,1.00
