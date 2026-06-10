@@ -71,7 +71,30 @@ MRS-126  Implement mock Bloomberg provider - deferred
 
 MRS-127  Define market data schemas and contracts - done ✅  as part of MRS-125
 
-MRS-128  Design database schema - current
+MRS-128  Design and implement Phase 1 database ORM foundation — done ✅ 
+
+
+### Database follow-up issues
+
+- MRS-154 — Add database repository/query layer
+- MRS-155 — Implement position ingestion into database
+- MRS-156 — Implement Historical VaR calculation persistence
+- MRS-157 — Implement Expected Shortfall persistence
+- MRS-158 — Implement VaR backtesting persistence
+
+### MRS-128 follow-up boundary
+
+MRS-128 delivered the Phase 1 database ORM foundation only.
+
+The following work is intentionally split into follow-up issues:
+- database repository/query layer → MRS-154
+- position ingestion → MRS-155
+- Historical VaR persistence → MRS-156
+- Expected Shortfall persistence → MRS-157
+- VaR backtesting persistence → MRS-158
+
+Do not continue adding this follow-up work under MRS-128.
+
 
 MRS-129  Implement database access layer
 

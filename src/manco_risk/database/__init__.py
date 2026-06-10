@@ -1,10 +1,9 @@
 """Database layer for manco-risk.
 
-Provides SQLAlchemy ORM models for Phase 1 entities:
-- Source data: Fund, Instrument, Position, MarketDataPoint, NAVSnapshot
-- Lineage: PositionSnapshot, CalculationRun
-- Methodology: RiskMethodology
-- Derived outputs: PnLSeries, VaRResult, ExpectedShortfallResult, VaRBacktestingResult
+Provides:
+- SQLAlchemy ORM models for Phase 1 entities
+- Session management and database initialization
+- Query layer (future: Phase 2)
 """
 
 from manco_risk.database.models import (
@@ -28,8 +27,14 @@ from manco_risk.database.models import (
     VaRBacktestingResult,
     VaRResult,
 )
+from manco_risk.database.session import (
+    SessionFactory,
+    create_database_engine,
+    initialize_database,
+)
 
 __all__ = [
+    # Models
     "Base",
     "Fund",
     "Instrument",
@@ -43,10 +48,15 @@ __all__ = [
     "VaRResult",
     "ExpectedShortfallResult",
     "VaRBacktestingResult",
+    # Enums
     "CalculationTypeEnum",
     "CalculationStatusEnum",
     "MarketDataTypeEnum",
     "FXConversionMethodEnum",
     "MissingDataHandlingEnum",
     "ESMethodEnum",
+    # Session management
+    "create_database_engine",
+    "initialize_database",
+    "SessionFactory",
 ]
