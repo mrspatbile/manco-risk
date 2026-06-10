@@ -10,33 +10,64 @@ The full specification is in `meta/project_spec.md` -- read it before starting a
 
 ---
 
+## New session checklist
+
+At the start of a new Claude session:
+
+1. Read `CLAUDE.md`.
+2. Read `ARCHITECTURE.md`.
+3. Read `meta/project_spec.md`.
+4. Read `meta/conventions.md`.
+5. Check the current repository state:
+
+   ```bash
+   git status --short
+   git log --oneline -5
+````
+
+6. State:
+
+   * current Linear issue
+   * current module
+   * latest relevant commits
+   * files likely to be touched
+   * proposed first step
+
+Do not implement until the user approves the proposed first step.
+
+---
+
 ## Commit rules
 
-- Do not add co-author attribution in commit messages
-- Do not add any Claude or AI references in commit messages
-- Use only the repository author identity configured in git
-- Commit messages should reflect the domain reasoning behind the change, not just the code change
-- Do not commit anything. Give bash commands to stage files and provide commit messages when asked.
+* Do not add co-author attribution in commit messages.
+* Do not add any Claude or AI references in commit messages.
+* Use only the repository author identity configured in git.
+* Commit messages should reflect the domain reasoning behind the change, not just the code change.
+* Do not commit anything. Give bash commands to stage files and provide commit messages when asked.
 
 Good commit message examples:
-- `add cashflow coverage ratio calculation for soft bullet structures`
-- `fix haircut schedule lookup -- was matching on asset type only, now includes maturity bucket`
-- `add rating downgrade scenario to stress engine`
+
+* `add cashflow coverage ratio calculation for soft bullet structures`
+* `fix haircut schedule lookup -- was matching on asset type only, now includes maturity bucket`
+* `add rating downgrade scenario to stress engine`
 
 ---
 
 ## How we work together
 
 ### Session start
+
 At the start of every session, state which module you are working on.
+
 Do not jump to another module unless explicitly instructed.
+
 Confirm the current state of the repo before adding new files.
 
-1. Understand the task first
-2. Explain proposed changes before implementing anything
-3. Wait for approval
-4. Implement in small steps
-5. After each step explain what changed and why
+1. Understand the task first.
+2. Explain proposed changes before implementing anything.
+3. Wait for approval.
+4. Implement in small steps.
+5. After each step explain what changed and why.
 
 ### Module sequencing
 
@@ -53,204 +84,228 @@ Confirm the current state of the repo before adding new files.
 11. Streamlit UI
 12. Example notebooks and documentation
 
-### Linear issue references
+---
 
-<!-- Fill in issue numbers for this project. Example: -->
-<!--
-PRJ-101 Domain models and data layer
-PRJ-102 Module 1 -- ...
--->
+## Linear issue references
 
-MRS-123  Define target architecture and module boundaries - done ✅ 
+### Current active issue
 
-MRS-124  Set up repository structure and development tooling - done ✅ 
+* MRS-129 — Database session management + repository/query layer — in progress
 
-MRS-125  Implement market data abstraction layer - current implementing (MRS-152 done for researching reg base with output in `reg_reference.md` - done ✅ ) - done ✅ 
+  * Step 1 completed: database session management and `create_all` smoke tests
+  * Commit: `1cd1ec3 MRS-129 add database session management`
+  * Next step: repository/query layer for core database entities only
 
-MRS-126  Implement mock Bloomberg provider - deferred
+Do not include in the next MRS-129 step:
 
-MRS-127  Define market data schemas and contracts - done ✅  as part of MRS-125
+* ingestion
+* ETL
+* VaR/ES calculation persistence
+* reporting
+* Alembic migrations
+* prototype inspection
 
-MRS-128  Design and implement Phase 1 database ORM foundation — done ✅ 
+### Completed issues
 
+* MRS-123 — Define target architecture and module boundaries — done
+* MRS-124 — Set up repository structure and development tooling — done
+* MRS-125 — Implement market data abstraction layer — done
+* MRS-127 — Define market data schemas and contracts — done as part of MRS-125
+* MRS-128 — Design and implement Phase 1 database ORM foundation — done
 
-### Database follow-up issues
+Completed supporting research:
 
-- MRS-154 — Add database repository/query layer
-- MRS-155 — Implement position ingestion into database
-- MRS-156 — Implement Historical VaR calculation persistence
-- MRS-157 — Implement Expected Shortfall persistence
-- MRS-158 — Implement VaR backtesting persistence
+* MRS-152 — Research regulatory base and domain implications — done
 
-### MRS-128 follow-up boundary
+  * Output: `meta/reg_reference.md`
 
-MRS-128 delivered the Phase 1 database ORM foundation only.
+### Deferred issues
 
-The following work is intentionally split into follow-up issues:
-- database repository/query layer → MRS-154
-- position ingestion → MRS-155
-- Historical VaR persistence → MRS-156
-- Expected Shortfall persistence → MRS-157
-- VaR backtesting persistence → MRS-158
+* MRS-126 — Implement mock Bloomberg provider — deferred
 
-Do not continue adding this follow-up work under MRS-128.
+### Active database / risk issue sequence
 
+* MRS-129 — Database session management + repository/query layer
+* MRS-131 — Implement position ingestion framework
+* MRS-132 — Implement data validation framework
+* MRS-133 — Implement risk-ready enrichment pipeline
+* MRS-134 — Historical VaR calculation and persistence
+* MRS-135 — Implement Parametric VaR engine
+* MRS-136 — Expected Shortfall calculation and persistence
+* MRS-137 — VaR backtesting calculation and persistence
+* MRS-138 — Implement stress testing framework
+* MRS-139 — Implement leverage analytics
+* MRS-140 — Implement liquidity risk analytics
+* MRS-141 — Implement liquidity stress testing
+* MRS-142 — Implement reporting framework
+* MRS-143 — Implement Annex IV reporting outputs
+* MRS-144 — Implement management risk reporting
+* MRS-145 — Implement Streamlit application
+* MRS-146 — Implement dashboard visualisations
+* MRS-147 — Implement automated testing framework
+* MRS-148 — Implement data quality controls
+* MRS-149 — Implement CI/CD workflows
+* MRS-150 — Project documentation
 
-MRS-129  Implement database access layer
+### Duplicate / superseded issues
 
-MRS-130  Implement repository/query layer
+* MRS-130 — Implement repository/query layer — merged into MRS-129
 
-MRS-131  Implement position ingestion framework
+Do not work on MRS-130 unless the user explicitly reactivates it.
 
-MRS-132  Implement data validation framework
+---
 
-MRS-133  Implement risk-ready enrichment pipeline
+## Current issue handoff rule
 
-MRS-134  Implement Historical VaR engine
+For a new Claude session, do not require a full conversation history.
 
-MRS-135  Implement Parametric VaR engine
+Use the current Linear issue plus the latest commits as the source of truth.
 
-MRS-136  Implement Expected Shortfall engine
+For each issue, start from:
 
-MRS-137  Implement VaR backtesting framework
+* `CLAUDE.md`
+* `ARCHITECTURE.md`
+* `meta/project_spec.md`
+* `meta/conventions.md`
+* the relevant issue description in Linear
+* `git log --oneline -5`
+* `git status --short`
 
-MRS-138  Implement stress testing framework
+Only read additional meta documents when relevant:
 
-MRS-139  Implement leverage analytics
+* prototype review: `meta/prototype_field_inventory.md`
+* regulatory design: `meta/reg_reference.md`
+* database design: `meta/domain_note.md`
+* market data work: `meta/market_data_design.md`
 
-MRS-140  Implement liquidity risk analytics
+Do not ask the user to paste long prior conversations unless the repository files and issue description are insufficient.
 
-MRS-141  Implement liquidity stress testing
+---
 
-MRS-142  Implement reporting framework
+## Before creating new files
 
-MRS-143  Implement Annex IV reporting outputs
+If a pattern already exists in the repo, for example a base class, a loader, a report format or a database helper, follow that pattern.
 
-MRS-144  Implement management risk reporting
+Ask before introducing a new pattern.
 
-MRS-145  Implement Streamlit application
+## When stuck
 
-MRS-146  Implement dashboard visualisations
+If a design decision is ambiguous, ask.
 
-MRS-147  Implement automated testing framework
-
-MRS-148  Implement data quality controls
-
-MRS-149  Implement CI/CD workflows
-
-MRS-150  Project documentation
-
-MRS-151  Example notebooks and demonstrations
-
-### Before creating new files
-If a pattern already exists in the repo (a base class, a loader, a report format),
-follow that pattern. Ask before introducing a new pattern.
-
-### When stuck
-If a design decision is ambiguous, ask. Do not invent business logic that is not in the spec
-or already present in the codebase.
+Do not invent business logic that is not in the spec or already present in the codebase.
 
 ---
 
 ## Code standards
 
-- Python 3.13
-- Type hints throughout -- no untyped functions
-- Pydantic or dataclasses for all domain objects
-- Pydantic v2 syntax throughout -- use `model_config = ConfigDict(...)` not `class Config`
-- pathlib for all file paths -- no string path concatenation
-- pytest for all tests -- use fixtures
-- logging for all runtime messages -- no print statements in production code
-- No `from __future__ import annotations`
-- No hardcoded datasets -- everything loads from CSV files in data/
-- No business logic inside dashboard code
-- Custom exceptions for domain errors (see spec for the full list)
-- Run `uv ruff check src tests` before marking any task done -- all checks must pass
+* Python 3.13
+* Type hints throughout -- no untyped functions
+* Pydantic or dataclasses for all domain objects
+* Pydantic v2 syntax throughout -- use `model_config = ConfigDict(...)` not `class Config`
+* pathlib for all file paths -- no string path concatenation
+* pytest for all tests -- use fixtures
+* logging for all runtime messages -- no print statements in production code
+* No `from __future__ import annotations`
+* No hardcoded datasets -- everything loads from CSV files in data/
+* No business logic inside dashboard code
+* Custom exceptions for domain errors, see the spec for the full list
+* Run `uv run ruff check src tests` before marking any task done
+* Run `uv run mypy src` before marking implementation tasks done
+* Run `uv run pytest` before marking implementation tasks done
 
 ---
 
 ## Data conventions
 
-- Rates, ratios, haircuts: store as `Decimal` (e.g., 0.05 = 5%, 1.5 = 150%)
-- Exception: Bloomberg-style market data may follow Bloomberg conventions, such as bond prices quoted as percentages. These conventions should be preserved at ingestion and converted only in clearly documented transformation steps.
-- Basis points: store as `int` (e.g., 50 = 50 bps = `0.5%`)
-- Never store raw percentages -- convert to decimal or bps at ingestion
-- Field naming must make the unit explicit:
-  - `haircut_rate: Decimal` (0-1 range, e.g., 0.15)
-  - `spread_bps: int` (basis points, e.g., 150)
-  - `coverage_ratio: Decimal` (decimal, e.g., 1.25)
-  
-  ## Numerical data documentation
+* Rates, ratios, haircuts: store as `Decimal`, for example `0.05 = 5%`, `1.5 = 150%`
+* Exception: Bloomberg-style market data may follow Bloomberg conventions, such as bond prices quoted as percentages. These conventions should be preserved at ingestion and converted only in clearly documented transformation steps.
+* Basis points: store as `int`, for example `50 = 50 bps = 0.5%`
+* Never store raw percentages -- convert to decimal or bps at ingestion
+* Field naming must make the unit explicit:
+
+  * `haircut_rate: Decimal` for 0-1 range, for example `0.15`
+  * `spread_bps: int` for basis points, for example `150`
+  * `coverage_ratio: Decimal`, for example `1.25`
+
+### Numerical data documentation
 
 Document data conventions in three places:
 
-- `meta/conventions.md` -- authoritative reference
-- domain models -- field-level units and ranges
-- calculation modules -- assumptions and formula documentation
+* `meta/conventions.md` -- authoritative reference
+* domain models -- field-level units and ranges
+* calculation modules -- assumptions and formula documentation
 
 All financial calculations must explicitly state:
 
-- units
-- scaling conventions
-- sign conventions
-- input assumptions
+* units
+* scaling conventions
+* sign conventions
+* input assumptions
 
 Examples:
 
-- returns stored as decimal (`0.05 = 5%`)
-- yields stored as decimal (`0.035 = 3.5%`)
-- haircuts stored as decimal (`0.15 = 15%`)
-- leverage stored as ratio (`2.5 = 250%`)
-- basis points stored as integer (`50 = 50bps`)
-- bond prices follow Bloomberg conventions unless transformed
-  
- ---
+* returns stored as decimal, for example `0.05 = 5%`
+* yields stored as decimal, for example `0.035 = 3.5%`
+* haircuts stored as decimal, for example `0.15 = 15%`
+* leverage stored as ratio, for example `2.5 = 250%`
+* basis points stored as integer, for example `50 = 50bps`
+* bond prices follow Bloomberg conventions unless transformed
+
+---
 
 ## Architecture rules
 
 See `ARCHITECTURE.md` for the complete target structure, module responsibilities, dependency rules, and forbidden patterns.
 
 Key principles:
-- Abstract base classes for all engines and loaders
-- Concrete implementations via dependency injection
-- Calculations must be independent from visualisation
-- Business logic operates on domain entities, not raw DataFrames where practical
-- Prefer composition over deep inheritance hierarchies
+
+* Abstract base classes for all engines and loaders
+* Concrete implementations via dependency injection
+* Calculations must be independent from visualisation
+* Business logic operates on domain entities, not raw DataFrames where practical
+* Prefer composition over deep inheritance hierarchies
 
 ---
 
 ## Sample data rules
 
-- All sample data must be realistic -- no placeholder names like "Entity A"
-- Data must cover at least six months of snapshots
-- Multiple entities, asset classes, and ratings where relevant
-- Distributions should be realistic enough to trigger edge cases
+* All sample data must be realistic -- no placeholder names like "Entity A"
+* Data must cover at least six months of snapshots
+* Multiple entities, asset classes, and ratings where relevant
+* Distributions should be realistic enough to trigger edge cases
 
+---
 
-### Scope control
+## Scope control
 
 Do not expand scope beyond the current Linear issue.
 
 If a proposed change requires:
-- a new data source
-- a new architectural component
-- a new dependency
-- a methodology change
+
+* a new data source
+* a new architectural component
+* a new dependency
+* a methodology change
 
 stop and ask before implementing.
 
 Prefer the smallest change that satisfies the current issue.
 
-### Refactoring rules
+---
+
+## Refactoring rules
 
 Do not perform repository-wide refactors unless explicitly requested.
 
 When refactoring:
-- preserve behaviour
-- add tests first where practical
-- explain the migration path before changing interfaces
 
-### Dependency rules
+* preserve behaviour
+* add tests first where practical
+* explain the migration path before changing interfaces
+
+---
+
+## Dependency rules
 
 Before adding a dependency:
 
@@ -259,11 +314,12 @@ Before adding a dependency:
 3. Wait for approval.
 
 Prefer:
-- stdlib
-- pandas
-- numpy
-- scipy
-- pydantic
+
+* stdlib
+* pandas
+* numpy
+* scipy
+* pydantic
 
 Avoid introducing dependencies for small utilities.
 
@@ -271,12 +327,13 @@ Avoid introducing dependencies for small utilities.
 
 Use `uv` for dependency management.
 
-- Add runtime dependencies with `uv add <package>`.
-- Add development dependencies with `uv add --dev <package>`.
-- Do not manually edit dependency entries in `pyproject.toml`.
-- Do not manually edit `uv.lock`.
-- After dependency changes, run `uv lock` only if needed to resync the lockfile.
+* Add runtime dependencies with `uv add <package>`.
+* Add development dependencies with `uv add --dev <package>`.
+* Do not manually edit dependency entries in `pyproject.toml`.
+* Do not manually edit `uv.lock`.
+* After dependency changes, run `uv lock` only if needed to resync the lockfile.
 
+---
 
 ## Prototype Reference Repository
 
@@ -286,18 +343,18 @@ A separate prototype repository exists:
 
 This repository may be consulted for:
 
-- domain knowledge
-- regulatory references
-- methodology research
-- example calculations
-- sample datasets
-- workflow understanding
+* domain knowledge
+* regulatory references
+* methodology research
+* example calculations
+* sample datasets
+* workflow understanding
 
 It must not be treated as an architectural reference.
 
 Before using the prototype repository, read and follow:
 
-- `meta/prototype_field_inventory.md`
+* `meta/prototype_field_inventory.md`
 
 The prototype field inventory is mandatory when reviewing fields, schemas, reports, calculations or sample datasets from the prototype.
 
@@ -307,29 +364,29 @@ Do not assume a field is regulatory simply because it exists in the prototype.
 
 Every prototype field or concept considered for reuse must be classified as one of:
 
-- source data
-- reference data
-- fund methodology setting
-- internal risk limit
-- calculation input
-- derived output
-- reporting field
-- filing snapshot
-- audit / lineage field
-- out of scope
-- unclear
+* source data
+* reference data
+* fund methodology setting
+* internal risk limit
+* calculation input
+* derived output
+* reporting field
+* filing snapshot
+* audit / lineage field
+* out of scope
+* unclear
 
 Do not reproduce:
 
-- notebook-centric implementations
-- mixed responsibilities
-- calculation logic embedded in notebooks
-- direct data manipulation inside reporting code
-- architectural shortcuts taken during prototyping
-- derived values stored as source data
-- reporting fields mixed with calculation inputs
-- regulatory concepts mixed with methodology choices
-- ad hoc counterparty, leverage, collateral or hedging fields without classification
+* notebook-centric implementations
+* mixed responsibilities
+* calculation logic embedded in notebooks
+* direct data manipulation inside reporting code
+* architectural shortcuts taken during prototyping
+* derived values stored as source data
+* reporting fields mixed with calculation inputs
+* regulatory concepts mixed with methodology choices
+* ad hoc counterparty, leverage, collateral or hedging fields without classification
 
 When using the prototype repository:
 
@@ -348,40 +405,42 @@ For the first pass, do not read `.ipynb` notebooks unless explicitly instructed.
 
 First inspect:
 
-- Python source files
-- CSV / Excel sample input files
-- configuration files
-- markdown documentation
-- schema-like files
-- lightweight reporting templates or generated output samples
+* Python source files
+* CSV / Excel sample input files
+* configuration files
+* markdown documentation
+* schema-like files
+* lightweight reporting templates or generated output samples
 
 Skip in the first pass:
 
-- `.ipynb` files
-- notebook checkpoint folders
-- cached files
-- generated charts
-- large output files
-- virtual environments
-- `__pycache__`
-- `.pytest_cache`
-- `.mypy_cache`
-- old build artifacts
+* `.ipynb` files
+* notebook checkpoint folders
+* cached files
+* generated charts
+* large output files
+* virtual environments
+* `__pycache__`
+* `.pytest_cache`
+* `.mypy_cache`
+* old build artifacts
 
 The goal of the first pass is to identify candidate files for controlled field inventory, not to understand every prototype experiment.
 
-### Migration Rule
+---
+
+## Migration rule
 
 The goal of this repository is not to port the prototype.
 
 The goal is to reimplement selected functionality using the architecture defined in:
 
-- `ARCHITECTURE.md`
-- `CLAUDE.md`
-- `meta/project_spec.md`
-- `meta/conventions.md`
-- `meta/reg_reference.md`
-- `meta/prototype_field_inventory.md`
+* `ARCHITECTURE.md`
+* `CLAUDE.md`
+* `meta/project_spec.md`
+* `meta/conventions.md`
+* `meta/reg_reference.md`
+* `meta/prototype_field_inventory.md`
 
 A clean reimplementation is preferred over a direct migration.
 
