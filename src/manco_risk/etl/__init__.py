@@ -7,10 +7,17 @@ Provides:
 - Position input mapping and persistence
 - Position validation framework
 - Enriched position models for risk calculation
+- Position enrichment engine
 """
 
 from manco_risk.etl.enriched_position import EnrichedPosition, RiskReadyPortfolio
-from manco_risk.etl.exceptions import PositionValidationFailure
+from manco_risk.etl.exceptions import (
+    InstrumentReferenceNotFoundError,
+    MissingFXRateError,
+    PositionEnrichmentError,
+    PositionValidationFailure,
+)
+from manco_risk.etl.position_enricher import PositionEnricher
 from manco_risk.etl.position_loader import PositionInput, PositionLoader
 from manco_risk.etl.position_mapper import PositionMapper
 from manco_risk.etl.position_validator import (
@@ -31,4 +38,8 @@ __all__ = [
     "PositionValidationFailure",
     "EnrichedPosition",
     "RiskReadyPortfolio",
+    "PositionEnricher",
+    "PositionEnrichmentError",
+    "InstrumentReferenceNotFoundError",
+    "MissingFXRateError",
 ]
