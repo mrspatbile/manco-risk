@@ -244,6 +244,17 @@ Prefer:
 
 Avoid introducing dependencies for small utilities.
 
+### Dependency management
+
+Use `uv` for dependency management.
+
+- Add runtime dependencies with `uv add <package>`.
+- Add development dependencies with `uv add --dev <package>`.
+- Do not manually edit dependency entries in `pyproject.toml`.
+- Do not manually edit `uv.lock`.
+- After dependency changes, run `uv lock` only if needed to resync the lockfile.
+
+
 ## Prototype Reference Repository
 
 A separate prototype repository exists:
@@ -305,6 +316,36 @@ When using the prototype repository:
 4. Explain what will be redesigned.
 5. Implement according to the architecture defined in this repository.
 6. Wait for approval before copying or rewriting substantial functionality.
+
+### Prototype inspection scope
+
+When inspecting `../manco-risk-mngmt`, start with a lightweight structure map.
+
+For the first pass, do not read `.ipynb` notebooks unless explicitly instructed.
+
+First inspect:
+
+- Python source files
+- CSV / Excel sample input files
+- configuration files
+- markdown documentation
+- schema-like files
+- lightweight reporting templates or generated output samples
+
+Skip in the first pass:
+
+- `.ipynb` files
+- notebook checkpoint folders
+- cached files
+- generated charts
+- large output files
+- virtual environments
+- `__pycache__`
+- `.pytest_cache`
+- `.mypy_cache`
+- old build artifacts
+
+The goal of the first pass is to identify candidate files for controlled field inventory, not to understand every prototype experiment.
 
 ### Migration Rule
 
