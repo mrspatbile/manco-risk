@@ -14,6 +14,7 @@ from typing import Generic, TypeVar
 
 from manco_risk.database.models import (
     CalculationRun,
+    CalculationStatusEnum,
     Fund,
     Instrument,
     MarketDataPoint,
@@ -629,6 +630,26 @@ class CalculationRunRepository(BaseRepository):
             for run in runs:
                 session.expunge(run)
             return runs
+
+    def update_status(self, calculation_run_id: int, status: CalculationStatusEnum) -> None:
+        """Update status of a calculation run.
+
+        Parameters
+        ----------
+        calculation_run_id : int
+            Calculation run ID.
+        status : CalculationStatusEnum
+            New status (PENDING, RUNNING, COMPLETED, FAILED).
+        """
+        with self.session_factory.session_scope() as session:
+            run = (
+                session.query(CalculationRun)
+                .filter(CalculationRun.calculation_run_id == calculation_run_id)
+                .first()
+            )
+            if run:
+                run.status = status
+                session.flush()
 
 
 class VaRResultRepository(BaseRepository):
