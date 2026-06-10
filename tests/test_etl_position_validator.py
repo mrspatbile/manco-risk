@@ -5,6 +5,7 @@ from decimal import Decimal
 
 import pytest
 
+from manco_risk.database import Instrument
 from manco_risk.etl import PositionInput, PositionValidator
 from manco_risk.etl.position_validator import (
     ValidationIssue,
@@ -562,3 +563,260 @@ class TestPositionValidatorDuplicates:
         assert results[1].is_valid is False
         codes_1 = {issue.code for issue in results[1].issues}
         assert codes_1 == {"ZERO_MARKET_VALUE", "DUPLICATE_POSITION"}
+
+
+class TestPositionValidatorInstrumentReference:
+    """Tests for instrument reference validation."""
+
+    def test_no_instrument_map_skips_reference_checks(self) -> None:
+        """Without instrument map, reference checks are skipped."""
+        validator = PositionValidator()
+
+        position = PositionInput(
+            fund_name="Test Fund",
+            valuation_date=date(2025, 1, 15),
+            isin="UNKNOWN_ISIN",
+            quantity=Decimal("100"),
+            market_value=Decimal("12500"),
+            currency="EUR",
+        )
+
+        results = validator.validate_positions([position])
+
+        assert results[0].is_valid is True
+        assert all(issue.code != "UNKNOWN_INSTRUMENT" for issue in results[0].issues)
+        assert all(issue.code != "CURRENCY_MISMATCH" for issue in results[0].issues)
+
+    def test_known_instrument_matching_currency(self) -> None:
+        """Known instrument with matching currency: no issue."""
+        validator = PositionValidator()
+
+        instrument = Instrument(
+            isin="IE00B4L5Y983",
+            instrument_name="MSCI World ETF",
+            asset_class="Equity",
+            currency="EUR",
+        )
+        instruments = {"IE00B4L5Y983": instrument}
+
+        position = PositionInput(
+            fund_name="Test Fund",
+            valuation_date=date(2025, 1, 15),
+            isin="IE00B4L5Y983",
+            quantity=Decimal("100"),
+            market_value=Decimal("12500"),
+            currency="EUR",
+        )
+
+        results = validator.validate_positions([position], instruments_by_isin=instruments)
+
+        assert results[0].is_valid is True
+        assert all(issue.code != "UNKNOWN_INSTRUMENT" for issue in results[0].issues)
+        assert all(issue.code != "CURRENCY_MISMATCH" for issue in results[0].issues)
+
+    def test_unknown_isin_error(self) -> None:
+        """Unknown ISIN: UNKNOWN_INSTRUMENT error."""
+        validator = PositionValidator()
+
+        instrument = Instrument(
+            isin="IE00B4L5Y983",
+            instrument_name="MSCI World ETF",
+            asset_class="Equity",
+            currency="EUR",
+        )
+        instruments = {"IE00B4L5Y983": instrument}
+
+        position = PositionInput(
+            fund_name="Test Fund",
+            valuation_date=date(2025, 1, 15),
+            isin="UNKNOWN_ISIN",
+            quantity=Decimal("100"),
+            market_value=Decimal("12500"),
+            currency="EUR",
+        )
+
+        results = validator.validate_positions([position], instruments_by_isin=instruments)
+
+        assert results[0].is_valid is False
+        assert any(issue.code == "UNKNOWN_INSTRUMENT" for issue in results[0].issues)
+        unknown_issue = next(
+            issue for issue in results[0].issues if issue.code == "UNKNOWN_INSTRUMENT"
+        )
+        assert unknown_issue.field == "isin"
+        assert unknown_issue.severity == ValidationSeverity.ERROR
+
+    def test_currency_mismatch_error(self) -> None:
+        """Position currency != instrument currency: CURRENCY_MISMATCH error."""
+        validator = PositionValidator()
+
+        instrument = Instrument(
+            isin="IE00B4L5Y983",
+            instrument_name="MSCI World ETF",
+            asset_class="Equity",
+            currency="EUR",
+        )
+        instruments = {"IE00B4L5Y983": instrument}
+
+        position = PositionInput(
+            fund_name="Test Fund",
+            valuation_date=date(2025, 1, 15),
+            isin="IE00B4L5Y983",
+            quantity=Decimal("100"),
+            market_value=Decimal("12500"),
+            currency="USD",  # Mismatch
+        )
+
+        results = validator.validate_positions([position], instruments_by_isin=instruments)
+
+        assert results[0].is_valid is False
+        assert any(issue.code == "CURRENCY_MISMATCH" for issue in results[0].issues)
+        mismatch_issue = next(
+            issue for issue in results[0].issues if issue.code == "CURRENCY_MISMATCH"
+        )
+        assert mismatch_issue.field == "currency"
+        assert mismatch_issue.severity == ValidationSeverity.ERROR
+
+    def test_instrument_issues_with_existing_warnings(self) -> None:
+        """Instrument reference issues collected alongside existing warnings."""
+        validator = PositionValidator()
+
+        instrument = Instrument(
+            isin="IE00B4L5Y983",
+            instrument_name="MSCI World ETF",
+            asset_class="Equity",
+            currency="EUR",
+        )
+        instruments = {"IE00B4L5Y983": instrument}
+
+        position = PositionInput(
+            fund_name="Test Fund",
+            valuation_date=date(2025, 1, 15),
+            isin="IE00B4L5Y983",
+            quantity=Decimal("0"),  # Zero quantity warning
+            market_value=Decimal("12500"),
+            currency="USD",  # Currency mismatch error
+        )
+
+        results = validator.validate_positions([position], instruments_by_isin=instruments)
+
+        assert results[0].is_valid is False
+        assert len(results[0].issues) == 2
+        codes = {issue.code for issue in results[0].issues}
+        assert codes == {"ZERO_QUANTITY", "CURRENCY_MISMATCH"}
+
+    def test_duplicate_with_instrument_validation(self) -> None:
+        """Duplicate detection works with instrument validation enabled."""
+        validator = PositionValidator()
+
+        instrument = Instrument(
+            isin="IE00B4L5Y983",
+            instrument_name="MSCI World ETF",
+            asset_class="Equity",
+            currency="EUR",
+        )
+        instruments = {"IE00B4L5Y983": instrument}
+
+        positions = [
+            PositionInput(
+                fund_name="Test Fund",
+                valuation_date=date(2025, 1, 15),
+                isin="IE00B4L5Y983",
+                quantity=Decimal("100"),
+                market_value=Decimal("12500"),
+                currency="EUR",
+            ),
+            PositionInput(
+                fund_name="Test Fund",
+                valuation_date=date(2025, 1, 15),
+                isin="IE00B4L5Y983",
+                quantity=Decimal("50"),
+                market_value=Decimal("6250"),
+                currency="EUR",
+            ),
+        ]
+
+        results = validator.validate_positions(positions, instruments_by_isin=instruments)
+
+        # Both positions should have duplicate error (no currency mismatch)
+        assert results[0].is_valid is False
+        assert results[1].is_valid is False
+        assert any(issue.code == "DUPLICATE_POSITION" for issue in results[0].issues)
+        assert any(issue.code == "DUPLICATE_POSITION" for issue in results[1].issues)
+        assert all(
+            issue.code != "CURRENCY_MISMATCH" for result in results for issue in result.issues
+        )
+
+    def test_multiple_instruments_different_currencies(self) -> None:
+        """Multiple positions with different instruments and currencies."""
+        validator = PositionValidator()
+
+        instruments = {
+            "IE00B4L5Y983": Instrument(
+                isin="IE00B4L5Y983",
+                instrument_name="ETF EUR",
+                asset_class="Equity",
+                currency="EUR",
+            ),
+            "US0378331005": Instrument(
+                isin="US0378331005",
+                instrument_name="US Equity",
+                asset_class="Equity",
+                currency="USD",
+            ),
+        }
+
+        positions = [
+            PositionInput(
+                fund_name="Test Fund",
+                valuation_date=date(2025, 1, 15),
+                isin="IE00B4L5Y983",
+                quantity=Decimal("100"),
+                market_value=Decimal("12500"),
+                currency="EUR",  # Matches
+            ),
+            PositionInput(
+                fund_name="Test Fund",
+                valuation_date=date(2025, 1, 15),
+                isin="US0378331005",
+                quantity=Decimal("50"),
+                market_value=Decimal("8000"),
+                currency="USD",  # Matches
+            ),
+        ]
+
+        results = validator.validate_positions(positions, instruments_by_isin=instruments)
+
+        assert results[0].is_valid is True
+        assert results[1].is_valid is True
+        assert all(
+            issue.code != "CURRENCY_MISMATCH" for result in results for issue in result.issues
+        )
+
+    def test_unknown_instrument_skips_currency_check(self) -> None:
+        """Unknown instrument: currency check not performed."""
+        validator = PositionValidator()
+
+        instruments = {
+            "IE00B4L5Y983": Instrument(
+                isin="IE00B4L5Y983",
+                instrument_name="ETF",
+                asset_class="Equity",
+                currency="EUR",
+            ),
+        }
+
+        position = PositionInput(
+            fund_name="Test Fund",
+            valuation_date=date(2025, 1, 15),
+            isin="UNKNOWN_ISIN",
+            quantity=Decimal("100"),
+            market_value=Decimal("12500"),
+            currency="USD",  # Would mismatch if instrument existed
+        )
+
+        results = validator.validate_positions([position], instruments_by_isin=instruments)
+
+        # Should have UNKNOWN_INSTRUMENT error, but not CURRENCY_MISMATCH
+        assert len(results[0].issues) == 1
+        assert results[0].issues[0].code == "UNKNOWN_INSTRUMENT"
+        assert all(issue.code != "CURRENCY_MISMATCH" for issue in results[0].issues)

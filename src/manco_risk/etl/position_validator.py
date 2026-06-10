@@ -15,11 +15,14 @@ Notes:
 
 from decimal import Decimal
 from enum import Enum
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from pydantic import BaseModel, ConfigDict
 
 from manco_risk.etl.position_loader import PositionInput
+
+if TYPE_CHECKING:
+    from manco_risk.database import Instrument
 
 
 class ValidationSeverity(str, Enum):
@@ -86,13 +89,20 @@ class PositionValidator:
     Caller decides whether to block persistence or log issues.
     """
 
-    def validate_positions(self, position_inputs: list[PositionInput]) -> list[ValidationResult]:
+    def validate_positions(
+        self,
+        position_inputs: list[PositionInput],
+        instruments_by_isin: Optional[dict[str, "Instrument"]] = None,
+    ) -> list[ValidationResult]:
         """Validate all positions and return results.
 
         Parameters
         ----------
         position_inputs : list[PositionInput]
             Validated position input records from CSV loader.
+        instruments_by_isin : dict[str, Instrument] | None
+            Optional map of ISIN to Instrument for reference validation.
+            If None, instrument-based checks are skipped.
 
         Returns
         -------
@@ -123,6 +133,13 @@ class PositionValidator:
                         message="Duplicate position in batch; same fund/date/isin/source_id combination already exists",
                     )
                 )
+
+            # Check instrument reference if provided
+            if instruments_by_isin is not None:
+                instrument_issues = self._validate_instrument_reference(
+                    position_input, instruments_by_isin
+                )
+                issues.extend(instrument_issues)
 
             result = ValidationResult(
                 position_input=position_input,
@@ -223,3 +240,48 @@ class PositionValidator:
             key_counts[key] = key_counts.get(key, 0) + 1
 
         return {key for key, count in key_counts.items() if count > 1}
+
+    def _validate_instrument_reference(
+        self, position_input: PositionInput, instruments_by_isin: dict[str, "Instrument"]
+    ) -> list[ValidationIssue]:
+        """Validate position against instrument reference data.
+
+        Parameters
+        ----------
+        position_input : PositionInput
+            Position to validate.
+        instruments_by_isin : dict[str, Instrument]
+            Map of ISIN to Instrument.
+
+        Returns
+        -------
+        list[ValidationIssue]
+            Issues found (empty if all checks pass).
+        """
+        issues: list[ValidationIssue] = []
+
+        # Check 1: Instrument exists
+        instrument = instruments_by_isin.get(position_input.isin)
+        if instrument is None:
+            issues.append(
+                ValidationIssue(
+                    field="isin",
+                    severity=ValidationSeverity.ERROR,
+                    code="UNKNOWN_INSTRUMENT",
+                    message=f"Instrument with ISIN '{position_input.isin}' not found in reference data",
+                )
+            )
+            return issues  # Cannot check currency if instrument not found
+
+        # Check 2: Currency matches
+        if position_input.currency != instrument.currency:
+            issues.append(
+                ValidationIssue(
+                    field="currency",
+                    severity=ValidationSeverity.ERROR,
+                    code="CURRENCY_MISMATCH",
+                    message=f"Position currency '{position_input.currency}' does not match instrument currency '{instrument.currency}'",
+                )
+            )
+
+        return issues
