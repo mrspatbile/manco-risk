@@ -12,7 +12,7 @@ from manco_risk.common import (
     SecurityNotFoundError,
 )
 
-from .base import MarketDataProvider
+from .provider import MarketDataProvider
 from .schemas import FXRate, InstrumentInfo, Price, PriceHistory
 
 

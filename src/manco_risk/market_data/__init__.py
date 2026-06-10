@@ -1,7 +1,7 @@
 """Market data abstraction layer."""
 
-from .base import MarketDataProvider
 from .csv_provider import CSVProvider
+from .provider import MarketDataProvider
 from .schemas import FXRate, InstrumentInfo, Price, PriceHistory
 
 __all__ = [
