@@ -61,17 +61,17 @@ PRJ-101 Domain models and data layer
 PRJ-102 Module 1 -- ...
 -->
 
-MRS-123  Define target architecture and module boundaries - done
+MRS-123  Define target architecture and module boundaries - done ✅ 
 
-MRS-124  Set up repository structure and development tooling - done
+MRS-124  Set up repository structure and development tooling - done ✅ 
 
-MRS-125  Implement market data abstraction layer - current implementing (MRS-152 done for researching reg base with output in `reg_reference.md`)
+MRS-125  Implement market data abstraction layer - current implementing (MRS-152 done for researching reg base with output in `reg_reference.md` - done ✅ ) - done ✅ 
 
-MRS-126  Implement mock Bloomberg provider
+MRS-126  Implement mock Bloomberg provider - deferred
 
-MRS-127  Define market data schemas and contracts
+MRS-127  Define market data schemas and contracts - done ✅  as part of MRS-125
 
-MRS-128  Design database schema
+MRS-128  Design database schema - current
 
 MRS-129  Implement database access layer
 
