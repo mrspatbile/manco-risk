@@ -25,3 +25,21 @@ class PositionCSVLoadError(ETLError):
     """Error loading positions from CSV file."""
 
     pass
+
+
+class PositionIngestionError(ETLError):
+    """Error during position ingestion and persistence."""
+
+    pass
+
+
+class FundNotFoundError(PositionIngestionError):
+    """Fund not found in database."""
+
+    pass
+
+
+class InstrumentNotFoundError(PositionIngestionError):
+    """Instrument (by ISIN) not found in database."""
+
+    pass
