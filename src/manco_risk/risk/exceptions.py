@@ -71,3 +71,42 @@ class InvalidScenarioInputError(RiskCalculationError):
         """
         self.reason = reason
         super().__init__(f"Invalid scenario input: {reason}")
+
+
+class InvalidPriceDataError(RiskCalculationError):
+    """Price data validation failed.
+
+    Covers negative/zero prices, duplicate dates, invalid ISINs, etc.
+    """
+
+    def __init__(self, reason: str) -> None:
+        """Initialize exception.
+
+        Parameters
+        ----------
+        reason : str
+            Description of the validation failure.
+        """
+        self.reason = reason
+        super().__init__(f"Invalid price data: {reason}")
+
+
+class InsufficientPriceDataError(RiskCalculationError):
+    """Insufficient price observations for return calculation.
+
+    At least two price observations per ISIN are required for 1-day returns.
+    """
+
+    def __init__(self, isin: str, count: int) -> None:
+        """Initialize exception.
+
+        Parameters
+        ----------
+        isin : str
+            Instrument ISIN.
+        count : int
+            Number of price observations available.
+        """
+        self.isin = isin
+        self.count = count
+        super().__init__(f"ISIN {isin} has {count} price observations; at least 2 required")
