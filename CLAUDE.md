@@ -61,11 +61,11 @@ PRJ-101 Domain models and data layer
 PRJ-102 Module 1 -- ...
 -->
 
-MRS-123  Define target architecture and module boundaries
+MRS-123  Define target architecture and module boundaries - done
 
-MRS-124  Set up repository structure and development tooling
+MRS-124  Set up repository structure and development tooling - done
 
-MRS-125  Implement market data abstraction layer
+MRS-125  Implement market data abstraction layer - current implementing (MRS-152 done for researching reg base with output in `reg_reference.md`)
 
 MRS-126  Implement mock Bloomberg provider
 
@@ -261,6 +261,30 @@ This repository may be consulted for:
 
 It must not be treated as an architectural reference.
 
+Before using the prototype repository, read and follow:
+
+- `meta/prototype_field_inventory.md`
+
+The prototype field inventory is mandatory when reviewing fields, schemas, reports, calculations or sample datasets from the prototype.
+
+Do not infer regulatory requirements from the prototype.
+
+Do not assume a field is regulatory simply because it exists in the prototype.
+
+Every prototype field or concept considered for reuse must be classified as one of:
+
+- source data
+- reference data
+- fund methodology setting
+- internal risk limit
+- calculation input
+- derived output
+- reporting field
+- filing snapshot
+- audit / lineage field
+- out of scope
+- unclear
+
 Do not reproduce:
 
 - notebook-centric implementations
@@ -268,15 +292,19 @@ Do not reproduce:
 - calculation logic embedded in notebooks
 - direct data manipulation inside reporting code
 - architectural shortcuts taken during prototyping
+- derived values stored as source data
+- reporting fields mixed with calculation inputs
+- regulatory concepts mixed with methodology choices
+- ad hoc counterparty, leverage, collateral or hedging fields without classification
 
 When using the prototype repository:
 
 1. Explain what information is being referenced.
-2. Explain what will be reused conceptually.
-3. Explain what will be redesigned.
-4. Implement according to the architecture defined in this repository.
-5. Wait for approval before copying or rewriting substantial functionality.
-
+2. Classify the relevant prototype fields or concepts using `meta/prototype_field_inventory.md`.
+3. Explain what will be reused conceptually.
+4. Explain what will be redesigned.
+5. Implement according to the architecture defined in this repository.
+6. Wait for approval before copying or rewriting substantial functionality.
 
 ### Migration Rule
 
@@ -284,9 +312,13 @@ The goal of this repository is not to port the prototype.
 
 The goal is to reimplement selected functionality using the architecture defined in:
 
-- ARCHITECTURE.md
-- CLAUDE.md
-- meta/project_spec.md
-- meta/conventions.md
+- `ARCHITECTURE.md`
+- `CLAUDE.md`
+- `meta/project_spec.md`
+- `meta/conventions.md`
+- `meta/reg_reference.md`
+- `meta/prototype_field_inventory.md`
 
 A clean reimplementation is preferred over a direct migration.
+
+
