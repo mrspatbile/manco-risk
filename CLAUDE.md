@@ -185,6 +185,9 @@ Examples:
 
 ## Architecture rules
 
+See `ARCHITECTURE.md` for the complete target structure, module responsibilities, dependency rules, and forbidden patterns.
+
+Key principles:
 - Abstract base classes for all engines and loaders
 - Concrete implementations via dependency injection
 - Calculations must be independent from visualisation
@@ -281,6 +284,7 @@ The goal of this repository is not to port the prototype.
 
 The goal is to reimplement selected functionality using the architecture defined in:
 
+- ARCHITECTURE.md
 - CLAUDE.md
 - meta/project_spec.md
 - meta/conventions.md
