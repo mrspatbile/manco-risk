@@ -333,3 +333,232 @@ class TestPositionValidator:
         assert results[2].is_valid is False
         assert len(results[2].issues) == 1
         assert results[2].issues[0].code == "NEGATIVE_MARKET_VALUE"
+
+
+class TestPositionValidatorDuplicates:
+    """Tests for duplicate position detection."""
+
+    def test_no_duplicate_positions(self) -> None:
+        """No duplicates: different ISINs or dates."""
+        validator = PositionValidator()
+
+        positions = [
+            PositionInput(
+                fund_name="Test Fund",
+                valuation_date=date(2025, 1, 15),
+                isin="IE00B4L5Y983",
+                quantity=Decimal("100"),
+                market_value=Decimal("12500"),
+                currency="EUR",
+            ),
+            PositionInput(
+                fund_name="Test Fund",
+                valuation_date=date(2025, 1, 15),
+                isin="US0378331005",
+                quantity=Decimal("50"),
+                market_value=Decimal("8000"),
+                currency="USD",
+            ),
+        ]
+
+        results = validator.validate_positions(positions)
+
+        assert results[0].is_valid is True
+        assert results[1].is_valid is True
+        assert all(
+            issue.code != "DUPLICATE_POSITION" for result in results for issue in result.issues
+        )
+
+    def test_duplicate_same_fund_date_isin_no_source_id(self) -> None:
+        """Duplicate: same fund/date/isin without source_position_identifier."""
+        validator = PositionValidator()
+
+        positions = [
+            PositionInput(
+                fund_name="Test Fund",
+                valuation_date=date(2025, 1, 15),
+                isin="IE00B4L5Y983",
+                quantity=Decimal("100"),
+                market_value=Decimal("12500"),
+                currency="EUR",
+            ),
+            PositionInput(
+                fund_name="Test Fund",
+                valuation_date=date(2025, 1, 15),
+                isin="IE00B4L5Y983",
+                quantity=Decimal("50"),
+                market_value=Decimal("6250"),
+                currency="EUR",
+            ),
+        ]
+
+        results = validator.validate_positions(positions)
+
+        assert results[0].is_valid is False
+        assert results[1].is_valid is False
+        assert any(issue.code == "DUPLICATE_POSITION" for issue in results[0].issues)
+        assert any(issue.code == "DUPLICATE_POSITION" for issue in results[1].issues)
+
+    def test_same_isin_different_dates_not_duplicate(self) -> None:
+        """Same ISIN on different valuation dates: not a duplicate."""
+        validator = PositionValidator()
+
+        positions = [
+            PositionInput(
+                fund_name="Test Fund",
+                valuation_date=date(2025, 1, 15),
+                isin="IE00B4L5Y983",
+                quantity=Decimal("100"),
+                market_value=Decimal("12500"),
+                currency="EUR",
+            ),
+            PositionInput(
+                fund_name="Test Fund",
+                valuation_date=date(2025, 1, 16),
+                isin="IE00B4L5Y983",
+                quantity=Decimal("100"),
+                market_value=Decimal("12500"),
+                currency="EUR",
+            ),
+        ]
+
+        results = validator.validate_positions(positions)
+
+        assert results[0].is_valid is True
+        assert results[1].is_valid is True
+        assert all(
+            issue.code != "DUPLICATE_POSITION" for result in results for issue in result.issues
+        )
+
+    def test_same_isin_different_funds_not_duplicate(self) -> None:
+        """Same ISIN in different funds: not a duplicate."""
+        validator = PositionValidator()
+
+        positions = [
+            PositionInput(
+                fund_name="Fund A",
+                valuation_date=date(2025, 1, 15),
+                isin="IE00B4L5Y983",
+                quantity=Decimal("100"),
+                market_value=Decimal("12500"),
+                currency="EUR",
+            ),
+            PositionInput(
+                fund_name="Fund B",
+                valuation_date=date(2025, 1, 15),
+                isin="IE00B4L5Y983",
+                quantity=Decimal("100"),
+                market_value=Decimal("12500"),
+                currency="EUR",
+            ),
+        ]
+
+        results = validator.validate_positions(positions)
+
+        assert results[0].is_valid is True
+        assert results[1].is_valid is True
+        assert all(
+            issue.code != "DUPLICATE_POSITION" for result in results for issue in result.issues
+        )
+
+    def test_same_fund_date_isin_different_source_ids_not_duplicate(self) -> None:
+        """Same fund/date/isin with different source_position_identifier: not a duplicate."""
+        validator = PositionValidator()
+
+        positions = [
+            PositionInput(
+                fund_name="Test Fund",
+                valuation_date=date(2025, 1, 15),
+                isin="IE00B4L5Y983",
+                quantity=Decimal("100"),
+                market_value=Decimal("12500"),
+                currency="EUR",
+                source_position_identifier="POS-001",
+            ),
+            PositionInput(
+                fund_name="Test Fund",
+                valuation_date=date(2025, 1, 15),
+                isin="IE00B4L5Y983",
+                quantity=Decimal("50"),
+                market_value=Decimal("6250"),
+                currency="EUR",
+                source_position_identifier="POS-002",
+            ),
+        ]
+
+        results = validator.validate_positions(positions)
+
+        assert results[0].is_valid is True
+        assert results[1].is_valid is True
+        assert all(
+            issue.code != "DUPLICATE_POSITION" for result in results for issue in result.issues
+        )
+
+    def test_duplicate_same_source_identifier(self) -> None:
+        """Duplicate: same source_position_identifier for same fund/date/isin."""
+        validator = PositionValidator()
+
+        positions = [
+            PositionInput(
+                fund_name="Test Fund",
+                valuation_date=date(2025, 1, 15),
+                isin="IE00B4L5Y983",
+                quantity=Decimal("100"),
+                market_value=Decimal("12500"),
+                currency="EUR",
+                source_position_identifier="POS-001",
+            ),
+            PositionInput(
+                fund_name="Test Fund",
+                valuation_date=date(2025, 1, 15),
+                isin="IE00B4L5Y983",
+                quantity=Decimal("50"),
+                market_value=Decimal("6250"),
+                currency="EUR",
+                source_position_identifier="POS-001",
+            ),
+        ]
+
+        results = validator.validate_positions(positions)
+
+        assert results[0].is_valid is False
+        assert results[1].is_valid is False
+        assert any(issue.code == "DUPLICATE_POSITION" for issue in results[0].issues)
+        assert any(issue.code == "DUPLICATE_POSITION" for issue in results[1].issues)
+
+    def test_duplicate_with_other_warnings(self) -> None:
+        """Duplicate error is collected alongside other warnings."""
+        validator = PositionValidator()
+
+        positions = [
+            PositionInput(
+                fund_name="Test Fund",
+                valuation_date=date(2025, 1, 15),
+                isin="IE00B4L5Y983",
+                quantity=Decimal("0"),
+                market_value=Decimal("12500"),
+                currency="EUR",
+            ),
+            PositionInput(
+                fund_name="Test Fund",
+                valuation_date=date(2025, 1, 15),
+                isin="IE00B4L5Y983",
+                quantity=Decimal("50"),
+                market_value=Decimal("0"),
+                currency="EUR",
+            ),
+        ]
+
+        results = validator.validate_positions(positions)
+
+        # First position: zero quantity warning + duplicate error
+        assert len(results[0].issues) == 2
+        assert results[0].is_valid is False
+        codes_0 = {issue.code for issue in results[0].issues}
+        assert codes_0 == {"ZERO_QUANTITY", "DUPLICATE_POSITION"}
+
+        # Second position: zero market value warning + duplicate error
+        assert len(results[1].issues) == 2
+        assert results[1].is_valid is False
+        codes_1 = {issue.code for issue in results[1].issues}
+        assert codes_1 == {"ZERO_MARKET_VALUE", "DUPLICATE_POSITION"}

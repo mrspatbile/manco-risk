@@ -106,8 +106,24 @@ class PositionValidator:
         """
         results: list[ValidationResult] = []
 
+        # Detect duplicates across batch
+        duplicate_keys = self._find_duplicate_position_keys(position_inputs)
+
         for position_input in position_inputs:
             issues = self._validate_single_position(position_input)
+
+            # Check for duplicates
+            position_key = self._get_position_key(position_input)
+            if position_key in duplicate_keys:
+                issues.append(
+                    ValidationIssue(
+                        field="position_identity",
+                        severity=ValidationSeverity.ERROR,
+                        code="DUPLICATE_POSITION",
+                        message="Duplicate position in batch; same fund/date/isin/source_id combination already exists",
+                    )
+                )
+
             result = ValidationResult(
                 position_input=position_input,
                 source_position_identifier=position_input.source_position_identifier,
@@ -167,3 +183,43 @@ class PositionValidator:
             )
 
         return issues
+
+    def _get_position_key(self, position_input: PositionInput) -> tuple:
+        """Get unique key for position (fund/date/isin/source_id).
+
+        Parameters
+        ----------
+        position_input : PositionInput
+            Position to extract key from.
+
+        Returns
+        -------
+        tuple
+            Unique identifier tuple (fund_name, valuation_date, isin, source_id or None).
+        """
+        return (
+            position_input.fund_name,
+            position_input.valuation_date,
+            position_input.isin,
+            position_input.source_position_identifier,
+        )
+
+    def _find_duplicate_position_keys(self, position_inputs: list[PositionInput]) -> set:
+        """Find all duplicate position keys in batch.
+
+        Parameters
+        ----------
+        position_inputs : list[PositionInput]
+            Positions to check.
+
+        Returns
+        -------
+        set
+            Set of position keys that appear more than once.
+        """
+        key_counts: dict = {}
+        for position_input in position_inputs:
+            key = self._get_position_key(position_input)
+            key_counts[key] = key_counts.get(key, 0) + 1
+
+        return {key for key, count in key_counts.items() if count > 1}
