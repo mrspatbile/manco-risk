@@ -13,6 +13,7 @@ from datetime import date
 from typing import Generic, TypeVar
 
 from manco_risk.database.models import (
+    CalculationRun,
     Fund,
     Instrument,
     MarketDataPoint,
@@ -21,6 +22,7 @@ from manco_risk.database.models import (
     Position,
     PositionSnapshot,
     RiskMethodology,
+    VaRResult,
 )
 from manco_risk.database.session import SessionFactory
 
@@ -546,3 +548,166 @@ class MarketDataPointRepository(BaseRepository):
             for point in points:
                 session.expunge(point)
             return points
+
+
+class CalculationRunRepository(BaseRepository):
+    """Repository for CalculationRun entity.
+
+    Implements domain queries for CalculationRun:
+    - insert: create new calculation run
+    - find_by_id: get calculation run by primary key
+    - find_by_fund_and_date: find all calculation runs for a fund on a date
+    """
+
+    def insert(self, calculation_run: CalculationRun) -> CalculationRun:
+        """Insert a new calculation run.
+
+        Parameters
+        ----------
+        calculation_run : CalculationRun
+            CalculationRun entity to insert. Should not have calculation_run_id set.
+
+        Returns
+        -------
+        CalculationRun
+            Inserted calculation run with calculation_run_id populated.
+        """
+        with self.session_factory.session_scope() as session:
+            session.add(calculation_run)
+            session.flush()
+            inserted_run = calculation_run
+            session.expunge(inserted_run)
+            return inserted_run
+
+    def find_by_id(self, calculation_run_id: int) -> CalculationRun | None:
+        """Find a calculation run by primary key.
+
+        Parameters
+        ----------
+        calculation_run_id : int
+            Calculation run ID.
+
+        Returns
+        -------
+        CalculationRun | None
+            Calculation run if found, None otherwise.
+        """
+        with self.session_factory.session_scope() as session:
+            run = (
+                session.query(CalculationRun)
+                .filter(CalculationRun.calculation_run_id == calculation_run_id)
+                .first()
+            )
+            if run:
+                session.expunge(run)
+            return run
+
+    def find_by_fund_and_date(self, fund_id: int, valuation_date: date) -> list[CalculationRun]:
+        """Find all calculation runs for a fund on a specific valuation date.
+
+        Parameters
+        ----------
+        fund_id : int
+            Fund ID.
+        valuation_date : date
+            Valuation date.
+
+        Returns
+        -------
+        list[CalculationRun]
+            List of calculation runs. Empty list if none exist.
+        """
+        with self.session_factory.session_scope() as session:
+            runs = (
+                session.query(CalculationRun)
+                .filter(
+                    CalculationRun.fund_id == fund_id,
+                    CalculationRun.valuation_date == valuation_date,
+                )
+                .all()
+            )
+            for run in runs:
+                session.expunge(run)
+            return runs
+
+
+class VaRResultRepository(BaseRepository):
+    """Repository for VaRResult entity.
+
+    Implements domain queries for VaRResult:
+    - insert: create new VaR result
+    - find_by_calculation_run: get all VaR results for a calculation run
+    - find_by_fund_and_date: get all VaR results for a fund on a date
+    """
+
+    def insert(self, var_result: VaRResult) -> VaRResult:
+        """Insert a new VaR result.
+
+        Parameters
+        ----------
+        var_result : VaRResult
+            VaRResult entity to insert. Should not have var_result_id set.
+
+        Returns
+        -------
+        VaRResult
+            Inserted VaR result with var_result_id populated.
+        """
+        with self.session_factory.session_scope() as session:
+            session.add(var_result)
+            session.flush()
+            inserted_result = var_result
+            session.expunge(inserted_result)
+            return inserted_result
+
+    def find_by_calculation_run(self, calculation_run_id: int) -> list[VaRResult]:
+        """Find all VaR results for a calculation run.
+
+        Parameters
+        ----------
+        calculation_run_id : int
+            Calculation run ID.
+
+        Returns
+        -------
+        list[VaRResult]
+            List of VaR results. Empty list if none exist.
+        """
+        with self.session_factory.session_scope() as session:
+            results = (
+                session.query(VaRResult)
+                .filter(VaRResult.calculation_run_id == calculation_run_id)
+                .all()
+            )
+            for result in results:
+                session.expunge(result)
+            return results
+
+    def find_by_fund_and_date(self, fund_id: int, valuation_date: date) -> list[VaRResult]:
+        """Find all VaR results for a fund on a specific valuation date.
+
+        Parameters
+        ----------
+        fund_id : int
+            Fund ID.
+        valuation_date : date
+            Valuation date.
+
+        Returns
+        -------
+        list[VaRResult]
+            List of VaR results. Empty list if none exist.
+        """
+        with self.session_factory.session_scope() as session:
+            results = (
+                session.query(VaRResult)
+                .join(CalculationRun)
+                .filter(
+                    VaRResult.fund_id == fund_id,
+                    CalculationRun.valuation_date == valuation_date,
+                )
+                .all()
+            )
+            for result in results:
+                session.expunge(result)
+            return results
