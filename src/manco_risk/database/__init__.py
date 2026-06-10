@@ -3,7 +3,7 @@
 Provides:
 - SQLAlchemy ORM models for Phase 1 entities
 - Session management and database initialization
-- Query layer (future: Phase 2)
+- Repository/query layer for data access
 """
 
 from manco_risk.database.models import (
@@ -26,6 +26,16 @@ from manco_risk.database.models import (
     RiskMethodology,
     VaRBacktestingResult,
     VaRResult,
+)
+from manco_risk.database.repositories import (
+    BaseRepository,
+    FundRepository,
+    InstrumentRepository,
+    MarketDataPointRepository,
+    NAVSnapshotRepository,
+    PositionRepository,
+    PositionSnapshotRepository,
+    RiskMethodologyRepository,
 )
 from manco_risk.database.session import (
     SessionFactory,
@@ -59,4 +69,13 @@ __all__ = [
     "create_database_engine",
     "initialize_database",
     "SessionFactory",
+    # Repositories
+    "BaseRepository",
+    "FundRepository",
+    "InstrumentRepository",
+    "PositionSnapshotRepository",
+    "PositionRepository",
+    "NAVSnapshotRepository",
+    "MarketDataPointRepository",
+    "RiskMethodologyRepository",
 ]
