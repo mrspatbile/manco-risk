@@ -5,13 +5,24 @@ Provides:
 - CSV loading and normalization
 - Data validation at ingestion boundary
 - Position input mapping and persistence
+- Position validation framework
 """
 
 from manco_risk.etl.position_loader import PositionInput, PositionLoader
 from manco_risk.etl.position_mapper import PositionMapper
+from manco_risk.etl.position_validator import (
+    PositionValidator,
+    ValidationIssue,
+    ValidationResult,
+    ValidationSeverity,
+)
 
 __all__ = [
     "PositionInput",
     "PositionLoader",
     "PositionMapper",
+    "PositionValidator",
+    "ValidationIssue",
+    "ValidationResult",
+    "ValidationSeverity",
 ]
