@@ -6,8 +6,10 @@ Provides:
 - Data validation at ingestion boundary
 - Position input mapping and persistence
 - Position validation framework
+- Enriched position models for risk calculation
 """
 
+from manco_risk.etl.enriched_position import EnrichedPosition, RiskReadyPortfolio
 from manco_risk.etl.exceptions import PositionValidationFailure
 from manco_risk.etl.position_loader import PositionInput, PositionLoader
 from manco_risk.etl.position_mapper import PositionMapper
@@ -27,4 +29,6 @@ __all__ = [
     "ValidationResult",
     "ValidationSeverity",
     "PositionValidationFailure",
+    "EnrichedPosition",
+    "RiskReadyPortfolio",
 ]

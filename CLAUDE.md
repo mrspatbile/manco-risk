@@ -114,6 +114,7 @@ Do not include in the next MRS-129 step:
 * MRS-128 — Design and implement Phase 1 database ORM foundation — done
 * MRS-129 — Database session management + repository/query layer - done
 * MRS-131 — Implement position ingestion framework - done
+* MRS-132 — Implement data validation framework
 
 
 Completed supporting research:
@@ -128,8 +129,6 @@ Completed supporting research:
 
 ### Active database / risk issue sequence
 
-
-* MRS-132 — Implement data validation framework
 * MRS-133 — Implement risk-ready enrichment pipeline
 * MRS-134 — Historical VaR calculation and persistence
 * MRS-135 — Implement Parametric VaR engine
