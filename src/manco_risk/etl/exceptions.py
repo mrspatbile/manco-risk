@@ -132,3 +132,26 @@ class MissingFXRateError(PositionEnrichmentError):
         self.from_currency = from_currency
         self.to_currency = to_currency
         self.position_id = position_id
+
+
+class NAVSnapshotNotFoundError(PositionEnrichmentError):
+    """NAV snapshot not found during enrichment.
+
+    Raised when NAV is required for enrichment but not found
+    for the requested fund and date.
+    """
+
+    def __init__(self, fund_id: int, valuation_date) -> None:
+        """Initialize NAV snapshot not found exception.
+
+        Parameters
+        ----------
+        fund_id : int
+            The fund_id for which NAV was not found.
+        valuation_date
+            The date for which NAV was not found.
+        """
+        msg = f"NAV snapshot not found for fund_id {fund_id} on {valuation_date}"
+        super().__init__(msg)
+        self.fund_id = fund_id
+        self.valuation_date = valuation_date

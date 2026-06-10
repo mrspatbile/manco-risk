@@ -11,9 +11,11 @@ Provides:
 """
 
 from manco_risk.etl.enriched_position import EnrichedPosition, RiskReadyPortfolio
+from manco_risk.etl.enrichment_service import EnrichmentService
 from manco_risk.etl.exceptions import (
     InstrumentReferenceNotFoundError,
     MissingFXRateError,
+    NAVSnapshotNotFoundError,
     PositionEnrichmentError,
     PositionValidationFailure,
 )
@@ -42,4 +44,6 @@ __all__ = [
     "PositionEnrichmentError",
     "InstrumentReferenceNotFoundError",
     "MissingFXRateError",
+    "NAVSnapshotNotFoundError",
+    "EnrichmentService",
 ]
