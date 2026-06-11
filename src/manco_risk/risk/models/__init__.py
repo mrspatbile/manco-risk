@@ -15,6 +15,8 @@ from manco_risk.risk.models.christoffersen_test import (
 )
 from manco_risk.risk.models.expected_shortfall_input import HistoricalExpectedShortfallInput
 from manco_risk.risk.models.expected_shortfall_result import HistoricalExpectedShortfallResult
+from manco_risk.risk.models.historical_stress_input import HistoricalStressInput
+from manco_risk.risk.models.historical_stress_result import HistoricalStressResult
 from manco_risk.risk.models.kupiec_test import KupiecTestResult
 from manco_risk.risk.models.parametric_var_input import ParametricNormalVaRInput
 from manco_risk.risk.models.parametric_var_result import ParametricNormalVaRResult
@@ -40,6 +42,8 @@ __all__ = [
     "ChristoffersenTestResult",
     "HistoricalExpectedShortfallInput",
     "HistoricalExpectedShortfallResult",
+    "HistoricalStressInput",
+    "HistoricalStressResult",
     "KupiecTestResult",
     "ParametricNormalVaRInput",
     "ParametricNormalVaRResult",
