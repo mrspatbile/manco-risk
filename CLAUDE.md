@@ -133,7 +133,7 @@ When starting a new Claude session:
 
 ### Leverage issue sequence
 
-MRS-139 — Implement leverage analytics — parent issue
+MRS-139 — Implement leverage analytics — parent issue — done
 
 MRS-157 — Leverage taxonomy and exposure source model — done
 MRS-158 — Physical instrument leverage exposure — done
@@ -151,6 +151,9 @@ MRS-169 — QuantLib-backed derivative valuation and exposure conversion - done
 
 ### Remaining database / risk issue sequence
 
+* MRS-170 - Audit and align common AssetClass enum - done
+* MRS-169E — Add derivative market data input models
+* MRS-171 — Standardize asset-class representation
 * MRS-140 — Implement liquidity risk analytics
 * MRS-141 — Implement liquidity stress testing
 * MRS-142 — Implement reporting framework
