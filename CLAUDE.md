@@ -141,15 +141,16 @@ MRS-159 — Cash and cash-equivalent leverage treatment — done
 MRS-160 — Direct borrowing leverage source — done
 MRS-161 — Securities financing transaction leverage source — done
 MRS-162 — Derivative valuation and exposure model - done
-MRS-163 — AIFMD gross and commitment aggregation engines
-MRS-164 — Leverage persistence and reporting views
+MRS-163 — AIFMD gross and commitment aggregation engines - done
+MRS-164 — Leverage persistence and reporting views - done
 MRS-165 — UCITS global exposure support
 MRS-166 — Leverage limit monitoring framework
+MRS-167 — Interest-rate derivative duration netting model
+MRS-168 — QuantLib derivative pricing and Greeks spike
+MRS-169 — QuantLib-backed derivative valuation and exposure conversion
 
 ### Remaining database / risk issue sequence
 
-* MRS-167 — QuantLib derivative pricing and Greeks spike
-* MRS-168 — QuantLib-backed derivative valuation/exposure conversion
 * MRS-139 — Implement leverage analytics
 * MRS-140 — Implement liquidity risk analytics
 * MRS-141 — Implement liquidity stress testing

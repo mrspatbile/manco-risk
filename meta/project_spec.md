@@ -185,5 +185,3 @@ Credit spread risk, issuer-specific events and rating migration effects are not 
 
 ---
 
-<!-- Fill in before the first Claude Code session. -->
-<!-- Claude Code will read this file before starting any module. -->
