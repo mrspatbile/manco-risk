@@ -9,6 +9,7 @@ Responsibilities (Phase 1):
 - Position and source contribution models
 - Unsupported exposure tracking
 - Physical instrument exposure source engine
+- Cash and cash-equivalent exposure source engine
 
 Does NOT include:
 - AIFMD gross aggregation engine
@@ -18,9 +19,10 @@ Does NOT include:
 - Derivative conversion formulas
 - Direct borrowing calculations
 - SFT calculations
-- Cash treatment (MRS-159)
 """
 
+from manco_risk.risk.leverage.cash_engine import CashExposureEngine
+from manco_risk.risk.leverage.cash_result import CashExposureResult
 from manco_risk.risk.leverage.enums import (
     ExposureTreatment,
     LeverageMethod,
@@ -42,6 +44,8 @@ from manco_risk.risk.leverage.physical_instrument_result import (
 )
 
 __all__ = [
+    "CashExposureEngine",
+    "CashExposureResult",
     "ExposureTreatment",
     "LeverageMethod",
     "LeverageSource",
