@@ -121,6 +121,8 @@ Do not include in the next MRS-129 step:
 * MRS-136 — Expected Shortfall calculation and persistence - done
 * MRS-137 — VaR backtesting calculation and persistence - done
 * MRS-138 — Implement stress testing framework - done
+* MRS-154 — Fixed Income stress testing
+
 
 Completed supporting research:
 
@@ -135,7 +137,7 @@ Completed supporting research:
 
 ### Active database / risk issue sequence
 
-* MRS-154 — Fixed Income stress testing
+* MRS-155 — Persist fixed-income stress results
 * MRS-139 — Implement leverage analytics
 * MRS-140 — Implement liquidity risk analytics
 * MRS-141 — Implement liquidity stress testing

@@ -944,7 +944,13 @@ class StressTestResult(Base):
         stressed_nav NUMERIC(18, 8),
         total_pnl NUMERIC(18, 8),
         loss_pct_nav NUMERIC(18, 8),
-        description TEXT,
+        rate_shock_bps INTEGER,
+        spread_shock_bps INTEGER,
+        total_rate_pnl NUMERIC(18, 8),
+        total_credit_pnl NUMERIC(18, 8),
+        num_positions_stressed INTEGER,
+        num_cash_positions INTEGER,
+        description VARCHAR(1000),
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -964,6 +970,10 @@ class StressTestResult(Base):
     - Monetary fields (current_nav, stressed_nav, total_pnl) use base currency.
     - loss_pct_nav: percentage as decimal (0.05 = 5%); NULL for infeasible reverse stress.
     - All shock values (shock_rate, loss_pct_nav) use Numeric(18, 8) for precision.
+    - Fixed-income stress fields (Phase 1):
+      - rate_shock_bps, spread_shock_bps: integer basis points; NULL for non-FI asset_scope.
+      - total_rate_pnl, total_credit_pnl: FI P&L decomposition; sum to total_pnl; NULL for non-FI.
+      - num_positions_stressed, num_cash_positions: FI position counts; NULL for non-FI.
     """
 
     __tablename__ = "stress_test_result"
@@ -992,6 +1002,12 @@ class StressTestResult(Base):
     stressed_nav: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 8))
     total_pnl: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 8))
     loss_pct_nav: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 8))
+    rate_shock_bps: Mapped[Optional[int]] = mapped_column(nullable=True)
+    spread_shock_bps: Mapped[Optional[int]] = mapped_column(nullable=True)
+    total_rate_pnl: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 8), nullable=True)
+    total_credit_pnl: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 8), nullable=True)
+    num_positions_stressed: Mapped[Optional[int]] = mapped_column(nullable=True)
+    num_cash_positions: Mapped[Optional[int]] = mapped_column(nullable=True)
     description: Mapped[Optional[str]] = mapped_column(String(1000))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=func.now(), nullable=False

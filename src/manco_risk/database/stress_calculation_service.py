@@ -19,6 +19,7 @@ from manco_risk.database.repositories import (
 )
 from manco_risk.database.session import SessionFactory
 from manco_risk.database.stress_mappers import (
+    map_fixed_income_stress_portfolio_result_to_orm,
     map_historical_stress_result_to_orm,
     map_reverse_stress_result_to_orm,
     map_stress_portfolio_result_to_orm,
@@ -28,13 +29,17 @@ from manco_risk.risk.engines import (
     HistoricalEquityStressEngine,
     ReverseEquityStressEngine,
 )
+from manco_risk.risk.engines.duration_based_pricer import DurationBasedFixedIncomePricer
 from manco_risk.risk.engines.equity_stress import EquityStressEngine
+from manco_risk.risk.engines.fixed_income_stress import FixedIncomeStressEngine
 from manco_risk.risk.models import (
     HistoricalStressInput,
     ReverseStressInput,
     StressScenario,
     StressTestInput,
 )
+from manco_risk.risk.models.fixed_income_stress_input import FixedIncomeStressInput
+from manco_risk.risk.models.fixed_income_stress_scenario import FixedIncomeStressScenario
 
 
 @dataclass
@@ -290,6 +295,112 @@ class StressTestCalculationService:
             orm_results = [
                 map_historical_stress_result_to_orm(result, calculation_run.calculation_run_id)
                 for result in historical_results
+            ]
+
+            result_ids = self.stress_result_repo.insert_many(orm_results)
+
+            self.calc_run_repo.update_status(
+                calculation_run.calculation_run_id, CalculationStatusEnum.COMPLETED
+            )
+
+            return StressTestCalculationResult(
+                calculation_run_id=calculation_run.calculation_run_id,
+                num_results_persisted=len(result_ids),
+            )
+
+        except Exception:
+            self.calc_run_repo.update_status(
+                calculation_run.calculation_run_id, CalculationStatusEnum.FAILED
+            )
+            raise
+
+    def calculate_and_persist_fixed_income_stress(
+        self,
+        portfolio: RiskReadyPortfolio,
+        scenarios: list[FixedIncomeStressScenario],
+        position_snapshot_id: int,
+        nav_snapshot_id: int,
+        risk_methodology: RiskMethodology,
+        created_by: str,
+    ) -> StressTestCalculationResult:
+        """Calculate and persist fixed-income stress.
+
+        Orchestrates FixedIncomeStressEngine with database persistence.
+        Returns portfolio-level aggregates only; does not persist position-level results.
+
+        Workflow:
+        1. Create CalculationRun (STRESS_TEST, RUNNING)
+        2. Invoke FixedIncomeStressEngine with portfolio and scenarios
+        3. Map each FixedIncomeStressPortfolioResult → StressTestResult ORM
+        4. Persist all results to database
+        5. Mark CalculationRun COMPLETED on success / FAILED on error
+
+        Parameters
+        ----------
+        portfolio : RiskReadyPortfolio
+            Risk-ready portfolio.
+        scenarios : list[FixedIncomeStressScenario]
+            Fixed-income scenarios to apply.
+        position_snapshot_id : int
+            Position snapshot ID for lineage.
+        nav_snapshot_id : int
+            NAV snapshot ID for lineage.
+        risk_methodology : RiskMethodology
+            Risk methodology configuration.
+        created_by : str
+            User identifier for audit trail.
+
+        Returns
+        -------
+        StressTestCalculationResult
+            calculation_run_id: ID of persisted CalculationRun
+            num_results_persisted: Number of StressTestResult rows inserted
+                                   (one per scenario)
+
+        Raises
+        ------
+        MissingDurationError
+            If a non-zero shock component requires missing modified_duration
+            or spread_duration on a bond position.
+        UnsupportedAssetClassError
+            If portfolio contains non-BOND, non-CASH assets, or if CASH is
+            in a non-base currency.
+        Exception
+            On calculation or persistence failure; CalculationRun marked FAILED.
+
+        Notes
+        -----
+        Phase 1: all FI stress results are result_type = HYPOTHETICAL.
+        No position-level persistence (constrained by Phase 1 scope).
+        One StressTestResult per scenario (aggregated at portfolio level).
+        """
+        from datetime import date
+
+        portfolio_valuation_date = date.fromisoformat(portfolio.valuation_date)
+        calculation_run = CalculationRun(
+            fund_id=portfolio.fund_id,
+            valuation_date=portfolio_valuation_date,
+            calculation_type=CalculationTypeEnum.STRESS_TEST,
+            created_timestamp=datetime.now(),
+            methodology_version_id=risk_methodology.methodology_version_id,
+            position_snapshot_id=position_snapshot_id,
+            nav_snapshot_id=nav_snapshot_id,
+            status=CalculationStatusEnum.RUNNING,
+            created_by=created_by,
+        )
+        calculation_run = self.calc_run_repo.insert(calculation_run)
+
+        try:
+            pricer = DurationBasedFixedIncomePricer()
+            engine = FixedIncomeStressEngine(pricer)
+            stress_input = FixedIncomeStressInput(portfolio=portfolio, scenarios=scenarios)
+            stress_results = engine.stress(stress_input)
+
+            orm_results = [
+                map_fixed_income_stress_portfolio_result_to_orm(
+                    result, calculation_run.calculation_run_id
+                )
+                for result in stress_results
             ]
 
             result_ids = self.stress_result_repo.insert_many(orm_results)

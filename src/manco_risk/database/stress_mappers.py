@@ -14,6 +14,9 @@ from manco_risk.risk.models import (
     ReverseStressResult,
     StressPortfolioResult,
 )
+from manco_risk.risk.models.fixed_income_stress_portfolio_result import (
+    FixedIncomeStressPortfolioResult,
+)
 
 
 def map_stress_portfolio_result_to_orm(
@@ -153,4 +156,67 @@ def map_historical_stress_result_to_orm(
         total_pnl=result.worst_scenario_pnl,
         loss_pct_nav=result.loss_pct_nav,
         description=result.description,
+    )
+
+
+def map_fixed_income_stress_portfolio_result_to_orm(
+    result: FixedIncomeStressPortfolioResult, calculation_run_id: int
+) -> StressTestResult:
+    """Map fixed-income stress result (portfolio-level) to ORM.
+
+    Parameters
+    ----------
+    result : FixedIncomeStressPortfolioResult
+        Fixed-income stress calculation output.
+    calculation_run_id : int
+        Foreign key to CalculationRun.
+
+    Returns
+    -------
+    StressTestResult
+        ORM entity ready for insertion.
+
+    Mapping
+    -------
+    - result_type: HYPOTHETICAL (Phase 1)
+    - asset_scope: FIXED_INCOME
+    - shock_type: result.shock_type (audit label: RATE_SHOCK, SPREAD_SHOCK, COMBINED)
+    - rate_shock_bps: result.rate_shock_bps (integer basis points)
+    - spread_shock_bps: result.spread_shock_bps (integer basis points)
+    - shock_rate: None (not applicable to FI; shocks are bps-based and multi-dimensional)
+    - current_nav: result.current_nav
+    - stressed_nav: result.stressed_nav
+    - total_pnl: result.total_pnl (signed)
+    - loss_pct_nav: result.loss_pct_nav (non-negative)
+    - total_rate_pnl: result.total_rate_pnl (signed; FI-specific decomposition)
+    - total_credit_pnl: result.total_credit_pnl (signed; FI-specific decomposition)
+    - num_positions_stressed: result.num_bond_positions
+    - num_cash_positions: result.num_cash_positions
+
+    Notes
+    -----
+    Invariant: total_rate_pnl + total_credit_pnl = total_pnl (or within rounding tolerance).
+    """
+    return StressTestResult(
+        calculation_run_id=calculation_run_id,
+        fund_id=result.fund_id,
+        scenario_id=result.scenario_id,
+        scenario_name=result.scenario_name,
+        scenario_type=result.scenario_type,
+        scenario_source=result.scenario_source,
+        result_type=StressTestResultTypeEnum.HYPOTHETICAL,
+        asset_scope=StressTestAssetScopeEnum.FIXED_INCOME,
+        shock_type=result.shock_type,
+        shock_rate=None,
+        current_nav=result.current_nav,
+        stressed_nav=result.stressed_nav,
+        total_pnl=result.total_pnl,
+        loss_pct_nav=result.loss_pct_nav,
+        rate_shock_bps=result.rate_shock_bps,
+        spread_shock_bps=result.spread_shock_bps,
+        total_rate_pnl=result.total_rate_pnl,
+        total_credit_pnl=result.total_credit_pnl,
+        num_positions_stressed=result.num_bond_positions,
+        num_cash_positions=result.num_cash_positions,
+        description=None,
     )
