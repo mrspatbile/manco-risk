@@ -24,7 +24,8 @@ class CSVProvider(MarketDataProvider):
 
     CSV files required:
     - instruments.csv: columns = security_id, name, asset_class, currency,
-                       maturity_date, coupon_rate, modified_duration_years, beta
+                       maturity_date, coupon_rate, modified_duration_years,
+                       spread_duration_years, beta
     - prices.csv: columns = date, security_id, price
     - fx_rates.csv: columns = date, from_currency, to_currency, rate
 
@@ -192,6 +193,9 @@ class CSVProvider(MarketDataProvider):
                 else None,
                 modified_duration_years=Decimal(str(row["modified_duration_years"]))
                 if pd.notna(row["modified_duration_years"])
+                else None,
+                spread_duration_years=Decimal(str(row["spread_duration_years"]))
+                if pd.notna(row["spread_duration_years"])
                 else None,
                 beta=Decimal(str(row["beta"])) if pd.notna(row["beta"]) else None,
             )

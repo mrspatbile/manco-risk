@@ -16,7 +16,7 @@ Notes:
 
 from datetime import date
 from decimal import Decimal
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from manco_risk.etl.enriched_position import EnrichedPosition, RiskReadyPortfolio
 from manco_risk.etl.exceptions import (
@@ -27,6 +27,7 @@ from manco_risk.etl.exceptions import (
 
 if TYPE_CHECKING:
     from manco_risk.database import Instrument, Position
+    from manco_risk.market_data.schemas import InstrumentInfo
 
 
 class PositionEnricher:
@@ -49,6 +50,7 @@ class PositionEnricher:
         positions: list["Position"],
         instruments_by_isin: dict[str, "Instrument"],
         fx_rates: dict[tuple[str, str], Decimal],
+        instrument_infos_by_isin: "dict[str, InstrumentInfo] | None" = None,
     ) -> RiskReadyPortfolio:
         """Enrich positions into a risk-ready portfolio.
 
@@ -70,6 +72,12 @@ class PositionEnricher:
             FX rates keyed by (from_currency, to_currency) tuple.
             Example: {('USD', 'EUR'): Decimal('0.92')}
             If from_currency == to_currency, rate must be Decimal('1').
+        instrument_infos_by_isin : dict[str, InstrumentInfo] | None
+            Optional map of ISIN -> InstrumentInfo from the market data layer.
+            When provided, modified_duration and spread_duration are populated
+            from InstrumentInfo.modified_duration_years and
+            InstrumentInfo.spread_duration_years respectively.
+            If absent or an ISIN is not in the map, durations default to None.
 
         Returns
         -------
@@ -125,8 +133,16 @@ class PositionEnricher:
             # Calculate weight
             weight = market_value_base_ccy / nav
 
+            # Resolve duration analytics from InstrumentInfo when provided
+            modified_duration: Optional[Decimal] = None
+            spread_duration: Optional[Decimal] = None
+            if instrument_infos_by_isin is not None:
+                info = instrument_infos_by_isin.get(position.isin)
+                if info is not None:
+                    modified_duration = info.modified_duration_years
+                    spread_duration = info.spread_duration_years
+
             # Build enriched position
-            # Note: modified_duration not available in Phase 1 Instrument model
             enriched = EnrichedPosition(
                 fund_id=fund_id,
                 position_snapshot_id=position.position_snapshot_id,
@@ -141,7 +157,8 @@ class PositionEnricher:
                 market_value_base_ccy=market_value_base_ccy,
                 fund_base_currency=fund_base_currency,
                 weight=weight,
-                modified_duration=None,
+                modified_duration=modified_duration,
+                spread_duration=spread_duration,
             )
             enriched_positions.append(enriched)
 

@@ -38,6 +38,24 @@ class TestGetInstrumentInfo:
         assert info.coupon_rate == Decimal("0.02875")
         assert info.modified_duration_years == Decimal("2.31")
 
+    def test_government_bond_spread_duration_zero(self, provider: CSVProvider) -> None:
+        """Government bonds carry spread_duration_years = 0.0 in Phase 1 sample data."""
+        for sec_id in ("US912828YK09 Govt", "US912810TM79 Govt", "DBR 0 08/15/29 Govt"):
+            info = provider.get_instrument_info(sec_id)
+            assert info.spread_duration_years == Decimal("0.0"), (
+                f"{sec_id}: expected spread_duration_years=0.0, got {info.spread_duration_years}"
+            )
+
+    def test_corporate_bond_spread_duration(self, provider: CSVProvider) -> None:
+        """Corporate bond has positive spread_duration_years from CSV."""
+        info = provider.get_instrument_info("XS2543791470 Corp")
+        assert info.spread_duration_years == Decimal("4.71")
+
+    def test_equity_spread_duration_none(self, provider: CSVProvider) -> None:
+        """Equity instruments have no spread_duration_years."""
+        info = provider.get_instrument_info("SPY US Equity")
+        assert info.spread_duration_years is None
+
     def test_get_fx_info(self, provider: CSVProvider) -> None:
         info = provider.get_instrument_info("EURUSD Curncy")
         assert info.security_id == "EURUSD Curncy"

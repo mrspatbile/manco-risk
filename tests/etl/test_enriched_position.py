@@ -184,6 +184,91 @@ class TestEnrichedPosition:
         errors = exc_info.value.errors()
         assert any("non-negative" in str(e).lower() for e in errors)
 
+    def test_enriched_position_with_spread_duration(self) -> None:
+        """Bond position carries both modified_duration and spread_duration."""
+        position = EnrichedPosition(
+            fund_id=1,
+            position_snapshot_id=100,
+            position_id=1001,
+            isin="XS2543791470",
+            valuation_date="2026-06-10",
+            quantity=Decimal("500"),
+            market_value=Decimal("100000.00"),
+            position_currency="EUR",
+            asset_class="BOND",
+            instrument_currency="EUR",
+            market_value_base_ccy=Decimal("100000.00"),
+            fund_base_currency="EUR",
+            weight=Decimal("0.25"),
+            modified_duration=Decimal("4.71"),
+            spread_duration=Decimal("4.71"),
+        )
+        assert position.modified_duration == Decimal("4.71")
+        assert position.spread_duration == Decimal("4.71")
+
+    def test_enriched_position_spread_duration_defaults_none(self) -> None:
+        """spread_duration defaults to None when not provided."""
+        position = EnrichedPosition(
+            fund_id=1,
+            position_snapshot_id=100,
+            position_id=1001,
+            isin="IE00B4L5Y983",
+            valuation_date="2026-06-10",
+            quantity=Decimal("1000"),
+            market_value=Decimal("50000.00"),
+            position_currency="EUR",
+            asset_class="EQUITY",
+            instrument_currency="EUR",
+            market_value_base_ccy=Decimal("50000.00"),
+            fund_base_currency="EUR",
+            weight=Decimal("0.15"),
+        )
+        assert position.spread_duration is None
+
+    def test_enriched_position_zero_spread_duration_valid(self) -> None:
+        """spread_duration = 0.0 is valid (Phase 1 government bond convention)."""
+        position = EnrichedPosition(
+            fund_id=1,
+            position_snapshot_id=100,
+            position_id=1001,
+            isin="US912828YK09",
+            valuation_date="2026-06-10",
+            quantity=Decimal("500"),
+            market_value=Decimal("100000.00"),
+            position_currency="USD",
+            asset_class="BOND",
+            instrument_currency="USD",
+            market_value_base_ccy=Decimal("100000.00"),
+            fund_base_currency="USD",
+            weight=Decimal("0.25"),
+            modified_duration=Decimal("2.31"),
+            spread_duration=Decimal("0.0"),
+        )
+        assert position.spread_duration == Decimal("0.0")
+
+    def test_enriched_position_negative_spread_duration_rejected(self) -> None:
+        """Negative spread_duration is rejected."""
+        with pytest.raises(ValidationError) as exc_info:
+            EnrichedPosition(
+                fund_id=1,
+                position_snapshot_id=100,
+                position_id=1001,
+                isin="XS2543791470",
+                valuation_date="2026-06-10",
+                quantity=Decimal("500"),
+                market_value=Decimal("100000.00"),
+                position_currency="EUR",
+                asset_class="BOND",
+                instrument_currency="EUR",
+                market_value_base_ccy=Decimal("100000.00"),
+                fund_base_currency="EUR",
+                weight=Decimal("0.25"),
+                spread_duration=Decimal("-1.0"),  # negative
+            )
+
+        errors = exc_info.value.errors()
+        assert any("non-negative" in str(e).lower() for e in errors)
+
     def test_enriched_position_immutable(self) -> None:
         """EnrichedPosition is frozen (immutable)."""
         position = EnrichedPosition(

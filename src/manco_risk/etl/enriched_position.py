@@ -11,7 +11,13 @@ Notes:
 - All monetary values use Decimal for precision.
 - Weights are decimal ratios (0.0 to 1.0), not percentages or strings.
 - Currency codes are uppercase (convention from Position ingestion).
-- Optional duration field for fixed-income assets only.
+- Optional duration fields for fixed-income assets only.
+
+Dirty value convention (fixed income):
+- market_value_base_ccy is treated as the dirty market value for NAV and P&L impact.
+  Fund administrator files report dirty values (full price × face + accrued interest).
+  Accrued interest is not separated in Phase 1.
+  Fixed-income stress engines must use market_value_base_ccy as the dirty market value basis.
 """
 
 from decimal import Decimal
@@ -43,11 +49,18 @@ class EnrichedPosition(BaseModel):
     - fund_base_currency: Fund base currency for denomination (e.g., 'EUR')
     - weight: Position as decimal ratio of total NAV (0.0 to 1.0)
     - modified_duration: Modified duration in years (optional, bonds only)
+    - spread_duration: Spread duration in years (optional, bonds only).
+      For Phase 1 sample data, government bonds may use spread_duration = 0.0 when
+      the selected methodology treats them as rate-risk only. This is a modelling
+      choice for this dataset, not a general statement that sovereign bonds have no
+      spread or credit risk. None means the data source did not supply a value.
 
     Units and conventions:
     - monetary values (market_value, market_value_base_ccy): Decimal
+    - market_value_base_ccy is the dirty market value (see module note)
     - weight: decimal ratio, e.g., 0.05 = 5% of NAV
     - modified_duration: years as Decimal (if present)
+    - spread_duration: years as Decimal (if present)
     - quantity: can be negative for short positions
     - currency codes: uppercase
     """
@@ -66,6 +79,7 @@ class EnrichedPosition(BaseModel):
     fund_base_currency: str
     weight: Decimal
     modified_duration: Optional[Decimal] = None
+    spread_duration: Optional[Decimal] = None
 
     model_config = ConfigDict(frozen=True)
 
@@ -93,16 +107,16 @@ class EnrichedPosition(BaseModel):
             raise ValueError(f"Market value in base currency must be non-negative, got {v}")
         return v
 
-    @field_validator("modified_duration", mode="before")
+    @field_validator("modified_duration", "spread_duration", mode="before")
     @classmethod
     def validate_duration(cls, v: Optional[Decimal]) -> Optional[Decimal]:
-        """Duration must be positive if present."""
+        """Duration fields must be non-negative if present."""
         if v is None:
             return None
         if not isinstance(v, Decimal):
             v = Decimal(str(v))
         if v < Decimal("0"):
-            raise ValueError(f"Modified duration must be non-negative, got {v}")
+            raise ValueError(f"Duration must be non-negative, got {v}")
         return v
 
 

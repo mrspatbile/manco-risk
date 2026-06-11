@@ -5,12 +5,14 @@ from decimal import Decimal
 
 import pytest
 
+from manco_risk.common import AssetClass
 from manco_risk.etl import (
     InstrumentReferenceNotFoundError,
     MissingFXRateError,
     PositionEnricher,
     PositionEnrichmentError,
 )
+from manco_risk.market_data.schemas import InstrumentInfo
 
 
 class MockInstrument:
@@ -418,8 +420,8 @@ class TestPositionEnricher:
 
         assert "strictly positive" in str(exc_info.value).lower()
 
-    def test_modified_duration_none_in_phase_1(self) -> None:
-        """Modified duration is None for Phase 1 (not in Instrument model)."""
+    def test_durations_none_without_instrument_infos(self) -> None:
+        """Both duration fields are None when instrument_infos_by_isin is not provided."""
         enricher = self.make_enricher()
 
         position = MockPosition(
@@ -448,8 +450,168 @@ class TestPositionEnricher:
         )
 
         enriched = portfolio.positions[0]
-        # Duration is not available in Phase 1
         assert enriched.modified_duration is None
+        assert enriched.spread_duration is None
+
+    def test_modified_duration_wired_from_instrument_info(self) -> None:
+        """modified_duration is populated from InstrumentInfo.modified_duration_years."""
+        enricher = self.make_enricher()
+
+        position = MockPosition(
+            position_id=1,
+            position_snapshot_id=100,
+            fund_id=1,
+            isin="US912828YK09",
+            quantity=Decimal("500"),
+            market_value=Decimal("96300.00"),
+        )
+
+        instrument = MockInstrument(
+            isin="US912828YK09",
+            asset_class="BOND",
+            currency="USD",
+        )
+
+        instrument_info = InstrumentInfo(
+            security_id="US912828YK09 Govt",
+            name="US Treasury 2.875 05/15/28",
+            asset_class=AssetClass.BOND,
+            currency="USD",
+            modified_duration_years=Decimal("2.31"),
+            spread_duration_years=Decimal("0.0"),
+        )
+
+        portfolio = enricher.enrich_portfolio(
+            fund_id=1,
+            fund_base_currency="USD",
+            valuation_date=date(2026, 6, 10),
+            nav=Decimal("1000000.00"),
+            positions=[position],
+            instruments_by_isin={"US912828YK09": instrument},
+            fx_rates={},
+            instrument_infos_by_isin={"US912828YK09": instrument_info},
+        )
+
+        enriched = portfolio.positions[0]
+        assert enriched.modified_duration == Decimal("2.31")
+
+    def test_spread_duration_wired_from_instrument_info(self) -> None:
+        """spread_duration is populated from InstrumentInfo.spread_duration_years."""
+        enricher = self.make_enricher()
+
+        position = MockPosition(
+            position_id=1,
+            position_snapshot_id=100,
+            fund_id=1,
+            isin="XS2543791470",
+            quantity=Decimal("500"),
+            market_value=Decimal("100000.00"),
+        )
+
+        instrument = MockInstrument(
+            isin="XS2543791470",
+            asset_class="BOND",
+            currency="EUR",
+        )
+
+        instrument_info = InstrumentInfo(
+            security_id="XS2543791470 Corp",
+            name="LVMH 3.5 06/15/31",
+            asset_class=AssetClass.BOND,
+            currency="EUR",
+            modified_duration_years=Decimal("4.71"),
+            spread_duration_years=Decimal("4.71"),
+        )
+
+        portfolio = enricher.enrich_portfolio(
+            fund_id=1,
+            fund_base_currency="EUR",
+            valuation_date=date(2026, 6, 10),
+            nav=Decimal("1000000.00"),
+            positions=[position],
+            instruments_by_isin={"XS2543791470": instrument},
+            fx_rates={},
+            instrument_infos_by_isin={"XS2543791470": instrument_info},
+        )
+
+        enriched = portfolio.positions[0]
+        assert enriched.spread_duration == Decimal("4.71")
+
+    def test_durations_none_when_isin_not_in_instrument_infos(self) -> None:
+        """Durations remain None when the ISIN is absent from instrument_infos_by_isin."""
+        enricher = self.make_enricher()
+
+        position = MockPosition(
+            position_id=1,
+            position_snapshot_id=100,
+            fund_id=1,
+            isin="DE0001102309",
+            quantity=Decimal("500"),
+            market_value=Decimal("100000.00"),
+        )
+
+        instrument = MockInstrument(
+            isin="DE0001102309",
+            asset_class="BOND",
+            currency="EUR",
+        )
+
+        portfolio = enricher.enrich_portfolio(
+            fund_id=1,
+            fund_base_currency="EUR",
+            valuation_date=date(2026, 6, 10),
+            nav=Decimal("1000000.00"),
+            positions=[position],
+            instruments_by_isin={"DE0001102309": instrument},
+            fx_rates={},
+            instrument_infos_by_isin={},  # empty: ISIN not present
+        )
+
+        enriched = portfolio.positions[0]
+        assert enriched.modified_duration is None
+        assert enriched.spread_duration is None
+
+    def test_equity_enrichment_unaffected_by_instrument_infos(self) -> None:
+        """Existing equity enrichment works correctly when instrument_infos_by_isin provided."""
+        enricher = self.make_enricher()
+
+        position = MockPosition(
+            position_id=1,
+            position_snapshot_id=100,
+            fund_id=1,
+            isin="IE00B4L5Y983",
+            quantity=Decimal("1000"),
+            market_value=Decimal("50000.00"),
+        )
+
+        instrument = MockInstrument(
+            isin="IE00B4L5Y983",
+            asset_class="EQUITY",
+            currency="EUR",
+        )
+
+        equity_info = InstrumentInfo(
+            security_id="IE00B4L5Y983",
+            name="iShares Core MSCI World",
+            asset_class=AssetClass.EQUITY,
+            currency="EUR",
+        )
+
+        portfolio = enricher.enrich_portfolio(
+            fund_id=1,
+            fund_base_currency="EUR",
+            valuation_date=date(2026, 6, 10),
+            nav=Decimal("1000000.00"),
+            positions=[position],
+            instruments_by_isin={"IE00B4L5Y983": instrument},
+            fx_rates={},
+            instrument_infos_by_isin={"IE00B4L5Y983": equity_info},
+        )
+
+        enriched = portfolio.positions[0]
+        assert enriched.market_value_base_ccy == Decimal("50000.00")
+        assert enriched.modified_duration is None
+        assert enriched.spread_duration is None
 
     def test_leveraged_portfolio_weight_gt_one(self) -> None:
         """Leveraged portfolio can have total weight > 1.0."""

@@ -42,6 +42,13 @@ class InstrumentInfo(BaseModel):
 
     Includes common fields across asset classes and optional asset-specific fields.
     All rates and durations are stored as decimals (0.035 = 3.5%).
+
+    Fixed-income fields (bonds only):
+    - modified_duration_years: modified duration in years; used for rate-shock sensitivity
+    - spread_duration_years: spread duration in years; used for credit-spread-shock sensitivity.
+      Government bonds carry spread_duration_years = 0 (no credit spread exposure).
+      Corporate bonds carry spread_duration_years > 0.
+      Missing (None) means the data source did not provide a value.
     """
 
     security_id: str
@@ -52,6 +59,7 @@ class InstrumentInfo(BaseModel):
     maturity_date: date | None = None
     coupon_rate: Decimal | None = None
     modified_duration_years: Decimal | None = None
+    spread_duration_years: Decimal | None = None
     beta: Decimal | None = None
 
     model_config = ConfigDict(validate_assignment=True)

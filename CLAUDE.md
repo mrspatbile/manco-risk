@@ -120,6 +120,7 @@ Do not include in the next MRS-129 step:
 * MRS-135 — Implement Parametric VaR engine - done
 * MRS-136 — Expected Shortfall calculation and persistence - done
 * MRS-137 — VaR backtesting calculation and persistence - done
+* MRS-138 — Implement stress testing framework - done
 
 Completed supporting research:
 
@@ -134,7 +135,7 @@ Completed supporting research:
 
 ### Active database / risk issue sequence
 
-* MRS-138 — Implement stress testing framework
+* MRS-154 — Fixed Income stress testing
 * MRS-139 — Implement leverage analytics
 * MRS-140 — Implement liquidity risk analytics
 * MRS-141 — Implement liquidity stress testing
@@ -147,6 +148,8 @@ Completed supporting research:
 * MRS-148 — Implement data quality controls
 * MRS-149 — Implement CI/CD workflows
 * MRS-150 — Project documentation
+* MRS-151 — Example notebooks and demonstrations
+* MRS-153 — Implement database session management and initialization
 
 ### Duplicate / superseded issues
 

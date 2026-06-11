@@ -104,6 +104,43 @@ class TestInstrumentInfo:
         assert info.asset_class == AssetClass.BOND
         assert info.maturity_date == date(2028, 5, 15)
         assert info.modified_duration_years == Decimal("2.31")
+        assert info.spread_duration_years is None
+
+    def test_bond_info_with_spread_duration(self) -> None:
+        """InstrumentInfo accepts spread_duration_years for corporate bonds."""
+        info = InstrumentInfo(
+            security_id="XS2543791470 Corp",
+            name="LVMH 3.5 06/15/31",
+            asset_class=AssetClass.BOND,
+            currency="EUR",
+            maturity_date=date(2031, 6, 15),
+            coupon_rate=Decimal("0.035"),
+            modified_duration_years=Decimal("4.71"),
+            spread_duration_years=Decimal("4.71"),
+        )
+        assert info.spread_duration_years == Decimal("4.71")
+
+    def test_bond_info_spread_duration_zero(self) -> None:
+        """spread_duration_years = 0.0 is valid (Phase 1 government bond convention)."""
+        info = InstrumentInfo(
+            security_id="US912828YK09 Govt",
+            name="US Treasury 2.875 05/15/28",
+            asset_class=AssetClass.BOND,
+            currency="USD",
+            modified_duration_years=Decimal("2.31"),
+            spread_duration_years=Decimal("0.0"),
+        )
+        assert info.spread_duration_years == Decimal("0.0")
+
+    def test_equity_spread_duration_defaults_none(self) -> None:
+        """Equity instruments have no spread_duration_years by default."""
+        info = InstrumentInfo(
+            security_id="AAPL US Equity",
+            name="Apple Inc",
+            asset_class=AssetClass.EQUITY,
+            currency="USD",
+        )
+        assert info.spread_duration_years is None
 
     def test_fx_info_minimal(self) -> None:
         info = InstrumentInfo(
