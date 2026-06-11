@@ -35,6 +35,10 @@ class ReverseStressResult(BaseModel):
     - is_feasible: True if target can be reached; False if infeasible or zero equity exposure.
     - infeasibility_reason: Human-readable explanation if is_feasible=False; else None.
     - stress_result: StressPortfolioResult if feasible, else None.
+    - current_nav: Current portfolio NAV (always populated).
+    - stressed_nav: Stressed NAV after shock (populated if feasible, None if infeasible).
+    - total_pnl: Total P&L from stress (populated if feasible, None if infeasible).
+    - loss_pct_nav: Loss as percentage of current NAV (populated if feasible, None if infeasible).
 
     Feasibility rules:
     - Feasible if required_shock is in range [-1.0, +inf) (shock can be applied).
@@ -65,6 +69,10 @@ class ReverseStressResult(BaseModel):
     is_feasible: bool
     infeasibility_reason: Optional[str] = None
     stress_result: Optional[StressPortfolioResult] = None
+    current_nav: Decimal
+    stressed_nav: Optional[Decimal] = None
+    total_pnl: Optional[Decimal] = None
+    loss_pct_nav: Optional[Decimal] = None
 
     model_config = ConfigDict(frozen=True)
 
@@ -103,14 +111,26 @@ class ReverseStressResult(BaseModel):
 
     @model_validator(mode="after")
     def validate_feasibility_consistency(self) -> "ReverseStressResult":
-        """Validate consistency between is_feasible, stress_result, and required_shock."""
+        """Validate consistency between is_feasible, stress_result, and NAV/loss fields."""
         if self.is_feasible:
-            # If feasible, stress_result must be populated
+            # If feasible, all NAV/loss fields must be populated
             if self.stress_result is None:
                 raise ValueError("If is_feasible=True, stress_result must be populated")
+            if self.stressed_nav is None:
+                raise ValueError("If is_feasible=True, stressed_nav must be populated")
+            if self.total_pnl is None:
+                raise ValueError("If is_feasible=True, total_pnl must be populated")
+            if self.loss_pct_nav is None:
+                raise ValueError("If is_feasible=True, loss_pct_nav must be populated")
         else:
-            # If infeasible, stress_result must be None
+            # If infeasible, all NAV/loss fields must be None
             if self.stress_result is not None:
                 raise ValueError("If is_feasible=False, stress_result must be None")
+            if self.stressed_nav is not None:
+                raise ValueError("If is_feasible=False, stressed_nav must be None")
+            if self.total_pnl is not None:
+                raise ValueError("If is_feasible=False, total_pnl must be None")
+            if self.loss_pct_nav is not None:
+                raise ValueError("If is_feasible=False, loss_pct_nav must be None")
 
         return self

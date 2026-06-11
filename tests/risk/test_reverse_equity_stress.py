@@ -262,6 +262,10 @@ class TestReverseStressResultModel:
                 is_feasible=True,
                 infeasibility_reason=None,
                 stress_result=None,  # Invalid for feasible result
+                current_nav=Decimal("100"),
+                stressed_nav=Decimal("80"),
+                total_pnl=Decimal("-20"),
+                loss_pct_nav=Decimal("0.20"),
             )
 
     def test_valid_infeasible_result(self) -> None:
@@ -280,9 +284,15 @@ class TestReverseStressResultModel:
             is_feasible=False,
             infeasibility_reason="No equity-like exposure",
             stress_result=None,
+            current_nav=Decimal("100"),
+            stressed_nav=None,
+            total_pnl=None,
+            loss_pct_nav=None,
         )
         assert result.is_feasible is False
         assert result.required_shock is None
+        assert result.current_nav == Decimal("100")
+        assert result.stressed_nav is None
 
 
 # ============================================================================

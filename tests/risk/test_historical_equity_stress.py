@@ -261,9 +261,13 @@ class TestHistoricalStressResultModel:
             loss_pct_nav=Decimal("0.30"),
             num_scenarios=5,
             description="Test",
+            current_nav=Decimal("100"),
+            stressed_nav=Decimal("70"),
         )
         assert result.num_scenarios == 5
         assert result.worst_scenario_pnl == Decimal("-30")
+        assert result.current_nav == Decimal("100")
+        assert result.stressed_nav == Decimal("70")
 
     def test_result_rejects_negative_loss_pct(self) -> None:
         """Loss percentage must be non-negative."""
@@ -283,6 +287,8 @@ class TestHistoricalStressResultModel:
                 loss_pct_nav=Decimal("-0.10"),  # Invalid
                 num_scenarios=5,
                 description="Test",
+                current_nav=Decimal("100"),
+                stressed_nav=Decimal("70"),
             )
 
 

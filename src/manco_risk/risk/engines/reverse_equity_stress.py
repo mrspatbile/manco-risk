@@ -99,6 +99,10 @@ class ReverseEquityStressEngine:
                 is_feasible=False,
                 infeasibility_reason="No equity-like exposure available to shock",
                 stress_result=None,
+                current_nav=current_nav,
+                stressed_nav=None,
+                total_pnl=None,
+                loss_pct_nav=None,
             )
 
         # Calculate required shock
@@ -122,6 +126,10 @@ class ReverseEquityStressEngine:
                 f"equity-like exposure ({equity_like_market_value}) insufficient to reach target loss "
                 f"({target_loss_amount})",
                 stress_result=None,
+                current_nav=current_nav,
+                stressed_nav=None,
+                total_pnl=None,
+                loss_pct_nav=None,
             )
 
         # Check for infeasibility: target loss >= NAV
@@ -141,6 +149,10 @@ class ReverseEquityStressEngine:
                 infeasibility_reason=f"Target loss ({target_loss_amount}) >= NAV ({current_nav}); "
                 f"would wipe out entire fund",
                 stress_result=None,
+                current_nav=current_nav,
+                stressed_nav=None,
+                total_pnl=None,
+                loss_pct_nav=None,
             )
 
         # Feasible: create synthetic scenario and apply stress
@@ -172,4 +184,8 @@ class ReverseEquityStressEngine:
             is_feasible=True,
             infeasibility_reason=None,
             stress_result=stress_result,
+            current_nav=stress_result.current_nav,
+            stressed_nav=stress_result.stressed_nav,
+            total_pnl=stress_result.total_pnl,
+            loss_pct_nav=stress_result.loss_pct_nav,
         )

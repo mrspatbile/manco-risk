@@ -24,6 +24,7 @@ from manco_risk.database.models import (
     Position,
     PositionSnapshot,
     RiskMethodology,
+    StressTestResult,
     VaRBacktestingResult,
     VaRResult,
 )
@@ -866,6 +867,82 @@ class VaRBacktestingResultRepository(BaseRepository):
             results = (
                 session.query(VaRBacktestingResult)
                 .filter(VaRBacktestingResult.calculation_run_id == calculation_run_id)
+                .all()
+            )
+            for result in results:
+                session.expunge(result)
+            return results
+
+
+class StressTestResultRepository(BaseRepository):
+    """Repository for StressTestResult entity.
+
+    Implements domain queries for StressTestResult:
+    - insert: create new stress test result
+    - insert_many: create multiple stress test results in a single transaction
+    - find_by_calculation_run: get all stress test results for a calculation run
+    """
+
+    def insert(self, stress_result: StressTestResult) -> int:
+        """Insert a new stress test result.
+
+        Parameters
+        ----------
+        stress_result : StressTestResult
+            StressTestResult entity to insert.
+            Should not have stress_test_result_id set.
+
+        Returns
+        -------
+        int
+            Inserted stress test result ID (stress_test_result_id).
+        """
+        with self.session_factory.session_scope() as session:
+            session.add(stress_result)
+            session.flush()
+            result_id = stress_result.stress_test_result_id
+            session.expunge(stress_result)
+            return result_id
+
+    def insert_many(self, stress_results: list[StressTestResult]) -> list[int]:
+        """Insert multiple stress test results in a single transaction.
+
+        Parameters
+        ----------
+        stress_results : list[StressTestResult]
+            List of StressTestResult entities to insert.
+            Should not have stress_test_result_id set.
+
+        Returns
+        -------
+        list[int]
+            List of inserted stress test result IDs.
+        """
+        with self.session_factory.session_scope() as session:
+            session.add_all(stress_results)
+            session.flush()
+            result_ids = [result.stress_test_result_id for result in stress_results]
+            for result in stress_results:
+                session.expunge(result)
+            return result_ids
+
+    def find_by_calculation_run(self, calculation_run_id: int) -> list[StressTestResult]:
+        """Find all stress test results for a calculation run.
+
+        Parameters
+        ----------
+        calculation_run_id : int
+            Calculation run ID.
+
+        Returns
+        -------
+        list[StressTestResult]
+            List of stress test results. Empty list if none exist.
+        """
+        with self.session_factory.session_scope() as session:
+            results = (
+                session.query(StressTestResult)
+                .filter(StressTestResult.calculation_run_id == calculation_run_id)
                 .all()
             )
             for result in results:

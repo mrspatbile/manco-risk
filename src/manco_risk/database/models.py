@@ -42,6 +42,7 @@ class CalculationTypeEnum(str, PyEnum):
 
     VAR_ES_DAILY = "var_es_daily"
     VAR_BACKTEST = "var_backtest"
+    STRESS_TEST = "stress_test"
 
 
 class CalculationStatusEnum(str, PyEnum):
@@ -84,6 +85,23 @@ class ESMethodEnum(str, PyEnum):
 
     HISTORICAL = "historical"
     PARAMETRIC = "parametric"
+
+
+class StressTestResultTypeEnum(str, PyEnum):
+    """Type of stress test result."""
+
+    HYPOTHETICAL = "hypothetical"
+    REVERSE = "reverse"
+    HISTORICAL = "historical"
+
+
+class StressTestAssetScopeEnum(str, PyEnum):
+    """Asset scope of stress test (supports future multi-asset stress testing)."""
+
+    EQUITY_LIKE = "equity_like"
+    FIXED_INCOME = "fixed_income"
+    FX = "fx"
+    MULTI_ASSET = "multi_asset"
 
 
 # ============================================================================
@@ -557,6 +575,7 @@ class CalculationRun(Base):
     - 1:many to VaRResult (cascade on delete)
     - 1:many to ExpectedShortfallResult (cascade on delete)
     - 1:many to VaRBacktestingResult (cascade on delete)
+    - 1:many to StressTestResult (cascade on delete)
 
     Notes:
     - Central hub for reproducibility and lineage.
@@ -616,6 +635,9 @@ class CalculationRun(Base):
     )
     backtest_results: Mapped[list["VaRBacktestingResult"]] = relationship(
         "VaRBacktestingResult", back_populates="calculation_run", cascade="all, delete-orphan"
+    )
+    stress_test_results: Mapped[list["StressTestResult"]] = relationship(
+        "StressTestResult", back_populates="calculation_run", cascade="all, delete-orphan"
     )
 
 
@@ -896,5 +918,88 @@ class VaRBacktestingResult(Base):
 
     calculation_run: Mapped["CalculationRun"] = relationship(
         "CalculationRun", back_populates="backtest_results"
+    )
+    fund: Mapped["Fund"] = relationship("Fund")
+
+
+class StressTestResult(Base):
+    """
+    Stress test calculation result (hypothetical, reverse, or historical).
+
+    Simplified equivalent SQL:
+
+    CREATE TABLE stress_test_result (
+        stress_test_result_id SERIAL PRIMARY KEY,
+        calculation_run_id INTEGER NOT NULL REFERENCES calculation_run,
+        fund_id INTEGER NOT NULL REFERENCES fund,
+        scenario_id VARCHAR(100) NOT NULL,
+        scenario_name VARCHAR(255) NOT NULL,
+        scenario_type VARCHAR(50) NOT NULL,
+        scenario_source VARCHAR(50) NOT NULL,
+        result_type VARCHAR(20) NOT NULL,
+        asset_scope VARCHAR(30) NOT NULL,
+        shock_type VARCHAR(50),
+        shock_rate NUMERIC(18, 8),
+        current_nav NUMERIC(18, 8) NOT NULL,
+        stressed_nav NUMERIC(18, 8),
+        total_pnl NUMERIC(18, 8),
+        loss_pct_nav NUMERIC(18, 8),
+        description TEXT,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    );
+
+    Relationships:
+    - many:1 to CalculationRun
+    - many:1 to Fund
+
+    Notes:
+    - Generic stress test result table supporting multiple methodologies.
+    - result_type discriminator: HYPOTHETICAL, REVERSE, HISTORICAL.
+    - asset_scope: EQUITY_LIKE, FIXED_INCOME, FX, MULTI_ASSET (supports future extensions).
+    - Shock-based methodologies (HYPOTHETICAL, REVERSE) populate shock_type and shock_rate.
+    - Historical stress does not use shock_type or shock_rate.
+    - HYPOTHETICAL and REVERSE: all fields populated when feasible.
+    - REVERSE infeasible: stressed_nav, total_pnl, loss_pct_nav are NULL.
+    - HISTORICAL: always fully populated; validates stressed_nav = current_nav + worst_scenario_pnl.
+    - Monetary fields (current_nav, stressed_nav, total_pnl) use base currency.
+    - loss_pct_nav: percentage as decimal (0.05 = 5%); NULL for infeasible reverse stress.
+    - All shock values (shock_rate, loss_pct_nav) use Numeric(18, 8) for precision.
+    """
+
+    __tablename__ = "stress_test_result"
+
+    stress_test_result_id: Mapped[int] = mapped_column(primary_key=True)
+    calculation_run_id: Mapped[int] = mapped_column(
+        ForeignKey("calculation_run.calculation_run_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    fund_id: Mapped[int] = mapped_column(
+        ForeignKey("fund.fund_id", ondelete="RESTRICT"), nullable=False
+    )
+    scenario_id: Mapped[str] = mapped_column(String(100), nullable=False)
+    scenario_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    scenario_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    scenario_source: Mapped[str] = mapped_column(String(50), nullable=False)
+    result_type: Mapped[str] = mapped_column(
+        Enum(StressTestResultTypeEnum, native_enum=False), nullable=False
+    )
+    asset_scope: Mapped[str] = mapped_column(
+        Enum(StressTestAssetScopeEnum, native_enum=False), nullable=False
+    )
+    shock_type: Mapped[Optional[str]] = mapped_column(String(50))
+    shock_rate: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 8))
+    current_nav: Mapped[Decimal] = mapped_column(Numeric(18, 8), nullable=False)
+    stressed_nav: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 8))
+    total_pnl: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 8))
+    loss_pct_nav: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 8))
+    description: Mapped[Optional[str]] = mapped_column(String(1000))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=func.now(), nullable=False
+    )
+
+    __table_args__ = (Index("idx_stress_test_result_calc_run_id", "calculation_run_id"),)
+
+    calculation_run: Mapped["CalculationRun"] = relationship(
+        "CalculationRun", back_populates="stress_test_results"
     )
     fund: Mapped["Fund"] = relationship("Fund")

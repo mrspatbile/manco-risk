@@ -6,7 +6,7 @@ Represents the worst-case scenario from a historical window.
 from datetime import date
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 
 class HistoricalStressResult(BaseModel):
@@ -60,6 +60,8 @@ class HistoricalStressResult(BaseModel):
     loss_pct_nav: Decimal
     num_scenarios: int
     description: str
+    current_nav: Decimal
+    stressed_nav: Decimal
 
     model_config = ConfigDict(frozen=True)
 
@@ -99,3 +101,14 @@ class HistoricalStressResult(BaseModel):
         if start_date and v < start_date:
             raise ValueError(f"window_end_date ({v}) must be >= window_start_date ({start_date})")
         return v
+
+    @model_validator(mode="after")
+    def validate_stressed_nav_consistency(self) -> "HistoricalStressResult":
+        """Verify stressed_nav = current_nav + worst_scenario_pnl."""
+        expected_stressed = self.current_nav + self.worst_scenario_pnl
+        if self.stressed_nav != expected_stressed:
+            raise ValueError(
+                f"stressed_nav ({self.stressed_nav}) must equal "
+                f"current_nav ({self.current_nav}) + worst_scenario_pnl ({self.worst_scenario_pnl})"
+            )
+        return self

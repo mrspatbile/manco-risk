@@ -86,6 +86,9 @@ class HistoricalEquityStressEngine:
         # Calculate loss percentage
         loss_pct_nav = max(Decimal("0"), -worst_scenario_pnl / current_nav)
 
+        # Calculate stressed NAV
+        stressed_nav = current_nav + worst_scenario_pnl
+
         # Construct result
         result = HistoricalStressResult(
             fund_id=portfolio.fund_id,
@@ -102,6 +105,8 @@ class HistoricalEquityStressEngine:
             loss_pct_nav=loss_pct_nav,
             num_scenarios=len(scenario_pnls),
             description=input.description,
+            current_nav=current_nav,
+            stressed_nav=stressed_nav,
         )
 
         return result
