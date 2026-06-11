@@ -23,6 +23,8 @@ from manco_risk.risk.models.price_return import (
     PriceToReturnInput,
     PriceToReturnResult,
 )
+from manco_risk.risk.models.reverse_stress_input import ReverseStressInput
+from manco_risk.risk.models.reverse_stress_result import ReverseStressResult
 from manco_risk.risk.models.scenario_pnl import ScenarioPnL
 from manco_risk.risk.models.stress_portfolio_result import StressPortfolioResult
 from manco_risk.risk.models.stress_position_result import StressPositionResult
@@ -45,6 +47,8 @@ __all__ = [
     "PriceToReturnInput",
     "PriceToReturnResult",
     "RealisedPnLObservation",
+    "ReverseStressInput",
+    "ReverseStressResult",
     "ScenarioPnL",
     "StressPortfolioResult",
     "StressPositionResult",
