@@ -43,6 +43,7 @@ class CalculationTypeEnum(str, PyEnum):
     VAR_ES_DAILY = "var_es_daily"
     VAR_BACKTEST = "var_backtest"
     STRESS_TEST = "stress_test"
+    LEVERAGE = "leverage"
 
 
 class CalculationStatusEnum(str, PyEnum):
@@ -639,6 +640,9 @@ class CalculationRun(Base):
     stress_test_results: Mapped[list["StressTestResult"]] = relationship(
         "StressTestResult", back_populates="calculation_run", cascade="all, delete-orphan"
     )
+    leverage_results: Mapped[list["LeverageResult"]] = relationship(
+        "LeverageResult", back_populates="calculation_run", cascade="all, delete-orphan"
+    )
 
 
 # ============================================================================
@@ -1019,3 +1023,102 @@ class StressTestResult(Base):
         "CalculationRun", back_populates="stress_test_results"
     )
     fund: Mapped["Fund"] = relationship("Fund")
+
+
+# ============================================================================
+# Leverage Analytics Entities
+# ============================================================================
+
+
+class LeverageResult(Base):
+    """
+    Portfolio-level leverage calculation result.
+
+    One row per leverage method per calculation run.
+    Stores AIFMD_GROSS and AIFMD_COMMITMENT method results.
+
+    Fields:
+    - method: LeverageMethod (AIFMD_GROSS, AIFMD_COMMITMENT)
+    - nav: Fund NAV at valuation date
+    - total_exposure: Total exposure used for leverage calculation
+    - leverage_ratio: Exposure / NAV
+    - Reduction fields (nullable for gross method):
+      - base_exposure_before_reductions: Total before reductions (commitment method)
+      - total_reductions: Sum of applied reductions (commitment method)
+      - final_exposure: Exposure after reductions (commitment method)
+      - num_applied_reductions: Count of reductions applied
+      - num_ignored_reductions: Count of reductions ignored
+    """
+
+    __tablename__ = "leverage_result"
+
+    leverage_result_id: Mapped[int] = mapped_column(primary_key=True)
+    calculation_run_id: Mapped[int] = mapped_column(
+        ForeignKey("calculation_run.calculation_run_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    fund_id: Mapped[int] = mapped_column(
+        ForeignKey("fund.fund_id", ondelete="RESTRICT"), nullable=False
+    )
+    valuation_date: Mapped[date] = mapped_column(Date, nullable=False)
+    method: Mapped[str] = mapped_column(String(50), nullable=False)
+    nav: Mapped[Decimal] = mapped_column(Numeric(18, 8), nullable=False)
+    total_exposure: Mapped[Decimal] = mapped_column(Numeric(18, 8), nullable=False)
+    leverage_ratio: Mapped[Decimal] = mapped_column(Numeric(10, 8), nullable=False)
+    base_exposure_before_reductions: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 8))
+    total_reductions: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 8))
+    final_exposure: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 8))
+    num_applied_reductions: Mapped[int] = mapped_column(default=0, nullable=False)
+    num_ignored_reductions: Mapped[int] = mapped_column(default=0, nullable=False)
+    warnings: Mapped[Optional[str]] = mapped_column(String(2000))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=func.now(), nullable=False
+    )
+
+    __table_args__ = (
+        UniqueConstraint("calculation_run_id", "method", name="uq_leverage_result_calc_run_method"),
+        Index("idx_leverage_result_calc_run_id", "calculation_run_id"),
+        Index("idx_leverage_result_fund_date", "fund_id", "valuation_date"),
+    )
+
+    calculation_run: Mapped["CalculationRun"] = relationship(
+        "CalculationRun", back_populates="leverage_results"
+    )
+    fund: Mapped["Fund"] = relationship("Fund")
+    source_contributions: Mapped[list["LeverageSourceContributionResult"]] = relationship(
+        "LeverageSourceContributionResult",
+        back_populates="leverage_result",
+        cascade="all, delete-orphan",
+    )
+
+
+class LeverageSourceContributionResult(Base):
+    """
+    Source-level leverage breakdown.
+
+    One row per source per leverage result.
+    Tracks how each leverage source contributed to total exposure.
+    """
+
+    __tablename__ = "leverage_source_contribution_result"
+
+    source_contribution_result_id: Mapped[int] = mapped_column(primary_key=True)
+    leverage_result_id: Mapped[int] = mapped_column(
+        ForeignKey("leverage_result.leverage_result_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    source: Mapped[str] = mapped_column(String(100), nullable=False)
+    gross_exposure: Mapped[Decimal] = mapped_column(Numeric(18, 8), nullable=False)
+    commitment_exposure: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 8))
+    treatment: Mapped[str] = mapped_column(String(50), nullable=False)
+    exclusion_reason: Mapped[Optional[str]] = mapped_column(String(255))
+    percentage_of_nav: Mapped[Decimal] = mapped_column(Numeric(10, 8), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=func.now(), nullable=False
+    )
+
+    __table_args__ = (Index("idx_source_contrib_leverage_result_id", "leverage_result_id"),)
+
+    leverage_result: Mapped["LeverageResult"] = relationship(
+        "LeverageResult", back_populates="source_contributions"
+    )
