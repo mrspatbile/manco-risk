@@ -119,10 +119,12 @@ Do not include in the next MRS-129 step:
 * MRS-134 — Historical VaR calculation and persistence - done
 * MRS-135 — Implement Parametric VaR engine - done
 * MRS-136 — Expected Shortfall calculation and persistence - done
+* MRS-137 — VaR backtesting calculation and persistence - done
 
 Completed supporting research:
 
 * MRS-152 — Research regulatory base and domain implications — done
+
 
   * Output: `meta/reg_reference.md`
 
@@ -132,7 +134,6 @@ Completed supporting research:
 
 ### Active database / risk issue sequence
 
-* MRS-137 — VaR backtesting calculation and persistence
 * MRS-138 — Implement stress testing framework
 * MRS-139 — Implement leverage analytics
 * MRS-140 — Implement liquidity risk analytics
