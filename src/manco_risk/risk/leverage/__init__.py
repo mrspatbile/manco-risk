@@ -56,6 +56,17 @@ from manco_risk.risk.leverage.enums import (
     LeverageMethod,
     LeverageSource,
 )
+from manco_risk.risk.leverage.ir_duration_netting_engine import (
+    InterestRateDurationNettingEngine,
+)
+from manco_risk.risk.leverage.ir_duration_netting_models import (
+    InterestRateDerivativeDirection,
+    InterestRateDurationNettingInput,
+    InterestRateDurationNettingResult,
+    InterestRateMaturityBucket,
+    InterestRateNettingBucketResult,
+    LinearInterestRateDerivativeRecord,
+)
 from manco_risk.risk.leverage.models import (
     LeverageExposureSourceContribution,
     LeverageInput,
@@ -98,6 +109,12 @@ __all__ = [
     "DirectBorrowingExposureEngine",
     "DirectBorrowingExposureResult",
     "ExposureTreatment",
+    "InterestRateDerivativeDirection",
+    "InterestRateDurationNettingEngine",
+    "InterestRateDurationNettingInput",
+    "InterestRateDurationNettingResult",
+    "InterestRateMaturityBucket",
+    "InterestRateNettingBucketResult",
     "LeverageMethod",
     "LeverageSource",
     "LeverageExposureSourceContribution",
@@ -105,6 +122,7 @@ __all__ = [
     "LeverageMethodResult",
     "LeveragePositionContribution",
     "LeverageResult",
+    "LinearInterestRateDerivativeRecord",
     "UnsupportedLeverageExposure",
     "PhysicalInstrumentExposureEngine",
     "PhysicalInstrumentExposureResult",
