@@ -10,6 +10,7 @@ Responsibilities (Phase 1):
 - Unsupported exposure tracking
 - Physical instrument exposure source engine
 - Cash and cash-equivalent exposure source engine
+- Direct borrowing exposure source engine
 
 Does NOT include:
 - AIFMD gross aggregation engine
@@ -17,12 +18,18 @@ Does NOT include:
 - Persistence or reporting
 - Limit monitoring
 - Derivative conversion formulas
-- Direct borrowing calculations
 - SFT calculations
 """
 
+from manco_risk.risk.leverage.borrowing_models import (
+    BorrowingPurpose,
+    BorrowingRecord,
+    BorrowingTreatment,
+)
 from manco_risk.risk.leverage.cash_engine import CashExposureEngine
 from manco_risk.risk.leverage.cash_result import CashExposureResult
+from manco_risk.risk.leverage.direct_borrowing_engine import DirectBorrowingExposureEngine
+from manco_risk.risk.leverage.direct_borrowing_result import DirectBorrowingExposureResult
 from manco_risk.risk.leverage.enums import (
     ExposureTreatment,
     LeverageMethod,
@@ -44,8 +51,13 @@ from manco_risk.risk.leverage.physical_instrument_result import (
 )
 
 __all__ = [
+    "BorrowingPurpose",
+    "BorrowingRecord",
+    "BorrowingTreatment",
     "CashExposureEngine",
     "CashExposureResult",
+    "DirectBorrowingExposureEngine",
+    "DirectBorrowingExposureResult",
     "ExposureTreatment",
     "LeverageMethod",
     "LeverageSource",
