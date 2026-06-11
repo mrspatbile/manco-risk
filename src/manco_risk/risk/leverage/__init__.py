@@ -11,6 +11,7 @@ Responsibilities (Phase 1):
 - Physical instrument exposure source engine
 - Cash and cash-equivalent exposure source engine
 - Direct borrowing exposure source engine
+- Securities financing transaction exposure source engine
 
 Does NOT include:
 - AIFMD gross aggregation engine
@@ -18,7 +19,6 @@ Does NOT include:
 - Persistence or reporting
 - Limit monitoring
 - Derivative conversion formulas
-- SFT calculations
 """
 
 from manco_risk.risk.leverage.borrowing_models import (
@@ -49,6 +49,9 @@ from manco_risk.risk.leverage.physical_instrument_engine import (
 from manco_risk.risk.leverage.physical_instrument_result import (
     PhysicalInstrumentExposureResult,
 )
+from manco_risk.risk.leverage.sft_engine import SFTExposureEngine
+from manco_risk.risk.leverage.sft_models import SFTRecord, SFTTreatment, SFTType
+from manco_risk.risk.leverage.sft_result import SFTExposureResult
 
 __all__ = [
     "BorrowingPurpose",
@@ -69,4 +72,9 @@ __all__ = [
     "UnsupportedLeverageExposure",
     "PhysicalInstrumentExposureEngine",
     "PhysicalInstrumentExposureResult",
+    "SFTExposureEngine",
+    "SFTExposureResult",
+    "SFTRecord",
+    "SFTTreatment",
+    "SFTType",
 ]
