@@ -144,7 +144,7 @@ MRS-162 — Derivative valuation and exposure model - done
 MRS-163 — AIFMD gross and commitment aggregation engines - done
 MRS-164 — Leverage persistence and reporting views - done
 MRS-165 — UCITS global exposure support - done
-MRS-166 — Leverage limit monitoring framework
+MRS-166 — Leverage limit monitoring framework  - done
 MRS-167 — Interest-rate derivative duration netting model
 MRS-168 — QuantLib derivative pricing and Greeks spike
 MRS-169 — QuantLib-backed derivative valuation and exposure conversion
