@@ -24,6 +24,7 @@ from manco_risk.database.models import (
     Position,
     PositionSnapshot,
     RiskMethodology,
+    VaRBacktestingResult,
     VaRResult,
 )
 from manco_risk.database.session import SessionFactory
@@ -812,6 +813,59 @@ class ExpectedShortfallResultRepository(BaseRepository):
                     ExpectedShortfallResult.fund_id == fund_id,
                     CalculationRun.valuation_date == valuation_date,
                 )
+                .all()
+            )
+            for result in results:
+                session.expunge(result)
+            return results
+
+
+class VaRBacktestingResultRepository(BaseRepository):
+    """Repository for VaRBacktestingResult entity.
+
+    Implements domain queries for VaRBacktestingResult:
+    - insert: create new backtest result
+    - find_by_calculation_run: get all backtest results for a calculation run
+    """
+
+    def insert(self, backtest_result: VaRBacktestingResult) -> VaRBacktestingResult:
+        """Insert a new VaR backtesting result.
+
+        Parameters
+        ----------
+        backtest_result : VaRBacktestingResult
+            VaRBacktestingResult entity to insert.
+            Should not have backtest_result_id set.
+
+        Returns
+        -------
+        VaRBacktestingResult
+            Inserted backtest result with backtest_result_id populated.
+        """
+        with self.session_factory.session_scope() as session:
+            session.add(backtest_result)
+            session.flush()
+            inserted_result = backtest_result
+            session.expunge(inserted_result)
+            return inserted_result
+
+    def find_by_calculation_run(self, calculation_run_id: int) -> list[VaRBacktestingResult]:
+        """Find all backtest results for a calculation run.
+
+        Parameters
+        ----------
+        calculation_run_id : int
+            Calculation run ID.
+
+        Returns
+        -------
+        list[VaRBacktestingResult]
+            List of backtest results. Empty list if none exist.
+        """
+        with self.session_factory.session_scope() as session:
+            results = (
+                session.query(VaRBacktestingResult)
+                .filter(VaRBacktestingResult.calculation_run_id == calculation_run_id)
                 .all()
             )
             for result in results:

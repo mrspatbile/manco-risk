@@ -9,6 +9,10 @@ from manco_risk.risk.models.backtest_input import (
     VaRForecastObservation,
 )
 from manco_risk.risk.models.backtest_result import BacktestObservation, BacktestResult
+from manco_risk.risk.models.christoffersen_test import (
+    ChristoffersenTestResult,
+    TransitionMatrix,
+)
 from manco_risk.risk.models.expected_shortfall_input import HistoricalExpectedShortfallInput
 from manco_risk.risk.models.expected_shortfall_result import HistoricalExpectedShortfallResult
 from manco_risk.risk.models.kupiec_test import KupiecTestResult
@@ -27,6 +31,7 @@ __all__ = [
     "BacktestInput",
     "BacktestObservation",
     "BacktestResult",
+    "ChristoffersenTestResult",
     "HistoricalExpectedShortfallInput",
     "HistoricalExpectedShortfallResult",
     "KupiecTestResult",
@@ -37,6 +42,7 @@ __all__ = [
     "PriceToReturnResult",
     "RealisedPnLObservation",
     "ScenarioPnL",
+    "TransitionMatrix",
     "VaRForecastObservation",
     "HistoricalVaRInput",
     "HistoricalVaRResult",
