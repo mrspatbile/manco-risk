@@ -11,6 +11,7 @@ from manco_risk.risk.models.backtest_input import (
 from manco_risk.risk.models.backtest_result import BacktestObservation, BacktestResult
 from manco_risk.risk.models.expected_shortfall_input import HistoricalExpectedShortfallInput
 from manco_risk.risk.models.expected_shortfall_result import HistoricalExpectedShortfallResult
+from manco_risk.risk.models.kupiec_test import KupiecTestResult
 from manco_risk.risk.models.parametric_var_input import ParametricNormalVaRInput
 from manco_risk.risk.models.parametric_var_result import ParametricNormalVaRResult
 from manco_risk.risk.models.price_return import (
@@ -28,6 +29,7 @@ __all__ = [
     "BacktestResult",
     "HistoricalExpectedShortfallInput",
     "HistoricalExpectedShortfallResult",
+    "KupiecTestResult",
     "ParametricNormalVaRInput",
     "ParametricNormalVaRResult",
     "PricePoint",
