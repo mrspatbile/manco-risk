@@ -88,22 +88,18 @@ Confirm the current state of the repo before adding new files.
 
 ## Linear issue references
 
-### Current active issue
+### How to use this section
 
-* MRS-129 — Database session management + repository/query layer — in progress
+This section gives the project roadmap and completed work status.
 
-  * Step 1 completed: database session management and `create_all` smoke tests
-  * Commit: `1cd1ec3 MRS-129 add database session management`
-  * Next step: repository/query layer for core database entities only
+Do not treat this section as the active implementation brief. The active issue, scope, and implementation plan are provided by the user in the current Claude session.
 
-Do not include in the next MRS-129 step:
+When starting a new Claude session:
 
-* ingestion
-* ETL
-* VaR/ES calculation persistence
-* reporting
-* Alembic migrations
-* prototype inspection
+* read this section for overall project context
+* read the relevant methodology files in `meta/`
+* use the active issue provided in the chat as the source of truth
+* do not infer active scope from this section alone
 
 ### Completed issues
 
@@ -112,33 +108,45 @@ Do not include in the next MRS-129 step:
 * MRS-125 — Implement market data abstraction layer — done
 * MRS-127 — Define market data schemas and contracts — done as part of MRS-125
 * MRS-128 — Design and implement Phase 1 database ORM foundation — done
-* MRS-129 — Database session management + repository/query layer - done
-* MRS-131 — Implement position ingestion framework - done
-* MRS-132 — Implement data validation framework - done
-* MRS-133 — Implement risk-ready enrichment pipeline - done
-* MRS-134 — Historical VaR calculation and persistence - done
-* MRS-135 — Implement Parametric VaR engine - done
-* MRS-136 — Expected Shortfall calculation and persistence - done
-* MRS-137 — VaR backtesting calculation and persistence - done
-* MRS-138 — Implement stress testing framework - done
-* MRS-154 — Fixed Income stress testing
+* MRS-129 — Database session management + repository/query layer — done
+* MRS-131 — Implement position ingestion framework — done
+* MRS-132 — Implement data validation framework — done
+* MRS-133 — Implement risk-ready enrichment pipeline — done
+* MRS-134 — Historical VaR calculation and persistence — done
+* MRS-135 — Implement Parametric VaR engine — done
+* MRS-136 — Expected Shortfall calculation and persistence — done
+* MRS-137 — VaR backtesting calculation and persistence — done
+* MRS-138 — Implement stress testing framework — done
+* MRS-154 — Fixed-income stress testing — done
+* MRS-155 — Persist fixed-income stress results — done
+* MRS-156 — Add combined stress-test orchestration — done
 
-
-Completed supporting research:
+### Completed supporting research and methodology
 
 * MRS-152 — Research regulatory base and domain implications — done
-* MRS-155 — Persist fixed-income stress results - done
-* MRS-156 — Add combined stress-test orchestration - done
-
-
 
   * Output: `meta/reg_reference.md`
 
-### Deferred issues
+* Leverage methodology roadmap — done
 
-* MRS-126 — Implement mock Bloomberg provider — deferred
+  * Output: `meta/leverage_methodology_roadmap.md`
 
-### Active database / risk issue sequence
+### Leverage issue sequence
+
+MRS-139 — Implement leverage analytics — parent issue
+
+MRS-157 — Leverage taxonomy and exposure source model
+MRS-158 — Physical instrument leverage exposure
+MRS-159 — Cash and cash-equivalent leverage treatment
+MRS-160 — Direct borrowing leverage source
+MRS-161 — Securities financing transaction leverage source
+MRS-162 — Derivative exposure conversion model
+MRS-163 — AIFMD gross and commitment aggregation engines
+MRS-164 — Leverage persistence and reporting views
+MRS-165 — UCITS global exposure support
+MRS-166 — Leverage limit monitoring framework
+
+### Remaining database / risk issue sequence
 
 * MRS-139 — Implement leverage analytics
 * MRS-140 — Implement liquidity risk analytics
@@ -155,11 +163,17 @@ Completed supporting research:
 * MRS-151 — Example notebooks and demonstrations
 * MRS-153 — Implement database session management and initialization
 
+### Deferred issues
+
+* MRS-126 — Implement mock Bloomberg provider — deferred
+
 ### Duplicate / superseded issues
 
 * MRS-130 — Implement repository/query layer — merged into MRS-129
 
 Do not work on MRS-130 unless the user explicitly reactivates it.
+
+
 
 ---
 
