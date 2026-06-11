@@ -19,6 +19,7 @@ from manco_risk.database.repositories import (
 )
 from manco_risk.database.session import SessionFactory
 from manco_risk.database.stress_mappers import (
+    map_combined_stress_portfolio_result_to_orm,
     map_fixed_income_stress_portfolio_result_to_orm,
     map_historical_stress_result_to_orm,
     map_reverse_stress_result_to_orm,
@@ -26,6 +27,7 @@ from manco_risk.database.stress_mappers import (
 )
 from manco_risk.etl.enriched_position import RiskReadyPortfolio
 from manco_risk.risk.engines import (
+    CombinedStressEngine,
     HistoricalEquityStressEngine,
     ReverseEquityStressEngine,
 )
@@ -33,6 +35,8 @@ from manco_risk.risk.engines.duration_based_pricer import DurationBasedFixedInco
 from manco_risk.risk.engines.equity_stress import EquityStressEngine
 from manco_risk.risk.engines.fixed_income_stress import FixedIncomeStressEngine
 from manco_risk.risk.models import (
+    CombinedStressInput,
+    CombinedStressScenario,
     HistoricalStressInput,
     ReverseStressInput,
     StressScenario,
@@ -404,6 +408,131 @@ class StressTestCalculationService:
             ]
 
             result_ids = self.stress_result_repo.insert_many(orm_results)
+
+            self.calc_run_repo.update_status(
+                calculation_run.calculation_run_id, CalculationStatusEnum.COMPLETED
+            )
+
+            return StressTestCalculationResult(
+                calculation_run_id=calculation_run.calculation_run_id,
+                num_results_persisted=len(result_ids),
+            )
+
+        except Exception:
+            self.calc_run_repo.update_status(
+                calculation_run.calculation_run_id, CalculationStatusEnum.FAILED
+            )
+            raise
+
+    def calculate_and_persist_combined_stress(
+        self,
+        portfolio: RiskReadyPortfolio,
+        scenarios: list[CombinedStressScenario],
+        position_snapshot_id: int,
+        nav_snapshot_id: int,
+        risk_methodology: RiskMethodology,
+        created_by: str,
+    ) -> StressTestCalculationResult:
+        """Calculate and persist combined multi-asset stress.
+
+        Orchestrates CombinedStressEngine with database persistence.
+        Routes positions to EquityStressEngine and FixedIncomeStressEngine
+        based on asset class; cash is handled at combined level with zero P&L.
+
+        Workflow:
+        1. Create CalculationRun (STRESS_TEST, RUNNING)
+        2. Invoke CombinedStressEngine with portfolio and scenarios
+        3. For each CombinedStressPortfolioResult:
+           - if equity_result is not None: map EQUITY_LIKE row
+           - if fi_result is not None: map FIXED_INCOME row
+           - always: map MULTI_ASSET combined row
+        4. Persist all rows to database
+        5. Mark CalculationRun COMPLETED on success / FAILED on error
+
+        Row count per scenario:
+        - equity + FI positions: 3 rows (EQUITY_LIKE + FIXED_INCOME + MULTI_ASSET)
+        - equity only: 2 rows (EQUITY_LIKE + MULTI_ASSET)
+        - FI only: 2 rows (FIXED_INCOME + MULTI_ASSET)
+        - all-cash: 1 row (MULTI_ASSET only)
+
+        Parameters
+        ----------
+        portfolio : RiskReadyPortfolio
+            Risk-ready portfolio; may contain equity-like, bond, and cash positions.
+        scenarios : list[CombinedStressScenario]
+            Combined stress scenarios to apply.
+        position_snapshot_id : int
+            Position snapshot ID for lineage.
+        nav_snapshot_id : int
+            NAV snapshot ID for lineage.
+        risk_methodology : RiskMethodology
+            Risk methodology configuration.
+        created_by : str
+            User identifier for audit trail.
+
+        Returns
+        -------
+        StressTestCalculationResult
+            calculation_run_id: ID of persisted CalculationRun
+            num_results_persisted: Total StressTestResult rows inserted
+                                   (variable: 1-3 per scenario)
+
+        Raises
+        ------
+        UnsupportedAssetClassError
+            If portfolio contains positions with unsupported asset classes,
+            or foreign-currency cash.
+        MissingDurationError
+            If a non-zero FI shock component requires missing duration analytics.
+        Exception
+            On calculation or persistence failure; CalculationRun marked FAILED.
+
+        Notes
+        -----
+        No position-level persistence (Phase 1 scope).
+        Uses DurationBasedFixedIncomePricer for fixed-income pricing.
+        """
+        from datetime import date
+
+        portfolio_valuation_date = date.fromisoformat(portfolio.valuation_date)
+        calculation_run = CalculationRun(
+            fund_id=portfolio.fund_id,
+            valuation_date=portfolio_valuation_date,
+            calculation_type=CalculationTypeEnum.STRESS_TEST,
+            created_timestamp=datetime.now(),
+            methodology_version_id=risk_methodology.methodology_version_id,
+            position_snapshot_id=position_snapshot_id,
+            nav_snapshot_id=nav_snapshot_id,
+            status=CalculationStatusEnum.RUNNING,
+            created_by=created_by,
+        )
+        calculation_run = self.calc_run_repo.insert(calculation_run)
+
+        try:
+            pricer = DurationBasedFixedIncomePricer()
+            engine = CombinedStressEngine(pricer)
+            combined_input = CombinedStressInput(portfolio=portfolio, scenarios=scenarios)
+            combined_results = engine.stress(combined_input)
+
+            orm_rows = []
+            run_id = calculation_run.calculation_run_id
+
+            for combined_result in combined_results:
+                if combined_result.equity_result is not None:
+                    orm_rows.append(
+                        map_stress_portfolio_result_to_orm(combined_result.equity_result, run_id)
+                    )
+                if combined_result.fi_result is not None:
+                    orm_rows.append(
+                        map_fixed_income_stress_portfolio_result_to_orm(
+                            combined_result.fi_result, run_id
+                        )
+                    )
+                orm_rows.append(
+                    map_combined_stress_portfolio_result_to_orm(combined_result, run_id)
+                )
+
+            result_ids = self.stress_result_repo.insert_many(orm_rows)
 
             self.calc_run_repo.update_status(
                 calculation_run.calculation_run_id, CalculationStatusEnum.COMPLETED

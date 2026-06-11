@@ -127,6 +127,9 @@ Do not include in the next MRS-129 step:
 Completed supporting research:
 
 * MRS-152 — Research regulatory base and domain implications — done
+* MRS-155 — Persist fixed-income stress results - done
+* MRS-156 — Add combined stress-test orchestration - done
+
 
 
   * Output: `meta/reg_reference.md`
@@ -137,7 +140,6 @@ Completed supporting research:
 
 ### Active database / risk issue sequence
 
-* MRS-155 — Persist fixed-income stress results
 * MRS-139 — Implement leverage analytics
 * MRS-140 — Implement liquidity risk analytics
 * MRS-141 — Implement liquidity stress testing

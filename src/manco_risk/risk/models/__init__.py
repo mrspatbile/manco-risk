@@ -13,6 +13,9 @@ from manco_risk.risk.models.christoffersen_test import (
     ChristoffersenTestResult,
     TransitionMatrix,
 )
+from manco_risk.risk.models.combined_stress_input import CombinedStressInput
+from manco_risk.risk.models.combined_stress_portfolio_result import CombinedStressPortfolioResult
+from manco_risk.risk.models.combined_stress_scenario import CombinedStressScenario
 from manco_risk.risk.models.expected_shortfall_input import HistoricalExpectedShortfallInput
 from manco_risk.risk.models.expected_shortfall_result import HistoricalExpectedShortfallResult
 from manco_risk.risk.models.fixed_income_stress_input import FixedIncomeStressInput
@@ -44,6 +47,9 @@ from manco_risk.risk.models.var_input import HistoricalVaRInput
 from manco_risk.risk.models.var_result import HistoricalVaRResult
 
 __all__ = [
+    "CombinedStressInput",
+    "CombinedStressPortfolioResult",
+    "CombinedStressScenario",
     "BacktestInput",
     "FixedIncomeStressInput",
     "FixedIncomeStressPortfolioResult",

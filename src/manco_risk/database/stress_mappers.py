@@ -14,6 +14,9 @@ from manco_risk.risk.models import (
     ReverseStressResult,
     StressPortfolioResult,
 )
+from manco_risk.risk.models.combined_stress_portfolio_result import (
+    CombinedStressPortfolioResult,
+)
 from manco_risk.risk.models.fixed_income_stress_portfolio_result import (
     FixedIncomeStressPortfolioResult,
 )
@@ -217,6 +220,68 @@ def map_fixed_income_stress_portfolio_result_to_orm(
         total_rate_pnl=result.total_rate_pnl,
         total_credit_pnl=result.total_credit_pnl,
         num_positions_stressed=result.num_bond_positions,
+        num_cash_positions=result.num_cash_positions,
+        description=None,
+    )
+
+
+def map_combined_stress_portfolio_result_to_orm(
+    result: CombinedStressPortfolioResult, calculation_run_id: int
+) -> StressTestResult:
+    """Map combined multi-asset stress result (portfolio-level) to ORM.
+
+    Parameters
+    ----------
+    result : CombinedStressPortfolioResult
+        Combined stress calculation output.
+    calculation_run_id : int
+        Foreign key to CalculationRun.
+
+    Returns
+    -------
+    StressTestResult
+        ORM entity ready for insertion.
+
+    Mapping
+    -------
+    - result_type: HYPOTHETICAL
+    - asset_scope: MULTI_ASSET
+    - shock_type: None (sub-scope rows carry per-asset shock details)
+    - shock_rate: None (not applicable to combined multi-asset result)
+    - rate_shock_bps: None (sub-scope only)
+    - spread_shock_bps: None (sub-scope only)
+    - total_rate_pnl: fi_result.total_rate_pnl if fi_result present, else None
+    - total_credit_pnl: fi_result.total_credit_pnl if fi_result present, else None
+    - num_cash_positions: result.num_cash_positions (base-currency cash positions)
+    - num_positions_stressed: None (not meaningful at combined scope)
+
+    Notes
+    -----
+    The MULTI_ASSET row is the combined aggregate view. Sub-scope rows (EQUITY_LIKE,
+    FIXED_INCOME) carry the detailed shock parameters for each asset class.
+    total_pnl = equity_pnl + fi_pnl (cash contributes zero).
+    """
+    fi = result.fi_result
+    return StressTestResult(
+        calculation_run_id=calculation_run_id,
+        fund_id=result.fund_id,
+        scenario_id=result.scenario_id,
+        scenario_name=result.scenario_name,
+        scenario_type=result.scenario_type,
+        scenario_source=result.scenario_source,
+        result_type=StressTestResultTypeEnum.HYPOTHETICAL,
+        asset_scope=StressTestAssetScopeEnum.MULTI_ASSET,
+        shock_type=None,
+        shock_rate=None,
+        current_nav=result.current_nav,
+        stressed_nav=result.stressed_nav,
+        total_pnl=result.total_pnl,
+        loss_pct_nav=result.loss_pct_nav,
+        rate_shock_bps=None,
+        spread_shock_bps=None,
+        total_rate_pnl=fi.total_rate_pnl if fi is not None else None,
+        total_credit_pnl=fi.total_credit_pnl if fi is not None else None,
+        num_positions_stressed=None,
         num_cash_positions=result.num_cash_positions,
         description=None,
     )
