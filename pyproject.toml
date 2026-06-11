@@ -20,6 +20,11 @@ dependencies = [
     "sqlalchemy>=2.0.0",
 ]
 
+[project.optional-dependencies]
+quantlib = [
+    "quantlib-python>=1.18",
+]
+
 
 # uncomment here and comment below if not using uv exclusivelly
 # [project.optional-dependencies] # uses also pip

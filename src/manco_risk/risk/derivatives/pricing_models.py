@@ -17,8 +17,20 @@ Does NOT include:
 
 from datetime import date
 from decimal import Decimal
+from enum import Enum as PyEnum
 
 from pydantic import BaseModel, ConfigDict, field_validator
+
+
+class OptionType(str, PyEnum):
+    """Option type: call or put.
+
+    CALL: call option (right to buy).
+    PUT: put option (right to sell).
+    """
+
+    CALL = "CALL"
+    PUT = "PUT"
 
 
 class DerivativePricingInput(BaseModel):
@@ -126,4 +138,102 @@ class DerivativePricingResult(BaseModel):
         """Pricing model must be non-empty."""
         if not v or not v.strip():
             raise ValueError("pricing_model must be non-empty")
+        return v
+
+
+class EuropeanEquityOptionPricingInput(BaseModel):
+    """Input for European equity option pricing via Black-Scholes-Merton.
+
+    Fields:
+    - derivative_id: unique identifier (non-empty).
+    - pricing_date: date for which to price.
+    - option_type: CALL or PUT.
+    - spot: current underlying spot price (must be > 0).
+    - strike: option strike price (must be > 0).
+    - risk_free_rate: risk-free rate as decimal (e.g., 0.05 = 5%).
+    - dividend_yield: dividend yield as decimal (default 0, may be negative).
+    - volatility: annualized volatility as decimal (must be > 0, e.g., 0.20 = 20%).
+    - maturity_date: option maturity/expiry date (must be > pricing_date).
+    - quantity: number of contracts (default 1, must be non-zero).
+    - currency: optional currency code (non-empty if provided).
+
+    Invariants:
+    - derivative_id must be non-empty.
+    - spot must be positive.
+    - strike must be positive.
+    - volatility must be positive.
+    - maturity_date must be after pricing_date.
+    - quantity must be non-zero.
+    - currency, if provided, must be non-empty.
+    """
+
+    derivative_id: str
+    pricing_date: date
+    option_type: OptionType
+    spot: Decimal
+    strike: Decimal
+    risk_free_rate: Decimal
+    dividend_yield: Decimal = Decimal("0")
+    volatility: Decimal
+    maturity_date: date
+    quantity: Decimal = Decimal("1")
+    currency: str | None = None
+
+    model_config = ConfigDict(frozen=True)
+
+    @field_validator("derivative_id")
+    @classmethod
+    def validate_derivative_id(cls, v: str) -> str:
+        """Derivative ID must be non-empty."""
+        if not v or not v.strip():
+            raise ValueError("derivative_id must be non-empty")
+        return v
+
+    @field_validator("spot")
+    @classmethod
+    def validate_spot(cls, v: Decimal) -> Decimal:
+        """Spot price must be positive."""
+        if v <= Decimal("0"):
+            raise ValueError(f"spot must be positive, got {v}")
+        return v
+
+    @field_validator("strike")
+    @classmethod
+    def validate_strike(cls, v: Decimal) -> Decimal:
+        """Strike price must be positive."""
+        if v <= Decimal("0"):
+            raise ValueError(f"strike must be positive, got {v}")
+        return v
+
+    @field_validator("volatility")
+    @classmethod
+    def validate_volatility(cls, v: Decimal) -> Decimal:
+        """Volatility must be positive."""
+        if v <= Decimal("0"):
+            raise ValueError(f"volatility must be positive, got {v}")
+        return v
+
+    @field_validator("quantity")
+    @classmethod
+    def validate_quantity(cls, v: Decimal) -> Decimal:
+        """Quantity must be non-zero."""
+        if v == Decimal("0"):
+            raise ValueError("quantity must be non-zero")
+        return v
+
+    @field_validator("currency")
+    @classmethod
+    def validate_currency(cls, v: str | None) -> str | None:
+        """Currency, if provided, must be non-empty."""
+        if v is not None and (not v or not v.strip()):
+            raise ValueError("currency must be non-empty if provided")
+        return v
+
+    @field_validator("maturity_date")
+    @classmethod
+    def validate_maturity_date(cls, v: date, info) -> date:
+        """Maturity date must be after pricing date."""
+        pricing_date = info.data.get("pricing_date")
+        if pricing_date and v <= pricing_date:
+            raise ValueError(f"maturity_date {v} must be after pricing_date {pricing_date}")
         return v
