@@ -110,3 +110,32 @@ class InsufficientPriceDataError(RiskCalculationError):
         self.isin = isin
         self.count = count
         super().__init__(f"ISIN {isin} has {count} price observations; at least 2 required")
+
+
+class MissingDurationError(RiskCalculationError):
+    """Required duration analytics are absent from an enriched position.
+
+    Raised by fixed-income pricers when a non-zero shock component requires
+    a duration field that was not populated during enrichment.
+
+    Examples:
+    - rate_shock_bps != 0 and modified_duration is None
+    - spread_shock_bps != 0 and spread_duration is None
+    """
+
+    def __init__(self, isin: str, field: str, reason: str) -> None:
+        """Initialize exception.
+
+        Parameters
+        ----------
+        isin : str
+            Instrument ISIN.
+        field : str
+            Name of the missing duration field, e.g. 'modified_duration'.
+        reason : str
+            Explanation of why the field is required for this calculation.
+        """
+        self.isin = isin
+        self.field = field
+        self.reason = reason
+        super().__init__(f"Missing '{field}' for {isin}: {reason}")
