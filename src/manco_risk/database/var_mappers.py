@@ -1,12 +1,13 @@
 """Mapper from risk-layer results to database-layer ORM models.
 
-Converts VaR calculation results (Pydantic, from risk calculation engines)
-to VaRResult (SQLAlchemy ORM, for database persistence).
+Converts VaR and ES calculation results (Pydantic, from risk calculation engines)
+to VaRResult and ExpectedShortfallResult (SQLAlchemy ORM, for database persistence).
 
 This module lives in the database layer to keep the risk layer pure.
 """
 
-from manco_risk.database.models import VaRResult
+from manco_risk.database.models import ESMethodEnum, ExpectedShortfallResult, VaRResult
+from manco_risk.risk.models.expected_shortfall_result import HistoricalExpectedShortfallResult
 from manco_risk.risk.models.parametric_var_result import ParametricNormalVaRResult
 from manco_risk.risk.models.var_result import HistoricalVaRResult
 
@@ -91,4 +92,45 @@ def map_parametric_normal_var_result_to_orm(
         var_pct_nav=parametric_var_result.var_pct_nav,
         lookback_days=lookback_days,
         num_observations_used=parametric_var_result.num_observations,
+    )
+
+
+def map_historical_es_result_to_orm(
+    es_result: HistoricalExpectedShortfallResult,
+    calculation_run_id: int,
+) -> ExpectedShortfallResult:
+    """Convert HistoricalExpectedShortfallResult to ORM ExpectedShortfallResult for database persistence.
+
+    Maps risk-layer Pydantic model to database-layer ORM model.
+
+    Parameters
+    ----------
+    es_result : HistoricalExpectedShortfallResult
+        Result from HistoricalExpectedShortfall calculation engine.
+    calculation_run_id : int
+        Foreign key to CalculationRun. Supplied by caller.
+
+    Returns
+    -------
+    ExpectedShortfallResult
+        ORM entity ready for database insertion.
+
+    Notes
+    -----
+    - linked_var_value, linked_var_pct_nav, quantile_index not persisted (audit metadata).
+    - num_tail_observations from Pydantic maps to num_breaches in ORM.
+    - num_observations from Pydantic maps to num_observations_used in ORM.
+    - method is always HISTORICAL for this mapper (parametric ES deferred).
+    - valuation_date is available via CalculationRun, not repeated here.
+    """
+    return ExpectedShortfallResult(
+        calculation_run_id=calculation_run_id,
+        fund_id=es_result.fund_id,
+        confidence_level=es_result.confidence_level,
+        horizon_days=es_result.horizon_days,
+        es_value_absolute=es_result.es_value,
+        es_pct_nav=es_result.es_pct_nav,
+        method=ESMethodEnum.HISTORICAL,
+        num_breaches=es_result.num_tail_observations,
+        num_observations_used=es_result.num_observations,
     )

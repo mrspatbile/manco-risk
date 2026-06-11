@@ -3,10 +3,13 @@
 from datetime import date
 from decimal import Decimal
 
+from manco_risk.database.models import ESMethodEnum
 from manco_risk.database.var_mappers import (
+    map_historical_es_result_to_orm,
     map_historical_var_result_to_orm,
     map_parametric_normal_var_result_to_orm,
 )
+from manco_risk.risk.models.expected_shortfall_result import HistoricalExpectedShortfallResult
 from manco_risk.risk.models.parametric_var_result import ParametricNormalVaRResult
 from manco_risk.risk.models.var_result import HistoricalVaRResult
 
@@ -294,4 +297,194 @@ class TestMapParametricNormalVaRResultToOrm:
 
         assert result1.var_value_absolute == result2.var_value_absolute
         assert result1.var_pct_nav == result2.var_pct_nav
+        assert result1.num_observations_used == result2.num_observations_used
+
+
+class TestMapHistoricalESResultToOrm:
+    """Test mapping from HistoricalExpectedShortfallResult to ORM ExpectedShortfallResult."""
+
+    def test_map_all_fields(self) -> None:
+        """Map all fields from Pydantic to ORM."""
+        es_result = HistoricalExpectedShortfallResult(
+            fund_id=1,
+            valuation_date=date(2024, 1, 1),
+            confidence_level=Decimal("0.95"),
+            horizon_days=1,
+            es_value=Decimal("3500.00"),
+            es_pct_nav=Decimal("0.035"),
+            num_tail_observations=25,
+            num_observations=250,
+            quantile_index=12,  # Not persisted
+            linked_var_value=Decimal("2500.00"),  # Not persisted
+            linked_var_pct_nav=Decimal("0.025"),  # Not persisted
+        )
+
+        orm_result = map_historical_es_result_to_orm(
+            es_result=es_result,
+            calculation_run_id=42,
+        )
+
+        # Verify mapped fields
+        assert orm_result.fund_id == 1
+        assert orm_result.confidence_level == Decimal("0.95")
+        assert orm_result.horizon_days == 1
+        assert orm_result.es_value_absolute == Decimal("3500.00")
+        assert orm_result.es_pct_nav == Decimal("0.035")
+        assert orm_result.calculation_run_id == 42
+        assert orm_result.num_breaches == 25
+        assert orm_result.num_observations_used == 250
+        assert orm_result.method == ESMethodEnum.HISTORICAL
+
+    def test_map_field_name_conversions(self) -> None:
+        """Verify field name conversions are correct."""
+        es_result = HistoricalExpectedShortfallResult(
+            fund_id=5,
+            valuation_date=date(2024, 6, 15),
+            confidence_level=Decimal("0.99"),
+            horizon_days=1,
+            es_value=Decimal("5000.00"),
+            es_pct_nav=Decimal("0.05"),
+            num_tail_observations=50,
+            num_observations=500,
+            quantile_index=4,
+            linked_var_value=Decimal("4000.00"),
+            linked_var_pct_nav=Decimal("0.04"),
+        )
+
+        orm_result = map_historical_es_result_to_orm(
+            es_result=es_result,
+            calculation_run_id=100,
+        )
+
+        # es_value (Pydantic) → es_value_absolute (ORM)
+        assert orm_result.es_value_absolute == es_result.es_value
+        # num_tail_observations (Pydantic) → num_breaches (ORM)
+        assert orm_result.num_breaches == es_result.num_tail_observations
+        # num_observations (Pydantic) → num_observations_used (ORM)
+        assert orm_result.num_observations_used == es_result.num_observations
+
+    def test_map_with_zero_es_value(self) -> None:
+        """Map with zero ES value (edge case)."""
+        es_result = HistoricalExpectedShortfallResult(
+            fund_id=2,
+            valuation_date=date(2024, 1, 1),
+            confidence_level=Decimal("0.95"),
+            horizon_days=1,
+            es_value=Decimal("0"),
+            es_pct_nav=Decimal("0"),
+            num_tail_observations=1,
+            num_observations=100,
+            quantile_index=5,
+            linked_var_value=Decimal("0"),
+            linked_var_pct_nav=Decimal("0"),
+        )
+
+        orm_result = map_historical_es_result_to_orm(
+            es_result=es_result,
+            calculation_run_id=10,
+        )
+
+        assert orm_result.es_value_absolute == Decimal("0")
+        assert orm_result.es_pct_nav == Decimal("0")
+
+    def test_map_linked_var_fields_not_persisted(self) -> None:
+        """Verify linked VaR and quantile fields are not persisted."""
+        es_result = HistoricalExpectedShortfallResult(
+            fund_id=1,
+            valuation_date=date(2024, 1, 1),
+            confidence_level=Decimal("0.95"),
+            horizon_days=1,
+            es_value=Decimal("3500.00"),
+            es_pct_nav=Decimal("0.035"),
+            num_tail_observations=25,
+            num_observations=250,
+            quantile_index=12,
+            linked_var_value=Decimal("2500.00"),
+            linked_var_pct_nav=Decimal("0.025"),
+        )
+
+        orm_result = map_historical_es_result_to_orm(
+            es_result=es_result,
+            calculation_run_id=42,
+        )
+
+        # Linked VaR fields and quantile_index should not be persisted
+        assert not hasattr(orm_result, "linked_var_value") or orm_result.linked_var_value is None
+        assert (
+            not hasattr(orm_result, "linked_var_pct_nav") or orm_result.linked_var_pct_nav is None
+        )
+        assert not hasattr(orm_result, "quantile_index") or orm_result.quantile_index is None
+
+    def test_map_method_is_historical(self) -> None:
+        """Verify method is always HISTORICAL for this mapper."""
+        es_result = HistoricalExpectedShortfallResult(
+            fund_id=1,
+            valuation_date=date(2024, 1, 1),
+            confidence_level=Decimal("0.95"),
+            horizon_days=1,
+            es_value=Decimal("3500.00"),
+            es_pct_nav=Decimal("0.035"),
+            num_tail_observations=25,
+            num_observations=250,
+            quantile_index=12,
+            linked_var_value=Decimal("2500.00"),
+            linked_var_pct_nav=Decimal("0.025"),
+        )
+
+        orm_result = map_historical_es_result_to_orm(
+            es_result=es_result,
+            calculation_run_id=42,
+        )
+
+        assert orm_result.method == ESMethodEnum.HISTORICAL
+
+    def test_map_preserves_decimal_precision(self) -> None:
+        """Verify Decimal precision is preserved through mapping."""
+        es_value = Decimal("3456.7891")
+        es_pct = Decimal("0.034567891")
+
+        es_result = HistoricalExpectedShortfallResult(
+            fund_id=1,
+            valuation_date=date(2024, 1, 1),
+            confidence_level=Decimal("0.95"),
+            horizon_days=1,
+            es_value=es_value,
+            es_pct_nav=es_pct,
+            num_tail_observations=25,
+            num_observations=250,
+            quantile_index=12,
+            linked_var_value=Decimal("2500.00"),
+            linked_var_pct_nav=Decimal("0.025"),
+        )
+
+        orm_result = map_historical_es_result_to_orm(
+            es_result=es_result,
+            calculation_run_id=1,
+        )
+
+        assert orm_result.es_value_absolute == es_value
+        assert orm_result.es_pct_nav == es_pct
+
+    def test_map_idempotent(self) -> None:
+        """Mapping the same input multiple times produces identical results."""
+        es_result = HistoricalExpectedShortfallResult(
+            fund_id=1,
+            valuation_date=date(2024, 1, 1),
+            confidence_level=Decimal("0.95"),
+            horizon_days=1,
+            es_value=Decimal("3500.00"),
+            es_pct_nav=Decimal("0.035"),
+            num_tail_observations=25,
+            num_observations=250,
+            quantile_index=12,
+            linked_var_value=Decimal("2500.00"),
+            linked_var_pct_nav=Decimal("0.025"),
+        )
+
+        result1 = map_historical_es_result_to_orm(es_result, 42)
+        result2 = map_historical_es_result_to_orm(es_result, 42)
+
+        assert result1.es_value_absolute == result2.es_value_absolute
+        assert result1.es_pct_nav == result2.es_pct_nav
+        assert result1.num_breaches == result2.num_breaches
         assert result1.num_observations_used == result2.num_observations_used

@@ -15,6 +15,7 @@ from typing import Generic, TypeVar
 from manco_risk.database.models import (
     CalculationRun,
     CalculationStatusEnum,
+    ExpectedShortfallResult,
     Fund,
     Instrument,
     MarketDataPoint,
@@ -725,6 +726,90 @@ class VaRResultRepository(BaseRepository):
                 .join(CalculationRun)
                 .filter(
                     VaRResult.fund_id == fund_id,
+                    CalculationRun.valuation_date == valuation_date,
+                )
+                .all()
+            )
+            for result in results:
+                session.expunge(result)
+            return results
+
+
+class ExpectedShortfallResultRepository(BaseRepository):
+    """Repository for ExpectedShortfallResult entity.
+
+    Implements domain queries for ExpectedShortfallResult:
+    - insert: create new ES result
+    - find_by_calculation_run: get all ES results for a calculation run
+    - find_by_fund_and_date: get all ES results for a fund on a date
+    """
+
+    def insert(self, es_result: ExpectedShortfallResult) -> ExpectedShortfallResult:
+        """Insert a new ES result.
+
+        Parameters
+        ----------
+        es_result : ExpectedShortfallResult
+            ExpectedShortfallResult entity to insert. Should not have es_result_id set.
+
+        Returns
+        -------
+        ExpectedShortfallResult
+            Inserted ES result with es_result_id populated.
+        """
+        with self.session_factory.session_scope() as session:
+            session.add(es_result)
+            session.flush()
+            inserted_result = es_result
+            session.expunge(inserted_result)
+            return inserted_result
+
+    def find_by_calculation_run(self, calculation_run_id: int) -> list[ExpectedShortfallResult]:
+        """Find all ES results for a calculation run.
+
+        Parameters
+        ----------
+        calculation_run_id : int
+            Calculation run ID.
+
+        Returns
+        -------
+        list[ExpectedShortfallResult]
+            List of ES results. Empty list if none exist.
+        """
+        with self.session_factory.session_scope() as session:
+            results = (
+                session.query(ExpectedShortfallResult)
+                .filter(ExpectedShortfallResult.calculation_run_id == calculation_run_id)
+                .all()
+            )
+            for result in results:
+                session.expunge(result)
+            return results
+
+    def find_by_fund_and_date(
+        self, fund_id: int, valuation_date: date
+    ) -> list[ExpectedShortfallResult]:
+        """Find all ES results for a fund on a specific valuation date.
+
+        Parameters
+        ----------
+        fund_id : int
+            Fund ID.
+        valuation_date : date
+            Valuation date.
+
+        Returns
+        -------
+        list[ExpectedShortfallResult]
+            List of ES results. Empty list if none exist.
+        """
+        with self.session_factory.session_scope() as session:
+            results = (
+                session.query(ExpectedShortfallResult)
+                .join(CalculationRun)
+                .filter(
+                    ExpectedShortfallResult.fund_id == fund_id,
                     CalculationRun.valuation_date == valuation_date,
                 )
                 .all()
