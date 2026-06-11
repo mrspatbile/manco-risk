@@ -26,7 +26,8 @@ from pydantic import ValidationError
 
 from manco_risk.etl.enriched_position import EnrichedPosition, RiskReadyPortfolio
 from manco_risk.risk.engines.duration_based_pricer import DurationBasedFixedIncomePricer
-from manco_risk.risk.exceptions import MissingDurationError
+from manco_risk.risk.engines.fixed_income_stress import FixedIncomeStressEngine
+from manco_risk.risk.exceptions import MissingDurationError, UnsupportedAssetClassError
 from manco_risk.risk.models.fixed_income_stress_input import FixedIncomeStressInput
 from manco_risk.risk.models.fixed_income_stress_portfolio_result import (
     FixedIncomeStressPortfolioResult,
@@ -627,3 +628,418 @@ class TestDurationBasedFixedIncomePricer:
         result = pricer.price_position(position, scenario)
         assert result.position_id == 42
         assert result.isin == "XS2543791470"
+
+
+# ---------------------------------------------------------------------------
+# Engine tests: FixedIncomeStressEngine
+# ---------------------------------------------------------------------------
+
+
+def make_cash_position(
+    position_id: int = 99,
+    isin: str = "CASH_USD",
+    market_value_base_ccy: Decimal = Decimal("20000"),
+    fund_base_currency: str = "USD",
+    instrument_currency: str = "USD",
+) -> EnrichedPosition:
+    """Return a base-currency CASH enriched position."""
+    return EnrichedPosition(
+        fund_id=1,
+        position_snapshot_id=1,
+        position_id=position_id,
+        isin=isin,
+        valuation_date="2026-06-10",
+        quantity=market_value_base_ccy,
+        market_value=market_value_base_ccy,
+        position_currency=instrument_currency,
+        asset_class="CASH",
+        instrument_currency=instrument_currency,
+        market_value_base_ccy=market_value_base_ccy,
+        fund_base_currency=fund_base_currency,
+        weight=Decimal("0.2"),
+    )
+
+
+def make_equity_position(
+    position_id: int = 50,
+    isin: str = "US0378331005",
+    market_value_base_ccy: Decimal = Decimal("50000"),
+) -> EnrichedPosition:
+    """Return an EQUITY enriched position (unsupported by FI engine)."""
+    return EnrichedPosition(
+        fund_id=1,
+        position_snapshot_id=1,
+        position_id=position_id,
+        isin=isin,
+        valuation_date="2026-06-10",
+        quantity=Decimal("100"),
+        market_value=market_value_base_ccy,
+        position_currency="USD",
+        asset_class="EQUITY",
+        instrument_currency="USD",
+        market_value_base_ccy=market_value_base_ccy,
+        fund_base_currency="USD",
+        weight=Decimal("0.5"),
+    )
+
+
+def make_portfolio(
+    positions: list[EnrichedPosition],
+    nav: Decimal = Decimal("100000"),
+    fund_base_currency: str = "USD",
+) -> RiskReadyPortfolio:
+    """Return a RiskReadyPortfolio from the given positions."""
+    return RiskReadyPortfolio(
+        fund_id=1,
+        valuation_date="2026-06-10",
+        fund_base_currency=fund_base_currency,
+        nav=nav,
+        positions=positions,
+    )
+
+
+class FakePricer:
+    """Fake pricer that returns a predictable result for testing engine orchestration."""
+
+    def __init__(self, rate_pnl: Decimal, credit_pnl: Decimal) -> None:
+        self._rate_pnl = rate_pnl
+        self._credit_pnl = credit_pnl
+        self.calls: list[tuple[EnrichedPosition, FixedIncomeStressScenario]] = []
+
+    def price_position(
+        self,
+        position: EnrichedPosition,
+        scenario: FixedIncomeStressScenario,
+    ) -> FixedIncomeStressPositionResult:
+        self.calls.append((position, scenario))
+        dirty_value = position.market_value_base_ccy
+        total = self._rate_pnl + self._credit_pnl
+        return FixedIncomeStressPositionResult(
+            position_id=position.position_id,
+            isin=position.isin,
+            asset_class=position.asset_class,
+            shock_type=scenario.shock_type,
+            rate_shock_bps=scenario.rate_shock_bps,
+            spread_shock_bps=scenario.spread_shock_bps,
+            modified_duration=position.modified_duration,
+            spread_duration=position.spread_duration,
+            current_dirty_value_base_ccy=dirty_value,
+            stressed_dirty_value_base_ccy=dirty_value + total,
+            rate_pnl=self._rate_pnl,
+            credit_pnl=self._credit_pnl,
+            total_pnl=total,
+        )
+
+
+class TestFixedIncomeStressEngine:
+    @staticmethod
+    def make_engine(
+        rate_pnl: Decimal = Decimal("-4000"),
+        credit_pnl: Decimal = Decimal("0"),
+    ) -> tuple[FixedIncomeStressEngine, FakePricer]:
+        """Return engine wired to a FakePricer for orchestration tests."""
+        pricer = FakePricer(rate_pnl=rate_pnl, credit_pnl=credit_pnl)
+        engine = FixedIncomeStressEngine(pricer)
+        return engine, pricer
+
+    @staticmethod
+    def make_real_engine() -> FixedIncomeStressEngine:
+        """Return engine wired to DurationBasedFixedIncomePricer for arithmetic tests."""
+        return FixedIncomeStressEngine(DurationBasedFixedIncomePricer())
+
+    # --- Basic stress cases ---
+
+    def test_single_bond_stressed(self) -> None:
+        """Engine stresses a single BOND position and returns one result."""
+        engine, _ = self.make_engine(rate_pnl=Decimal("-4000"), credit_pnl=Decimal("0"))
+        position = make_bond_position(
+            market_value_base_ccy=Decimal("100000"),
+            modified_duration=Decimal("4.0"),
+            spread_duration=Decimal("0"),
+        )
+        portfolio = make_portfolio([position], nav=Decimal("100000"))
+        fi_input = FixedIncomeStressInput(portfolio=portfolio, scenarios=[make_scenario()])
+
+        results = engine.stress(fi_input)
+
+        assert len(results) == 1
+        result = results[0]
+        assert result.total_pnl == Decimal("-4000")
+        assert result.num_bond_positions == 1
+        assert result.num_cash_positions == 0
+
+    def test_multiple_scenarios_return_one_result_each(self) -> None:
+        """Engine returns one FixedIncomeStressPortfolioResult per scenario."""
+        engine, _ = self.make_engine()
+        position = make_bond_position()
+        portfolio = make_portfolio([position])
+        scenarios = [
+            make_scenario(scenario_id="S1", rate_shock_bps=100, spread_shock_bps=0),
+            make_scenario(scenario_id="S2", rate_shock_bps=200, spread_shock_bps=0),
+        ]
+        fi_input = FixedIncomeStressInput(portfolio=portfolio, scenarios=scenarios)
+
+        results = engine.stress(fi_input)
+        assert len(results) == 2
+        assert results[0].scenario_id == "S1"
+        assert results[1].scenario_id == "S2"
+
+    def test_bond_plus_cash_portfolio(self) -> None:
+        """BOND is stressed; base-currency CASH is unchanged."""
+        engine, _ = self.make_engine(rate_pnl=Decimal("-4000"), credit_pnl=Decimal("0"))
+        bond = make_bond_position(
+            position_id=1,
+            market_value_base_ccy=Decimal("80000"),
+            modified_duration=Decimal("4.0"),
+            spread_duration=Decimal("0"),
+        )
+        cash = make_cash_position(position_id=2, market_value_base_ccy=Decimal("20000"))
+        portfolio = make_portfolio([bond, cash], nav=Decimal("100000"))
+        fi_input = FixedIncomeStressInput(portfolio=portfolio, scenarios=[make_scenario()])
+
+        result = engine.stress(fi_input)[0]
+
+        # Only bond P&L contributes; cash is zero
+        assert result.num_bond_positions == 1
+        assert result.num_cash_positions == 1
+        cash_result = next(p for p in result.stressed_positions if p.asset_class == "CASH")
+        assert cash_result.rate_pnl == Decimal("0")
+        assert cash_result.credit_pnl == Decimal("0")
+        assert cash_result.total_pnl == Decimal("0")
+        assert cash_result.stressed_dirty_value_base_ccy == Decimal("20000")
+
+    def test_all_cash_portfolio_zero_pnl(self) -> None:
+        """All-cash portfolio produces zero total P&L and zero loss_pct_nav."""
+        engine, _ = self.make_engine()
+        cash = make_cash_position(market_value_base_ccy=Decimal("100000"))
+        portfolio = make_portfolio([cash], nav=Decimal("100000"))
+        fi_input = FixedIncomeStressInput(portfolio=portfolio, scenarios=[make_scenario()])
+
+        result = engine.stress(fi_input)[0]
+
+        assert result.total_pnl == Decimal("0")
+        assert result.loss_pct_nav == Decimal("0")
+        assert result.stressed_nav == Decimal("100000")
+        assert result.num_bond_positions == 0
+        assert result.num_cash_positions == 1
+
+    # --- Asset class rejection ---
+
+    def test_equity_position_raises_unsupported_asset_class(self) -> None:
+        """EQUITY in portfolio raises UnsupportedAssetClassError."""
+        engine, _ = self.make_engine()
+        equity = make_equity_position()
+        portfolio = make_portfolio([equity])
+        fi_input = FixedIncomeStressInput(portfolio=portfolio, scenarios=[make_scenario()])
+
+        with pytest.raises(UnsupportedAssetClassError) as exc_info:
+            engine.stress(fi_input)
+
+        assert exc_info.value.asset_class == "EQUITY"
+
+    def test_foreign_currency_cash_raises_unsupported(self) -> None:
+        """Foreign-currency CASH raises UnsupportedAssetClassError."""
+        engine, _ = self.make_engine()
+        foreign_cash = make_cash_position(
+            instrument_currency="EUR",  # fund base is USD
+            fund_base_currency="USD",
+        )
+        portfolio = make_portfolio([foreign_cash], fund_base_currency="USD")
+        fi_input = FixedIncomeStressInput(portfolio=portfolio, scenarios=[make_scenario()])
+
+        with pytest.raises(UnsupportedAssetClassError) as exc_info:
+            engine.stress(fi_input)
+
+        assert exc_info.value.asset_class == "CASH"
+
+    # --- Aggregation correctness ---
+
+    def test_total_rate_pnl_equals_sum_of_position_rate_pnls(self) -> None:
+        """total_rate_pnl = sum of all position rate_pnl values."""
+        engine, _ = self.make_engine(rate_pnl=Decimal("-2000"), credit_pnl=Decimal("0"))
+        positions = [
+            make_bond_position(position_id=1, market_value_base_ccy=Decimal("50000")),
+            make_bond_position(position_id=2, market_value_base_ccy=Decimal("50000")),
+        ]
+        portfolio = make_portfolio(positions, nav=Decimal("100000"))
+        fi_input = FixedIncomeStressInput(portfolio=portfolio, scenarios=[make_scenario()])
+
+        result = engine.stress(fi_input)[0]
+
+        expected = sum(p.rate_pnl for p in result.stressed_positions)
+        assert result.total_rate_pnl == expected
+
+    def test_total_credit_pnl_equals_sum_of_position_credit_pnls(self) -> None:
+        """total_credit_pnl = sum of all position credit_pnl values."""
+        engine, _ = self.make_engine(rate_pnl=Decimal("0"), credit_pnl=Decimal("-1500"))
+        positions = [
+            make_bond_position(position_id=1, market_value_base_ccy=Decimal("50000")),
+            make_bond_position(position_id=2, market_value_base_ccy=Decimal("50000")),
+        ]
+        portfolio = make_portfolio(positions, nav=Decimal("100000"))
+        fi_input = FixedIncomeStressInput(
+            portfolio=portfolio,
+            scenarios=[
+                make_scenario(shock_type="SPREAD_SHOCK", rate_shock_bps=0, spread_shock_bps=50)
+            ],
+        )
+
+        result = engine.stress(fi_input)[0]
+
+        expected = sum(p.credit_pnl for p in result.stressed_positions)
+        assert result.total_credit_pnl == expected
+
+    def test_total_pnl_equals_rate_plus_credit(self) -> None:
+        """total_pnl = total_rate_pnl + total_credit_pnl."""
+        engine, _ = self.make_engine(rate_pnl=Decimal("-3000"), credit_pnl=Decimal("-1000"))
+        position = make_bond_position()
+        portfolio = make_portfolio([position])
+        fi_input = FixedIncomeStressInput(
+            portfolio=portfolio,
+            scenarios=[
+                make_scenario(shock_type="COMBINED", rate_shock_bps=100, spread_shock_bps=50)
+            ],
+        )
+
+        result = engine.stress(fi_input)[0]
+        assert result.total_pnl == result.total_rate_pnl + result.total_credit_pnl
+
+    def test_stressed_nav_equals_nav_plus_total_pnl(self) -> None:
+        """stressed_nav = current_nav + total_pnl."""
+        engine, _ = self.make_engine(rate_pnl=Decimal("-4000"), credit_pnl=Decimal("0"))
+        position = make_bond_position()
+        portfolio = make_portfolio([position], nav=Decimal("100000"))
+        fi_input = FixedIncomeStressInput(portfolio=portfolio, scenarios=[make_scenario()])
+
+        result = engine.stress(fi_input)[0]
+        assert result.stressed_nav == result.current_nav + result.total_pnl
+
+    # --- loss_pct_nav ---
+
+    def test_loss_scenario_produces_positive_loss_pct_nav(self) -> None:
+        """Loss scenario: loss_pct_nav is positive."""
+        engine = self.make_real_engine()
+        position = make_bond_position(
+            market_value_base_ccy=Decimal("100000"),
+            modified_duration=Decimal("5.0"),
+            spread_duration=Decimal("0"),
+        )
+        portfolio = make_portfolio([position], nav=Decimal("100000"))
+        fi_input = FixedIncomeStressInput(
+            portfolio=portfolio,
+            scenarios=[make_scenario(rate_shock_bps=100, spread_shock_bps=0)],
+        )
+
+        result = engine.stress(fi_input)[0]
+        assert result.loss_pct_nav > Decimal("0")
+
+    def test_gain_scenario_gives_zero_loss_pct_nav(self) -> None:
+        """Gain scenario (yield down): loss_pct_nav is zero."""
+        engine = self.make_real_engine()
+        position = make_bond_position(
+            market_value_base_ccy=Decimal("100000"),
+            modified_duration=Decimal("5.0"),
+            spread_duration=Decimal("0"),
+        )
+        portfolio = make_portfolio([position], nav=Decimal("100000"))
+        fi_input = FixedIncomeStressInput(
+            portfolio=portfolio,
+            scenarios=[make_scenario(rate_shock_bps=-50, spread_shock_bps=0)],  # yield down = gain
+        )
+
+        result = engine.stress(fi_input)[0]
+        assert result.loss_pct_nav == Decimal("0")
+
+    # --- Scenario metadata ---
+
+    def test_scenario_metadata_copied_to_portfolio_result(self) -> None:
+        """Scenario fields are faithfully copied to FixedIncomeStressPortfolioResult."""
+        engine, _ = self.make_engine()
+        position = make_bond_position()
+        portfolio = make_portfolio([position])
+        scenario = make_scenario(
+            scenario_id="FI_COMBINED_001",
+            shock_type="COMBINED",
+            rate_shock_bps=75,
+            spread_shock_bps=30,
+        )
+        fi_input = FixedIncomeStressInput(portfolio=portfolio, scenarios=[scenario])
+
+        result = engine.stress(fi_input)[0]
+
+        assert result.scenario_id == "FI_COMBINED_001"
+        assert result.shock_type == "COMBINED"
+        assert result.rate_shock_bps == 75
+        assert result.spread_shock_bps == 30
+
+    # --- Delegation to pricer ---
+
+    def test_engine_delegates_to_injected_pricer(self) -> None:
+        """Engine calls pricer.price_position for each BOND position."""
+        engine, fake_pricer = self.make_engine(
+            rate_pnl=Decimal("-2000"), credit_pnl=Decimal("-500")
+        )
+        bond1 = make_bond_position(position_id=1)
+        bond2 = make_bond_position(position_id=2)
+        portfolio = make_portfolio([bond1, bond2])
+        scenario = make_scenario()
+        fi_input = FixedIncomeStressInput(portfolio=portfolio, scenarios=[scenario])
+
+        engine.stress(fi_input)
+
+        # Pricer was called once per bond position
+        assert len(fake_pricer.calls) == 2
+        called_ids = {pos.position_id for pos, _ in fake_pricer.calls}
+        assert called_ids == {1, 2}
+
+    def test_engine_does_not_call_pricer_for_cash(self) -> None:
+        """Engine does not call pricer for CASH positions."""
+        engine, fake_pricer = self.make_engine()
+        bond = make_bond_position(position_id=1)
+        cash = make_cash_position(position_id=2)
+        portfolio = make_portfolio([bond, cash])
+        fi_input = FixedIncomeStressInput(portfolio=portfolio, scenarios=[make_scenario()])
+
+        engine.stress(fi_input)
+
+        # Pricer called only for the bond
+        assert len(fake_pricer.calls) == 1
+        assert fake_pricer.calls[0][0].position_id == 1
+
+    # --- Missing duration propagation ---
+
+    def test_missing_duration_error_propagated_from_pricer(self) -> None:
+        """MissingDurationError from the pricer surfaces unchanged to the caller."""
+        engine = self.make_real_engine()
+        position = make_bond_position(
+            modified_duration=None,  # will fail for rate shock
+            spread_duration=Decimal("0"),
+        )
+        portfolio = make_portfolio([position])
+        fi_input = FixedIncomeStressInput(
+            portfolio=portfolio,
+            scenarios=[make_scenario(rate_shock_bps=100, spread_shock_bps=0)],
+        )
+
+        with pytest.raises(MissingDurationError) as exc_info:
+            engine.stress(fi_input)
+
+        assert exc_info.value.field == "modified_duration"
+
+    # --- Position counts ---
+
+    def test_num_bond_and_cash_positions_correct(self) -> None:
+        """num_bond_positions and num_cash_positions are counted correctly."""
+        engine, _ = self.make_engine()
+        positions = [
+            make_bond_position(position_id=1),
+            make_bond_position(position_id=2),
+            make_cash_position(position_id=3),
+        ]
+        portfolio = make_portfolio(positions)
+        fi_input = FixedIncomeStressInput(portfolio=portfolio, scenarios=[make_scenario()])
+
+        result = engine.stress(fi_input)[0]
+
+        assert result.num_bond_positions == 2
+        assert result.num_cash_positions == 1
