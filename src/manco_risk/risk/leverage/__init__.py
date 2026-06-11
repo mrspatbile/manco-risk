@@ -12,13 +12,15 @@ Responsibilities (Phase 1):
 - Cash and cash-equivalent exposure source engine
 - Direct borrowing exposure source engine
 - Securities financing transaction exposure source engine
+- Derivative valuation and exposure source engine
 
 Does NOT include:
 - AIFMD gross aggregation engine
 - AIFMD commitment aggregation engine
+- Derivative pricing or Greeks
+- QuantLib dependency
 - Persistence or reporting
 - Limit monitoring
-- Derivative conversion formulas
 """
 
 from manco_risk.risk.leverage.borrowing_models import (
@@ -28,6 +30,17 @@ from manco_risk.risk.leverage.borrowing_models import (
 )
 from manco_risk.risk.leverage.cash_engine import CashExposureEngine
 from manco_risk.risk.leverage.cash_result import CashExposureResult
+from manco_risk.risk.leverage.derivative_engine import DerivativeExposureEngine
+from manco_risk.risk.leverage.derivative_models import (
+    DerivativeExposure,
+    DerivativeExposureSource,
+    DerivativePayoffType,
+    DerivativeRecord,
+    DerivativeType,
+    DerivativeValuation,
+    DerivativeValuationSource,
+)
+from manco_risk.risk.leverage.derivative_result import DerivativeExposureResult
 from manco_risk.risk.leverage.direct_borrowing_engine import DirectBorrowingExposureEngine
 from manco_risk.risk.leverage.direct_borrowing_result import DirectBorrowingExposureResult
 from manco_risk.risk.leverage.enums import (
@@ -59,6 +72,15 @@ __all__ = [
     "BorrowingTreatment",
     "CashExposureEngine",
     "CashExposureResult",
+    "DerivativeExposureEngine",
+    "DerivativeExposureResult",
+    "DerivativeExposure",
+    "DerivativeExposureSource",
+    "DerivativePayoffType",
+    "DerivativeRecord",
+    "DerivativeType",
+    "DerivativeValuation",
+    "DerivativeValuationSource",
     "DirectBorrowingExposureEngine",
     "DirectBorrowingExposureResult",
     "ExposureTreatment",

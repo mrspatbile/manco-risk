@@ -135,12 +135,12 @@ When starting a new Claude session:
 
 MRS-139 — Implement leverage analytics — parent issue
 
-MRS-157 — Leverage taxonomy and exposure source model
-MRS-158 — Physical instrument leverage exposure
-MRS-159 — Cash and cash-equivalent leverage treatment
-MRS-160 — Direct borrowing leverage source
-MRS-161 — Securities financing transaction leverage source
-MRS-162 — Derivative exposure conversion model
+MRS-157 — Leverage taxonomy and exposure source model — done
+MRS-158 — Physical instrument leverage exposure — done
+MRS-159 — Cash and cash-equivalent leverage treatment — done
+MRS-160 — Direct borrowing leverage source — done
+MRS-161 — Securities financing transaction leverage source — done
+MRS-162 — Derivative valuation and exposure model - done
 MRS-163 — AIFMD gross and commitment aggregation engines
 MRS-164 — Leverage persistence and reporting views
 MRS-165 — UCITS global exposure support
@@ -148,6 +148,8 @@ MRS-166 — Leverage limit monitoring framework
 
 ### Remaining database / risk issue sequence
 
+* MRS-167 — QuantLib derivative pricing and Greeks spike
+* MRS-168 — QuantLib-backed derivative valuation/exposure conversion
 * MRS-139 — Implement leverage analytics
 * MRS-140 — Implement liquidity risk analytics
 * MRS-141 — Implement liquidity stress testing
