@@ -1,3 +1,5 @@
+# Pre-commit checks for formatting, linting and basic file hygiene.
+
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.12.0
