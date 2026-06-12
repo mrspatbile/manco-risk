@@ -2,6 +2,8 @@
 
 Validates pricing and Greeks calculation for European calls and puts.
 Tests use QuantLib's Black-Scholes-Merton model.
+
+Note: These tests are skipped if QuantLib is not installed.
 """
 
 from datetime import date, timedelta
@@ -14,6 +16,9 @@ from manco_risk.risk.derivatives.pricing_models import (
     EuropeanEquityOptionPricingInput,
     OptionType,
 )
+
+pytest.importorskip("QuantLib")
+
 from manco_risk.risk.derivatives.quantlib_pricer import QuantLibEuropeanOptionPricer
 
 

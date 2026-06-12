@@ -19,12 +19,37 @@ Does NOT include:
 """
 
 from decimal import Decimal
+from typing import Any
 
 from manco_risk.risk.derivatives.pricing_models import (
     DerivativePricingResult,
     EuropeanEquityOptionPricingInput,
     OptionType,
 )
+
+
+def _import_quantlib() -> Any:
+    """Import QuantLib at runtime with clear error if not installed.
+
+    Returns
+    -------
+    Any
+        The QuantLib module.
+
+    Raises
+    ------
+    ImportError
+        If QuantLib is not installed.
+    """
+    try:
+        import QuantLib as ql  # type: ignore[import-untyped]
+
+        return ql
+    except ImportError as exc:
+        raise ImportError(
+            "QuantLib is required to use QuantLibEuropeanOptionPricer. "
+            "Install the optional dependency with: uv sync --extra quantlib"
+        ) from exc
 
 
 class QuantLibEuropeanOptionPricer:
@@ -41,18 +66,6 @@ class QuantLibEuropeanOptionPricer:
     Fair value and Greeks are scaled by quantity.
     """
 
-    def __init__(self):
-        """Initialize pricer and import QuantLib (raises if not installed)."""
-        try:
-            import QuantLib as ql  # type: ignore[import-untyped]
-
-            self.ql = ql
-        except ImportError as e:
-            raise ImportError(
-                "QuantLib is required for QuantLibEuropeanOptionPricer. "
-                "Install with: uv add --optional quantlib"
-            ) from e
-
     def price(self, input: EuropeanEquityOptionPricingInput) -> DerivativePricingResult:
         """Price a European equity option and return Greeks.
 
@@ -66,7 +79,7 @@ class QuantLibEuropeanOptionPricer:
         DerivativePricingResult
             Fair value and Greeks, scaled by quantity.
         """
-        ql = self.ql
+        ql = _import_quantlib()
 
         # Convert dates to QuantLib dates
         pricing_date = ql.Date(

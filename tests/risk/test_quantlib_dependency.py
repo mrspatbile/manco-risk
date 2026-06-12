@@ -4,7 +4,12 @@ Verifies that QuantLib can be imported and basic objects can be constructed.
 This is NOT a pricing test; only confirms that the dependency is available.
 
 QuantLib is an optional dependency for future derivative pricing work (MRS-169B+).
+These tests are skipped if QuantLib is not installed.
 """
+
+import pytest
+
+pytest.importorskip("QuantLib")
 
 
 class TestQuantLibDependency:
