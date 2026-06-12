@@ -11,9 +11,9 @@
 
 ---
 
-`manco-risk` is an active Python analytics repository for investment fund risk, with a focus on AIFM / ManCo workflows, regulatory methodology, portfolio risk, leverage, stress testing, derivative exposure and liquidity risk.
+`manco-risk` is a Python analytics repository for investment fund risk, covering AIFM / ManCo workflows, regulatory methodology, portfolio risk, leverage, stress testing, derivative exposure and liquidity risk.
 
-The project translates selected fund risk and regulatory concepts into structured data models, calculation logic and reporting-oriented outputs. It is intended as a practical modelling and analytics implementation, not as a production ManCo platform.
+This repository implements the analytics layer for selected ManCo risk workflows. The current focus is on core risk modules, with reporting outputs and review interfaces planned as the analytics components mature.
 
 > This repository is for analytical and methodological purposes. It is not a production ManCo system, regulatory reporting engine, legal interpretation tool or valuation platform.
 
