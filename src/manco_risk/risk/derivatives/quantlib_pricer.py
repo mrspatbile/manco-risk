@@ -42,7 +42,7 @@ def _import_quantlib() -> Any:
         If QuantLib is not installed.
     """
     try:
-        import QuantLib as ql  # type: ignore[import-untyped]
+        import QuantLib as ql  # type: ignore
 
         return ql
     except ImportError as exc:
