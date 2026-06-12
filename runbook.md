@@ -1,46 +1,38 @@
-# runbook.md
+# Runbook
 
-## Environment
+Operational commands for working on `manco-risk`.
 
-Use `uv` for project dependency management.
-
-Create or update the project environment:
+## Quick start
 
 ```bash
+git clone <repo-url>
+cd manco-risk
 uv sync
+uv run pytest
 ```
 
-`uv sync` reads `pyproject.toml` and `uv.lock`, creates `.venv` if needed, and installs the project dependencies.
+All tests should pass before starting a new task.
 
-Do not install project dependencies with `pip` unless there is a specific reason.
+## Daily development workflow
 
-## Dependency management
-
-Add runtime dependencies:
+Run the standard local checks:
 
 ```bash
-uv add <package>
+uv run ruff check src tests
+uv run mypy src
+uv run pytest
 ```
 
-Example:
+Run a specific test file:
 
 ```bash
-uv add pandas
+uv run pytest tests/risk/test_leverage_limit_monitoring.py
 ```
 
-Add development dependencies:
+Run a specific test method:
 
 ```bash
-uv add --dev <package>
-```
-
-Examples:
-
-```bash
-uv add --dev pytest
-uv add --dev ruff
-uv add --dev mypy
-uv add --dev pre-commit
+uv run pytest tests/risk/test_leverage_limit_monitoring.py::TestLeverageLimitMonitoring::test_valid_limit
 ```
 
 ## Code quality
@@ -51,7 +43,7 @@ Check linting:
 uv run ruff check src tests
 ```
 
-Auto-fix what Ruff can fix:
+Auto-fix linting issues:
 
 ```bash
 uv run ruff check --fix src tests
@@ -63,110 +55,164 @@ Check formatting:
 uv run ruff format --check src tests
 ```
 
-Fix formatting:
+Apply formatting:
 
 ```bash
 uv run ruff format src tests
 ```
 
-Type check:
+Run type checks:
 
 ```bash
 uv run mypy src
 ```
 
-## Tests
-
-Run all tests:
+Run tests:
 
 ```bash
-uv run pytest tests/
+uv run pytest
 ```
 
 Run tests with coverage:
 
 ```bash
-uv run pytest tests/ -v --cov=src --cov-report=term-missing
+uv run pytest tests --cov=src --cov-report=term-missing
 ```
+
+## Before committing
+
+Run the full local check:
+
+```bash
+uv run ruff check --fix src tests
+uv run ruff format src tests
+uv run mypy src
+uv run pytest
+```
+
+Then review the changes before committing:
+
+```bash
+git status
+git diff --staged
+```
+
+## Dependency management
+
+Install or update the project environment:
+
+```bash
+uv sync
+```
+
+Add a runtime dependency:
+
+```bash
+uv add <package>
+```
+
+Add a development dependency:
+
+```bash
+uv add --dev <package>
+```
+
+Add an optional dependency group:
+
+```bash
+uv add --optional <group-name> <package>
+```
+
+Do not manually edit `uv.lock`.
 
 ## Pre-commit
 
-Install the Git pre-commit hook once per repository:
+Install hooks once:
 
 ```bash
 uv run pre-commit install
 ```
 
-Run all pre-commit hooks manually:
+Run all hooks manually:
 
 ```bash
 uv run pre-commit run --all-files
 ```
 
-The pre-commit hook currently runs:
-
-```text
-ruff-check
-ruff-format
-```
-
-Do not add slow checks such as the full test suite to pre-commit unless there is a clear reason.
+The pre-commit hook runs automatically before a commit is created.
 
 ## Git workflow
 
-Check current state:
+Check status:
 
 ```bash
 git status
 ```
 
-Stage changes:
+Review recent commits:
 
 ```bash
-git add <file>
+git log --oneline -5
 ```
 
-Commit changes:
+Stage files:
 
 ```bash
-git commit -m "clear commit message"
+git add <files>
 ```
 
-Pre-commit runs automatically before the commit is created.
+Commit with a clear domain-focused message:
+
+```bash
+git commit -m "add leverage limit monitoring framework"
+```
+
+Push to the current branch:
+
+```bash
+git push
+```
+
+Do not force-push unless explicitly required.
 
 ## Common Ruff errors
 
-- `F401` unused import: remove the import
-- `F841` assigned but unused variable: remove the variable
-- `I001` import order: run `uv run ruff check --fix src tests`
+| Error  | Meaning                      | Typical fix                             |
+| ------ | ---------------------------- | --------------------------------------- |
+| `F401` | unused import                | remove the import                       |
+| `F841` | assigned but unused variable | remove or use the variable              |
+| `I001` | import order issue           | run `uv run ruff check --fix src tests` |
+| `E501` | line too long                | shorten or split the line               |
 
-## Common commands
+## Project references
 
-```bash
-uv sync
-uv run ruff check src tests
-uv run ruff check --fix src tests
-uv run ruff format src tests
-uv run mypy src
-uv run pytest tests/
-uv run pre-commit run --all-files
-```
+Read these before changing architecture or methodology:
 
-## Mock data
+* `CLAUDE.md` — working rules, scope control, commit rules
+* `ARCHITECTURE.md` — module boundaries and forbidden patterns
+* `meta/project_spec.md` — domain scope and implementation objective
+* `meta/conventions.md` — units, signs, dates, naming conventions
+* `meta/reg_reference.md` — regulatory and methodology reference material
 
-Add the command to generate mock data for this project once defined.
+## Environment
 
-Example placeholder:
+No environment variables are required for local development.
 
-```bash
-uv run python scripts/generate_mock_data.py
-```
+Main local files:
+
+| File/folder      | Purpose                                            |
+| ---------------- | -------------------------------------------------- |
+| `pyproject.toml` | project metadata, dependencies, tool settings      |
+| `uv.lock`        | resolved dependency versions                       |
+| `.venv/`         | local virtual environment                          |
+| `src/`           | package source code                                |
+| `tests/`         | automated tests                                    |
+| `meta/`          | methodology, regulatory, and roadmap documentation |
 
 ## Notes
 
-- `pyproject.toml` defines project dependencies and tool settings.
-- `uv.lock` records the exact package versions installed by uv.
-- `.venv` contains the project environment.
-- `uv run` executes commands inside the project environment.
-- `uv add` updates dependencies and the lock file.
-- `uv sync` recreates or updates the environment from the lock file.
+* Use `uv` for dependency management.
+* Keep business logic in `src/`.
+* Keep notebooks and UI thin.
+* Run focused tests while developing, then run the full check before committing.
+* Keep documentation-only changes separate from implementation changes when practical.
