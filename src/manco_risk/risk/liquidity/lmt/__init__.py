@@ -20,6 +20,10 @@ from manco_risk.risk.liquidity.lmt.models import (
     SuspensionConfig,
     SwingPricingConfig,
 )
+from manco_risk.risk.liquidity.lmt.suspension_engine import (
+    SuspensionEngine,
+    SuspensionResult,
+)
 
 __all__ = [
     "GateTriggerConfig",
@@ -34,4 +38,6 @@ __all__ = [
     "LMTSimulationResult",
     "GateResult",
     "GateEngine",
+    "SuspensionResult",
+    "SuspensionEngine",
 ]
