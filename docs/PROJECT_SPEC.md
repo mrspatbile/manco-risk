@@ -17,7 +17,7 @@ Data flow:
 Fund administrator files  
 → ETL and validation  
 → SQLite database  
-→ Risk engines  
+→ Risk calculation modules  
 → Reporting layer  
 → Notebooks / UI for review only
 
@@ -25,7 +25,7 @@ Fund administrator files
 
 ### market_data
 
-Bloomberg-style market data abstraction.
+Bloomberg-compatible market data interface.
 
 Responsibilities:
 - mock Bloomberg client
@@ -51,7 +51,7 @@ Persistence layer.
 Responsibilities:
 - SQLite connection
 - database models
-- repository/query functions
+- data access functions
 - schema creation
 - data access boundaries
 
@@ -110,7 +110,7 @@ No business logic should live in notebooks.
 - Each risk calculation must have tests.
 - Each database query should be isolated in the database layer.
 - Market data access must go through the market data layer.
-- ETL should validate data before risk engines consume it.
+- ETL should validate data before risk calculation modules consume it.
 - Prefer typed inputs and explicit schemas.
 - Avoid hidden assumptions inside notebooks.
 
@@ -119,7 +119,7 @@ No business logic should live in notebooks.
 Phase 1:
 - project structure
 - database layer
-- market data abstraction
+- market data access layer
 - position ingestion
 - fixed-position Historical VaR
 - Expected Shortfall
@@ -152,7 +152,7 @@ Phase 3:
 
 - All calculations must be reproducible.
 - All methodologies must be documented.
-- All risk engines must be independently testable.
+- All risk calculation modules must be independently testable.
 - Market data, ETL, risk and reporting layers must remain decoupled.
 - Notebook outputs should be reproducible from package functions alone.
 

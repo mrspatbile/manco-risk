@@ -5,10 +5,10 @@
 ```
 src/manco_risk/
 ├── common/              Shared types, exceptions, utilities
-├── market_data/         Market data abstraction and providers
+├── market_data/         Market data access layer and providers
 ├── etl/                 Data ingestion and validation
 ├── database/            SQLite persistence and query layer
-├── risk/                Risk calculation engines
+├── risk/                Risk calculation modules
 ├── reporting/           Report generation and output formatting
 └── ui/                  Streamlit application (presentation layer only)
 ```
@@ -34,7 +34,7 @@ src/manco_risk/
 
 ### `market_data/`
 **Responsibilities:**
-- Abstract Bloomberg-style market data interface
+- Bloomberg-compatible market data interface
 - Mock Bloomberg provider implementation
 - Price, yield curve, and benchmark retrieval
 - Market data schemas and validation
@@ -72,7 +72,7 @@ src/manco_risk/
 **Responsibilities:**
 - SQLite connection management
 - Database schema definition
-- Repository/query functions
+- Data access functions
 - Data access boundaries
 
 **Imports from:**
@@ -106,7 +106,7 @@ src/manco_risk/
 - Database schema decisions
 - Raw file I/O (use `database/` and `etl/`)
 
-**Boundary:** Risk engines operate on position and market data objects; they return typed calculation results. They do not know about reports or UI.
+**Boundary:** Risk calculation modules operate on position and market data objects; they return typed calculation results. They do not know about reports or UI.
 
 ---
 
@@ -135,7 +135,7 @@ src/manco_risk/
 **Responsibilities:**
 - Streamlit pages and dashboards
 - Display results from `reporting/`
-- Call reporting and application service functions
+- Call reporting and workflow functions
 - User interaction and navigation
 
 **Imports from:**
@@ -212,8 +212,8 @@ The following patterns are explicitly forbidden:
 
 These modules have defined extension points for future implementations:
 
-- **`market_data/`** — Implement new providers (e.g., production Bloomberg) by subclassing the abstract market data interface.
-- **`risk/`** — Add new risk engines (parametric VaR, stress testing) as new subclasses following the established interface.
+- **`market_data/`** — Implement new providers (e.g., production Bloomberg) by subclassing the market data interface.
+- **`risk/`** — Add new risk calculation modules (parametric VaR, stress testing) as new subclasses following the established interface.
 - **`reporting/`** — Add new report types without modifying `risk/` or `ui/`.
 - **`services/`** — (Future) Application services that orchestrate multi-module workflows. Create only when needed.
 
@@ -280,4 +280,4 @@ All adjustments must be:
 - traceable to the original source value
 - applied before data reaches downstream modules
 
-Risk engines, reporting modules, ETL processes and UI layers must not implement provider-specific corrections. Data quality adjustments belong to the market data provider layer.
+Risk calculation modules, reporting modules, ETL processes and UI layers must not implement provider-specific corrections. Data quality adjustments belong to the market data provider layer.

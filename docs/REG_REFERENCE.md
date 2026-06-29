@@ -9,15 +9,15 @@ The focus is not a legal summary. The focus is system design.
 
 The platform must support:
 
-- domain models
+- fund data models
 - database schemas
-- configuration models
-- risk engines
-- valuation engines
+- methodology configuration
+- risk calculations
+- valuation processes
 - liquidity stress testing
 - leverage calculations
 - fund-level methodology frameworks
-- regulatory reporting modules
+- reporting modules
 - investor reporting modules
 - ESG and sustainability data models
 - Annex IV reporting architecture

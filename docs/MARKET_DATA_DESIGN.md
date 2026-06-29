@@ -1,8 +1,8 @@
-# Market Data Abstraction Design (MRS-125)
+# Market Data Interface Design (MRS-125)
 
 ## Overview
 
-The market data abstraction provides a clean interface for retrieving:
+The market data access layer provides a clean interface for retrieving:
 - Current and historical instrument prices
 - FX rates
 - Instrument metadata (asset class, currency, duration, etc.)
@@ -23,7 +23,7 @@ src/manco_risk/
 └── market_data/
     ├── __init__.py            # Exports public API
     ├── schemas.py             # Pydantic models
-    ├── provider.py            # Abstract base class
+    ├── provider.py            # Base provider interface
     └── csv_provider.py        # CSV-backed mock implementation
 ```
 
@@ -128,7 +128,7 @@ class FXRateNotAvailableError(MarketDataError):
 
 ---
 
-## Abstract Provider Interface
+## Market Data Provider Interface
 
 ```python
 # provider.py
@@ -138,7 +138,7 @@ from datetime import date
 
 class MarketDataProvider(ABC):
     """
-    Abstract base for market data providers.
+    Base interface for market data providers.
     
     Implementations: CSVProvider, BloombergProvider, CachedProvider, etc.
     """
