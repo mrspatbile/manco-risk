@@ -9,7 +9,9 @@ description = ""
 readme = "README.md"
 requires-python = ">=3.13"
 authors = [
-    {name = "mrspatbile"}
+    {name = "mrspatbile", 
+    email = "mrspatbile@gmail.com",
+    }
 ]
 license = {text = "MIT"}
 
