@@ -34,3 +34,6 @@ dist/
 
 # Jupyter
 .ipynb_checkpoints/
+
+# Human
+/meta/
