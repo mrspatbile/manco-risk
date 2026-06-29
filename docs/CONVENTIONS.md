@@ -175,6 +175,12 @@ Examples:
 - `-0.03` = loss of 3%
 - `0.02` = gain of 2%
 
+### Liquidity Analytics
+
+Liquidity calculations (Time-to-Liquidate, bucket classification, redemption stress, investor concentration, liquidity-adjusted VaR) follow their own methodology document with full formulas and conventions.
+
+See: [LIQUIDITY_METHODOLOGY.md](LIQUIDITY_METHODOLOGY.md)
+
 ### Sign Conventions
 
 Returns:
