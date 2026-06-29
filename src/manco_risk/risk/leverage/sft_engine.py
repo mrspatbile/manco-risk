@@ -29,7 +29,7 @@ class SFTExposureEngine:
 
     Separates repo, reverse repo, and securities lending into distinct
     leverage sources. Leaves final AIFMD treatment (inclusion/exclusion from
-    gross or commitment) to later aggregation layer (MRS-163).
+    gross or commitment) to a later aggregation layer.
     """
 
     SFT_TYPE_TO_SOURCE = {

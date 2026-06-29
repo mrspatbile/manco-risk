@@ -7,8 +7,8 @@ Calculates raw leverage exposure from physical portfolio instruments:
 - Treatment = INCLUDED for all physical instruments
 
 Does NOT include:
-- Cash (MRS-159)
-- Derivatives (MRS-162)
+- Cash (handled separately)
+- Derivatives (handled separately)
 - Borrowing or SFTs
 - Leverage calculation or limit monitoring
 """

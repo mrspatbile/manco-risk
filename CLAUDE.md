@@ -6,7 +6,7 @@ manco-risk is a modular Python risk analytics repository for AIFM and ManCo work
 
 The project separates market data, ETL, database access, risk calculations, reporting and UI layers. The first implementation focuses on position-based Historical VaR, Expected Shortfall and VaR backtesting, with later modules covering parametric VaR, stress testing, leverage, liquidity analytics, LST, LMT simulation and Annex IV-style reporting.
 
-The full specification is in `meta/project_spec.md` -- read it before starting any module.
+The full specification is in `docs/PROJECT_SPEC.md` -- read it before starting any module.
 
 ---
 
@@ -16,8 +16,8 @@ At the start of a new Claude session:
 
 1. Read `CLAUDE.md`.
 2. Read `ARCHITECTURE.md`.
-3. Read `meta/project_spec.md`.
-4. Read `meta/conventions.md`.
+3. Read `docs/PROJECT_SPEC.md`.
+4. Read `docs/CONVENTIONS.md`.
 5. Check the current repository state:
 
    ```bash
@@ -72,9 +72,11 @@ Confirm the current state of the repo before adding new files.
 
 ## Planning and Issue Workflow
 
+**Issue Tracking:** GitHub Issues are the authoritative planning system. Documents in `meta/` that reference MRS (mini-requirements) numbers are historical design references from earlier planning phases — they remain useful for methodology context but are not active tracking.
+
 **Goal:** Feature parity with `fund-risk-workflow`.
 
-**Reference:** The Feature Parity Roadmap (`meta/feature_parity_roadmap.md`) is the master planning document. All work aligns with capabilities and milestones defined there.
+**Reference:** The Feature Parity Roadmap (`docs/FEATURE_PARITY_ROADMAP.md`) is the master planning document. All work aligns with capabilities and milestones defined there.
 
 ### Starting a new task
 
@@ -84,17 +86,17 @@ Confirm the current state of the repo before adding new files.
 4. Read from:
    * `CLAUDE.md`
    * `ARCHITECTURE.md`
-   * `meta/project_spec.md`
-   * `meta/conventions.md`
+   * `docs/PROJECT_SPEC.md`
+   * `docs/CONVENTIONS.md`
    * the GitHub issue description
    * `git log --oneline -5`
    * `git status --short`
 
 5. Only read additional meta documents if relevant:
-   * prototype review: `meta/prototype_field_inventory.md`
-   * regulatory design: `meta/reg_reference.md`
+   * prototype review: `docs/PROTOTYPE_FIELD_INVENTORY.md`
+   * regulatory design: `docs/REG_REFERENCE.md`
    * database design: `meta/domain_note.md`
-   * market data work: `meta/market_data_design.md`
+   * market data work: `docs/MARKET_DATA_DESIGN.md`
 
 6. Propose the approach before implementing.
 
@@ -151,7 +153,7 @@ Do not invent business logic that is not in the spec or already present in the c
 
 Document data conventions in three places:
 
-* `meta/conventions.md` -- authoritative reference
+* `docs/CONVENTIONS.md` -- authoritative reference
 * domain models -- field-level units and ranges
 * calculation modules -- assumptions and formula documentation
 
@@ -275,7 +277,7 @@ It must not be treated as an architectural reference.
 
 Before using the prototype repository, read and follow:
 
-* `meta/prototype_field_inventory.md`
+* `docs/PROTOTYPE_FIELD_INVENTORY.md`
 
 The prototype field inventory is mandatory when reviewing fields, schemas, reports, calculations or sample datasets from the prototype.
 
@@ -312,7 +314,7 @@ Do not reproduce:
 When using the prototype repository:
 
 1. Explain what information is being referenced.
-2. Classify the relevant prototype fields or concepts using `meta/prototype_field_inventory.md`.
+2. Classify the relevant prototype fields or concepts using `docs/PROTOTYPE_FIELD_INVENTORY.md`.
 3. Explain what will be reused conceptually.
 4. Explain what will be redesigned.
 5. Implement according to the architecture defined in this repository.
@@ -358,10 +360,10 @@ The goal is to reimplement selected functionality using the architecture defined
 
 * `ARCHITECTURE.md`
 * `CLAUDE.md`
-* `meta/project_spec.md`
-* `meta/conventions.md`
-* `meta/reg_reference.md`
-* `meta/prototype_field_inventory.md`
+* `docs/PROJECT_SPEC.md`
+* `docs/CONVENTIONS.md`
+* `docs/REG_REFERENCE.md`
+* `docs/PROTOTYPE_FIELD_INVENTORY.md`
 
 A clean reimplementation is preferred over a direct migration.
 

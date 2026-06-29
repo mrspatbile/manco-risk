@@ -7,7 +7,7 @@ Responsibilities:
 - Provide immutable result objects
 
 Notes:
-- Validation is separate from parsing (MRS-131) and enrichment (MRS-133)
+- Validation is separate from parsing and enrichment
 - All checks run; caller decides how to handle results
 - Severity levels: WARNING (non-blocking), ERROR (blocking)
 - Immutable Pydantic v2 models for consistency with PositionInput

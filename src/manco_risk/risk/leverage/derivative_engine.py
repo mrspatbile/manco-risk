@@ -37,7 +37,7 @@ class DerivativeExposureEngine:
     Uses provided exposure fields in priority order (delta > equivalent underlying > notional).
     Fair value is not used as leverage exposure.
     Leaves final AIFMD treatment (inclusion/exclusion from gross or commitment) to
-    later aggregation layer (MRS-163).
+    a later aggregation layer.
     """
 
     def calculate(self, derivative_records: list[DerivativeRecord]) -> DerivativeExposureResult:

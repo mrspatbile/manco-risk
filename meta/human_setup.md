@@ -13,7 +13,7 @@ Template for new Python projects. Lives at `coding/claude-templates/` alongside 
 - `README-template.md` -- becomes the new repository's README.md after setup runs
 - `runbook.md` -- day-to-day development commands
 - `meta/environment_setup.md` -- explanation of uv, pipx, pre-commit and repository tooling conventions
-- `meta/project_spec.md` -- blank specification file with only the disclaimer
+- `docs/PROJECT_SPEC.md` -- blank specification file with only the disclaimer
 - `meta/prompt.txt` -- the first message sent to Claude Code at session start
 
 ## How to start a new project
@@ -48,7 +48,7 @@ The script will:
 
 Fill these in manually after running `setup.py`:
 
-1. `meta/project_spec.md` -- complete project specification before Claude touches any module
+1. `docs/PROJECT_SPEC.md` -- complete project specification before Claude touches any module
 2. `CLAUDE.md` -- project overview, module list, issue references
 3. `README.md` -- project description and usage instructions
 4. Add project dependencies using:
@@ -120,8 +120,8 @@ gh release create v0.1.0
 Whenever any of the following files change:
 
 - `CLAUDE.md`
-- `meta/project_spec.md`
-- `meta/conventions.md`
+- `docs/PROJECT_SPEC.md`
+- `docs/CONVENTIONS.md`
 
 start the next AI session by asking the AI to re-read them.
 
@@ -131,8 +131,8 @@ Recommended prompt:
 Please re-read the following documents in full before continuing:
 
 - CLAUDE.md
-- meta/project_spec.md
-- meta/conventions.md
+- docs/PROJECT_SPEC.md
+- docs/CONVENTIONS.md
 
 Summarise any changes that affect implementation decisions.
 

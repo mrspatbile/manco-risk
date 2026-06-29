@@ -4,8 +4,8 @@ Pure models for limit definition, observation, and checking results.
 No calculation, persistence, or reporting logic.
 
 Limit monitoring is separate from leverage calculation.
-Calculation engines (MRS-157 to MRS-165) produce metrics.
-Limit monitoring (MRS-166) checks those metrics against limits.
+Calculation engines produce leverage metrics.
+Limit monitoring checks those metrics against limits.
 """
 
 from datetime import date

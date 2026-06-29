@@ -15,7 +15,7 @@ class AssetClass(str, Enum):
     Note: Some risk engines (equity_stress, fixed_income_stress) use uppercase
     equivalents ("EQUITY", "BOND", "CASH", etc.) internally. These are not
     derived from this enum; they are hardcoded for computational isolation.
-    Future refactoring may standardize this (MRS-171 tracking issue).
+    Future refactoring may standardize this.
     """
 
     EQUITY = "Equity"

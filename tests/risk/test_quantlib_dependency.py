@@ -3,7 +3,7 @@
 Verifies that QuantLib can be imported and basic objects can be constructed.
 This is NOT a pricing test; only confirms that the dependency is available.
 
-QuantLib is an optional dependency for future derivative pricing work (MRS-169B+).
+QuantLib is an optional dependency for planned derivative pricing enhancements.
 These tests are skipped if QuantLib is not installed.
 """
 
@@ -75,7 +75,7 @@ class TestQuantLibDependency:
     def test_no_quantlib_in_production_code(self):
         """QuantLib is not imported in production risk code (yet)."""
         # This test verifies that the core risk modules don't depend on QuantLib
-        # Future MRS-169C will wire QuantLib-backed pricing, but for now
+        # Future enhancements will add QuantLib-backed pricing, but for now
         # the risk layer is independent of QuantLib
         import inspect
 

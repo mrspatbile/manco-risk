@@ -235,7 +235,7 @@ class TestPositionInputSchema:
 
         Note: Zero quantity represents a position that was fully closed or unwound.
         Full data quality validation (e.g., rejecting zero positions) is deferred to
-        the validation framework (MRS-132). This step validates only parsing and
+        a later validation phase. This step validates only parsing and
         required fields, not business logic.
         """
         position = PositionInput(
@@ -254,8 +254,8 @@ class TestPositionInputSchema:
         """PositionInput accepts zero market_value at ingestion boundary.
 
         Note: Zero market value may represent worthless positions or data entry
-        anomalies. Full data quality validation is deferred to the validation
-        framework (MRS-132). This step validates only parsing and required fields.
+        anomalies. Full data quality validation is deferred to a later phase.
+        This step validates only parsing and required fields.
         """
         position = PositionInput(
             fund_name="Test Fund",

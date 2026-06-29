@@ -364,7 +364,7 @@ No tests for external APIs (live data, Bloomberg) since they're not implemented.
 
 ## Notes on Data Conventions
 
-All prices and rates follow `meta/conventions.md`:
+All prices and rates follow `docs/CONVENTIONS.md`:
 - Prices stored as `Decimal`
 - Rates/yields stored as `Decimal` (0.035 = 3.5%)
 - Durations in years as `Decimal`

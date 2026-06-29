@@ -190,9 +190,9 @@ Read these before changing architecture or methodology:
 
 * `CLAUDE.md` — working rules, scope control, commit rules
 * `ARCHITECTURE.md` — module boundaries and forbidden patterns
-* `meta/project_spec.md` — domain scope and implementation objective
-* `meta/conventions.md` — units, signs, dates, naming conventions
-* `meta/reg_reference.md` — regulatory and methodology reference material
+* `docs/PROJECT_SPEC.md` — domain scope and implementation objective
+* `docs/CONVENTIONS.md` — units, signs, dates, naming conventions
+* `docs/REG_REFERENCE.md` — regulatory and methodology reference material
 
 ## Environment
 

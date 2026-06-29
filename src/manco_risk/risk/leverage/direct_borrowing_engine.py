@@ -27,7 +27,7 @@ class DirectBorrowingExposureEngine:
 
     Separates unreinvested and reinvested borrowing into distinct leverage sources.
     Leaves final AIFMD treatment (inclusion/exclusion from gross or commitment) to
-    later aggregation layer (MRS-163).
+    a later aggregation layer.
     """
 
     def calculate(self, borrowing_records: list[BorrowingRecord]) -> DirectBorrowingExposureResult:

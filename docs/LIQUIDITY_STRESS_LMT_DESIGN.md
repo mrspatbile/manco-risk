@@ -1,8 +1,9 @@
 # Liquidity Stress Testing and LMT Calibration Design
 
-Status: implementation design  
+**Note:** This is a historical design document created during v0.1.0 planning. It remains the authoritative methodology reference for liquidity risk. Work is now tracked via GitHub Issues: [#6 Migrate liquidity risk analytics](https://github.com/mrspatbile/manco-risk/issues/6) and [#7 Implement LMT simulation engine](https://github.com/mrspatbile/manco-risk/issues/7).
+
+Status: methodology reference  
 Project area: liquidity analytics and LMT simulation  
-Target implementation track: MRS-173 onward  
 Last reviewed: 2026-06-12
 
 ## 1. Design objective

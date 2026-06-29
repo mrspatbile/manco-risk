@@ -1,5 +1,7 @@
 # Leverage Methodology Roadmap
 
+**Note:** This is a historical design document created during v0.1.0 planning. It remains the authoritative methodology reference for leverage analytics. Work is now tracked via GitHub Issues: [#8 Migrate leverage analytics](https://github.com/mrspatbile/manco-risk/issues/8).
+
 Project: `manco-risk`  
 Purpose: design and implement leverage analytics for AIFM / ManCo risk workflows with clear separation between exposure source, regulatory aggregation method, reporting, and limit monitoring.
 

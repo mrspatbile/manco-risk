@@ -499,7 +499,7 @@ Reasons:
 
 ## Files Modified / Created
 
-- ✅ Created: `meta/quantlib_derivative_pricing_spike.md` (this file)
+- ✅ Created: `meta/QUANTLIB_DERIVATIVE_PRICING_SPIKE.md` (this file)
 - ⏸️ NOT YET: `src/manco_risk/risk/derivative_pricing/` (will create in Phase 2/3)
 - ⏸️ NOT YET: QuantLib-Python added to `pyproject.toml` (will add in Phase 3)
 
