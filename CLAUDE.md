@@ -27,8 +27,7 @@ At the start of a new Claude session:
 
 6. State:
 
-   * current Linear issue
-   * current module
+   * current GitHub issue and relevant Feature Parity Roadmap milestone
    * latest relevant commits
    * files likely to be touched
    * proposed first step
@@ -69,53 +68,37 @@ Confirm the current state of the repo before adding new files.
 4. Implement in small steps.
 5. After each step explain what changed and why.
 
-### Module sequencing
-
-1. Target architecture and repository structure
-2. Market data abstraction layer
-3. Database schema and access layer
-4. Position ingestion and validation
-5. Risk-ready enrichment pipeline
-6. Historical VaR, Expected Shortfall and backtesting
-7. Parametric VaR and Student-t VaR
-8. Stress testing and leverage analytics
-9. Liquidity risk, LST and LMT analytics
-10. Reporting outputs
-11. Streamlit UI
-12. Example notebooks and documentation
-
 ---
 
-git commit -m "MRS-150: add fund risk scope, badges and methodology to README"
+## Planning and Issue Workflow
 
+**Goal:** Feature parity with `fund-risk-workflow`.
 
+**Reference:** The Feature Parity Roadmap (`meta/feature_parity_roadmap.md`) is the master planning document. All work aligns with capabilities and milestones defined there.
 
----
+### Starting a new task
 
-## Current issue handoff rule
+1. Check the Feature Parity Roadmap to identify the capability gap.
+2. Locate or create the corresponding GitHub issue.
+3. Review the issue description, labels, and milestone.
+4. Read from:
+   * `CLAUDE.md`
+   * `ARCHITECTURE.md`
+   * `meta/project_spec.md`
+   * `meta/conventions.md`
+   * the GitHub issue description
+   * `git log --oneline -5`
+   * `git status --short`
 
-For a new Claude session, do not require a full conversation history.
+5. Only read additional meta documents if relevant:
+   * prototype review: `meta/prototype_field_inventory.md`
+   * regulatory design: `meta/reg_reference.md`
+   * database design: `meta/domain_note.md`
+   * market data work: `meta/market_data_design.md`
 
-Use the current Linear issue plus the latest commits as the source of truth.
+6. Propose the approach before implementing.
 
-For each issue, start from:
-
-* `CLAUDE.md`
-* `ARCHITECTURE.md`
-* `meta/project_spec.md`
-* `meta/conventions.md`
-* the relevant issue description in Linear
-* `git log --oneline -5`
-* `git status --short`
-
-Only read additional meta documents when relevant:
-
-* prototype review: `meta/prototype_field_inventory.md`
-* regulatory design: `meta/reg_reference.md`
-* database design: `meta/domain_note.md`
-* market data work: `meta/market_data_design.md`
-
-Do not ask the user to paste long prior conversations unless the repository files and issue description are insufficient.
+Do not require long prior conversation history. The issue description plus repository files are the source of truth.
 
 ---
 
@@ -215,7 +198,7 @@ Key principles:
 
 ## Scope control
 
-Do not expand scope beyond the current Linear issue.
+Scope is controlled by the active GitHub issue. Do not expand beyond it.
 
 If a proposed change requires:
 
@@ -223,10 +206,11 @@ If a proposed change requires:
 * a new architectural component
 * a new dependency
 * a methodology change
+* a significant expansion of capability scope
 
 stop and ask before implementing.
 
-Prefer the smallest change that satisfies the current issue.
+Prefer the smallest change that satisfies the current issue. Check the Feature Parity Roadmap to confirm alignment before proposing scope changes.
 
 ---
 

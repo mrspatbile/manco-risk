@@ -8,7 +8,7 @@ manco-risk
 
 Build a modular Python risk analytics repository for AIFM / ManCo workflows, focused on fund risk management, market data ingestion, position validation, risk calculations and reporting outputs.
 
-The repository is intended to replace the earlier prototype with a cleaner architecture, stronger separation of concerns and tested calculation modules.
+The repository is intended to become the long-term implementation of the functionality currently demonstrated in fund-risk-workflow, using a cleaner modular architecture, stronger separation of concerns and tested business components.
 
 ## Core Architecture
 
