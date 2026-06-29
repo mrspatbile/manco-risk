@@ -7,6 +7,7 @@ This module defines the domain model contract and implements specialized
 engines (gate, swing, suspension, etc.) for LMT tool triggering and execution.
 """
 
+from manco_risk.risk.liquidity.lmt.backlog_engine import BacklogEngine
 from manco_risk.risk.liquidity.lmt.gate_engine import GateEngine, GateResult
 from manco_risk.risk.liquidity.lmt.models import (
     BacklogState,
@@ -46,4 +47,5 @@ __all__ = [
     "SuspensionEngine",
     "SwingPricingResult",
     "SwingPricingEngine",
+    "BacklogEngine",
 ]
