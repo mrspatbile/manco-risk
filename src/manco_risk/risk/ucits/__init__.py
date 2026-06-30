@@ -1,25 +1,26 @@
-"""UCITS global exposure module.
+"""UCITS framework: global exposure and monitoring.
 
-Pure UCITS global exposure measurement framework.
-Focuses on derivative-based global exposure under commitment approach.
-
-Responsibilities (Phase 1):
-- UCITS global exposure method taxonomy
-- UCITS global exposure status classification
-- Global exposure aggregation (commitment approach)
-- Limit status indication (100% NAV limit)
+Responsibilities:
+- Global exposure measurement (commitment approach)
+- VaR-based monitoring (absolute VaR)
+- UCITS-specific constants and thresholds
 
 Does NOT include:
 - AIFMD leverage calculation
-- VaR approaches (absolute or relative)
 - Pricing models or QuantLib
 - Greeks calculation
 - Database persistence
 - Reporting outputs
-- Limit monitoring
 """
 
+from manco_risk.risk.ucits.absolute_var import (
+    UCITSAbsoluteVaRInput,
+    UCITSAbsoluteVaRResult,
+    UCITSAbsoluteVaRStatus,
+)
+from manco_risk.risk.ucits.absolute_var_engine import UCITSAbsoluteVaREngine
 from manco_risk.risk.ucits.commitment_engine import UCITSCommitmentGlobalExposureEngine
+from manco_risk.risk.ucits.constants import UCITS_ABSOLUTE_VAR_LIMIT_RATIO
 from manco_risk.risk.ucits.global_exposure_models import (
     UCITSGlobalExposureInput,
     UCITSGlobalExposureMethod,
@@ -28,6 +29,11 @@ from manco_risk.risk.ucits.global_exposure_models import (
 )
 
 __all__ = [
+    "UCITSAbsoluteVaREngine",
+    "UCITSAbsoluteVaRInput",
+    "UCITSAbsoluteVaRResult",
+    "UCITSAbsoluteVaRStatus",
+    "UCITS_ABSOLUTE_VAR_LIMIT_RATIO",
     "UCITSCommitmentGlobalExposureEngine",
     "UCITSGlobalExposureInput",
     "UCITSGlobalExposureMethod",
