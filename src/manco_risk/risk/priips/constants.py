@@ -25,3 +25,10 @@ MRM_MAX_CLASS: int = 7
 CRM_MIN_CLASS: int = 1
 CRM_MAX_CLASS: int = 6
 CRM_DEFAULT_CLASS: int = 1  # Neutral credit risk; used when CRM is not applicable
+
+# Performance scenario types
+# Commission Delegated Regulation (EU) 2017/653 Annex IV/V
+SCENARIO_TYPES = ["stress", "unfavourable", "moderate", "favourable"]
+
+# Recommended Holding Period (RHP) validation
+RHP_MIN_YEARS: int = 1
