@@ -474,3 +474,103 @@ The engine does not value derivatives or aggregate positions. It consumes pre-co
 - Assumes counterparty category is correctly specified
 - Assumes NAV is current and accurate at observation time
 - Does not distinguish between different types of OTC derivatives or exposures
+
+---
+
+## UCITS Monitoring Summary
+
+### Purpose
+
+Orchestrate and consolidate the outputs of all UCITS monitoring engines into a single immutable summary.
+
+The summary provides overall compliance status and identifies which monitoring areas (if any) are in breach.
+
+### Architecture
+
+This is an **orchestration layer only**. It performs NO regulatory calculations or aggregations.
+
+The `UCITSMonitoringSummaryService` receives already-computed monitoring results from all engines and:
+
+1. Validates fund ID consistency across all results
+2. Determines overall compliance status
+3. Counts monitoring checks in breach
+4. Identifies breached monitoring areas by name
+5. Returns an immutable summary
+
+### Input
+
+The service consumes six monitoring results:
+
+- `UCITSAbsoluteVaRResult` — Absolute VaR monitoring
+- `UCITSRelativeVaRResult` — Relative VaR monitoring
+- `SRRIResult` — SRRI calculation (informational, no breach status)
+- `UCITSBorrowingResult` — Direct borrowing limit
+- `UCITSConcentrationResult` — Single-issuer concentration limit
+- `UCITSOTCCounterpartyResult` — OTC counterparty exposure limit
+
+Each result is produced independently by its respective engine and is fully immutable and validated.
+
+### Output
+
+The summary contains:
+
+```python
+UCITSMonitoringSummary(
+    fund_id: str                           # Fund identifier
+    valuation_date: date                   # Snapshot date
+    overall_compliance: bool               # True if all checks WITHIN_LIMIT
+    breach_count: int                      # Number of checks in BREACH
+    breached_checks: list[str]             # Names of breached monitoring areas
+    absolute_var_result: UCITSAbsoluteVaRResult
+    relative_var_result: UCITSRelativeVaRResult
+    srri_result: SRRIResult
+    borrowing_result: UCITSBorrowingResult
+    concentration_result: UCITSConcentrationResult
+    otc_counterparty_result: UCITSOTCCounterpartyResult
+)
+```
+
+**Monitoring areas that can breach:**
+
+- Absolute VaR (20% NAV limit)
+- Relative VaR (200% benchmark VaR limit)
+- Direct Borrowing (10% NAV limit)
+- Issuer Concentration (10% NAV limit)
+- OTC Counterparty (5-10% NAV limit depending on category)
+
+**Note:** SRRI is informational (risk classification) and does not have a breach status.
+
+### Usage
+
+```python
+from manco_risk.risk.ucits import UCITSMonitoringSummaryService
+
+summary = UCITSMonitoringSummaryService.build(
+    absolute_var_result=...,
+    relative_var_result=...,
+    srri_result=...,
+    borrowing_result=...,
+    concentration_result=...,
+    otc_counterparty_result=...,
+)
+
+if summary.overall_compliance:
+    print("Fund compliant with all UCITS monitoring limits")
+else:
+    print(f"Fund in breach: {', '.join(summary.breached_checks)}")
+```
+
+### Assumptions
+
+- All six monitoring results reference the same fund and valuation date
+- Monitoring results are accurate and complete
+- Each monitoring engine has performed its own validation
+
+### Limitations
+
+- Does not perform additional monitoring calculations
+- Does not aggregate or combine monitoring results
+- Does not determine relative severity of breaches
+- Does not suggest remediation actions
+- SRRI result is included for completeness but is informational only (no breach status)
+- Fund ID consistency is the only orchestration-level validation

@@ -47,6 +47,8 @@ from manco_risk.risk.ucits.global_exposure_models import (
     UCITSGlobalExposureResult,
     UCITSGlobalExposureStatus,
 )
+from manco_risk.risk.ucits.monitoring_summary import UCITSMonitoringSummary
+from manco_risk.risk.ucits.monitoring_summary_service import UCITSMonitoringSummaryService
 from manco_risk.risk.ucits.otc_counterparty import (
     UCITSCounterpartyCategory,
     UCITSOTCCounterpartyInput,
@@ -89,6 +91,8 @@ __all__ = [
     "UCITSGlobalExposureMethod",
     "UCITSGlobalExposureResult",
     "UCITSGlobalExposureStatus",
+    "UCITSMonitoringSummary",
+    "UCITSMonitoringSummaryService",
     "UCITSOTCCounterpartyEngine",
     "UCITSOTCCounterpartyInput",
     "UCITSOTCCounterpartyResult",
