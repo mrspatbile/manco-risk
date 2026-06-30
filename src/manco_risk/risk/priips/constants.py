@@ -32,3 +32,7 @@ SCENARIO_TYPES = ["stress", "unfavourable", "moderate", "favourable"]
 
 # Recommended Holding Period (RHP) validation
 RHP_MIN_YEARS: int = 1
+
+# Cost component types
+# Commission Delegated Regulation (EU) 2017/653 Annex VI/VII
+COST_TYPES = ["entry", "exit", "ongoing", "transaction", "incidental"]

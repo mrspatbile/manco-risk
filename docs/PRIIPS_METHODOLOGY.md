@@ -88,6 +88,57 @@ PRIIPs is implemented as a series of focused slices, each responsible for packag
 
 ---
 
+### Slice 3: Cost Table
+
+**Status:** Implemented
+
+**Module:** `manco_risk.risk.priips.costs`
+
+**Responsibility:**
+- Package pre-computed PRIIPs cost values
+- Validate inputs and preserve Decimal precision
+- Return immutable, export-ready result
+- Organise costs by component (entry, exit, ongoing, transaction, incidental)
+
+**Input:**
+- `product_id: str` – Product identifier
+- `valuation_date: date` – Snapshot date
+- `methodology_version: str` – PRIIPs RTS version (e.g., "2017/653", "2021/2268")
+- `recommended_holding_period_years: int` – RHP (positive)
+- `entry_cost: Decimal` – Pre-computed entry cost (percentage)
+- `exit_cost: Decimal` – Pre-computed exit cost (percentage)
+- `ongoing_cost: Decimal` – Pre-computed ongoing charge (percentage per year)
+- `transaction_cost: Decimal` – Pre-computed transaction cost (percentage)
+- `incidental_cost: Decimal` – Pre-computed incidental cost (percentage)
+
+**Output:**
+- All input fields preserved as `PRIIPSCostsResult`
+- Decimal precision maintained
+- Immutable container
+- No derived totals or RIY calculation
+
+**Regulatory Reference:**
+- Commission Delegated Regulation (EU) 2017/653, Annex VI/VII
+  - Cost calculation and presentation requirements
+  - Cost component definitions and breakdown
+
+**Does NOT Include:**
+- Transaction cost calculation
+- RIY (Reduction in Yield) calculation
+- Implicit cost estimation
+- Entry or exit cost derivation
+- Ongoing charge aggregation
+- Market data integration
+- Cost calculation or transformation
+
+**Assumptions:**
+- All cost values are pre-computed externally
+- Costs are stored as decimals (e.g., 0.01 = 1%)
+- Methodology version string is arbitrary and extensible (no hardcoded validation)
+- Recommended holding period is arbitrary (only > 0 required)
+
+---
+
 ## Architecture
 
 All PRIIPs slices follow the same architectural pattern:
@@ -116,6 +167,7 @@ All PRIIPs slices follow the same architectural pattern:
 - Regulatory lookup tables (e.g., SRI combination table)
 - Class ranges and bounds
 - Scenario type names
+- Cost component types
 
 ---
 
@@ -123,7 +175,7 @@ All PRIIPs slices follow the same architectural pattern:
 
 PRIIPs results are consumed by:
 - **Reporting layer** – Format KID documents, export tables
-- **UI layer** – Display risk indicators, scenario tables
+- **UI layer** – Display risk indicators, scenario tables, cost breakdowns
 - **Database layer** – Persist calculation results for audit trail
 
 PRIIPs engines **do NOT** depend on:
@@ -139,21 +191,22 @@ PRIIPs engines **do NOT** depend on:
 
 The following PRIIPs capabilities are deferred to future slices (v0.4.0+):
 
-### Slice 3: Cost Tables
-- One-off costs
-- Recurring costs
-- Transaction costs
-- RIY (Reduction in Yield)
-
 ### Slice 4: KID Generation
 - HTML/PDF document generation
 - KID template formatting
 - Regulatory compliance validation
+- SRI, scenario, cost table integration
 
 ### Slice 5: Scenario Calculation
 - Performance scenario simulation (stress, unfavourable, moderate, favourable)
 - Historical bootstrap or Monte Carlo methods
 - Scenario parameter calibration
+
+### Slice 6: Cost Calculation
+- Transaction cost calculation
+- RIY (Reduction in Yield) computation
+- Implicit cost estimation
+- Cost aggregation and totaling
 
 ---
 
@@ -167,8 +220,8 @@ It is **not** a complete PRIIPs calculation engine. It is a narrow, focused impl
 ### What is Implemented
 - ✅ SRI class combination (table lookup)
 - ✅ Performance scenario packaging
-- ✅ Cost table structure (planned Slice 3)
-- ✅ KID-ready export models (planned Slice 4)
+- ✅ Cost table structure
+- ✅ KID-ready export models
 
 ### What is NOT Implemented
 - ❌ VEV (Volatile-Equivalent VaR) calculation
@@ -177,7 +230,8 @@ It is **not** a complete PRIIPs calculation engine. It is a narrow, focused impl
 - ❌ Performance scenario simulation
 - ❌ Stress return bootstrapping
 - ❌ Recommended holding period derivation
-- ❌ Cost aggregation and RIY calculation
+- ❌ Cost calculation or aggregation
+- ❌ RIY calculation
 - ❌ KID document generation
 
 ---
@@ -185,15 +239,22 @@ It is **not** a complete PRIIPs calculation engine. It is a narrow, focused impl
 ## Conventions
 
 ### Decimal Precision
-- All returns stored as `Decimal`
+- All costs stored as `Decimal`
 - No float conversions
 - String → Decimal coercion in input models
 - Precision preserved through calculation and result
 
-### Return Sign Convention
-- **Negative = Loss** (e.g., stress scenario: -0.25 = -25% loss)
-- **Positive = Gain** (e.g., favourable scenario: 0.15 = 15% gain)
-- **Zero = No change**
+### Cost Sign Convention
+- **Positive = Cost** (e.g., 0.01 = 1% cost)
+- **Zero = No cost**
+- Negative values accepted as pre-computed inputs
+
+### Cost Components
+- **Entry cost** – One-off fee on purchase
+- **Exit cost** – One-off fee on sale
+- **Ongoing cost** – Annual management charge (recurring)
+- **Transaction cost** – Estimated cost of portfolio trading
+- **Incidental cost** – Miscellaneous fees
 
 ### Methodology Version Flexibility
 - Version strings are arbitrary and extensible
