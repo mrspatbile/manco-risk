@@ -16,6 +16,8 @@ from manco_risk.reporting.annex_iv import (
     AnnexIVFundIdentificationSection,
     AnnexIVLeverageInput,
     AnnexIVLeverageSection,
+    AnnexIVLiquidityProfileInput,
+    AnnexIVLiquidityProfileSection,
     AnnexIVReport,
     AnnexIVRiskMeasuresInput,
     AnnexIVRiskMeasuresSection,
@@ -161,16 +163,48 @@ class AnnexIVReportingService:
         )
 
     @staticmethod
+    def build_liquidity_profile(
+        input_data: AnnexIVLiquidityProfileInput,
+    ) -> AnnexIVLiquidityProfileSection:
+        """Build liquidity profile section from already-computed values.
+
+        Parameters
+        ----------
+        input_data : AnnexIVLiquidityProfileInput
+            Already-computed liquidity information (not calculated by this service).
+
+        Returns
+        -------
+        AnnexIVLiquidityProfileSection
+            Immutable liquidity profile section.
+
+        Raises
+        ------
+        ValueError
+            If values are invalid.
+        """
+        return AnnexIVLiquidityProfileSection(
+            redemption_frequency=input_data.redemption_frequency,
+            notice_period_days=input_data.notice_period_days,
+            settlement_period_days=input_data.settlement_period_days,
+            liquidity_profile_description=input_data.liquidity_profile_description,
+            liquidity_bucket_summary=input_data.liquidity_bucket_summary,
+            average_time_to_liquidate_days=input_data.average_time_to_liquidate_days,
+            methodology_version=input_data.methodology_version,
+        )
+
+    @staticmethod
     def build_report(
         fund_identification: AnnexIVFundIdentificationSection,
         asset_breakdown: Optional[AnnexIVAssetBreakdownSection] = None,
         risk_measures: Optional[AnnexIVRiskMeasuresSection] = None,
         leverage: Optional[AnnexIVLeverageSection] = None,
+        liquidity_profile: Optional[AnnexIVLiquidityProfileSection] = None,
     ) -> AnnexIVReport:
         """Build Annex IV report from sections.
 
         Assembles fund identification and optionally asset breakdown, risk measures,
-        and leverage into a consolidated report.
+        leverage, and liquidity profile into a consolidated report.
 
         Parameters
         ----------
@@ -182,6 +216,8 @@ class AnnexIVReportingService:
             Risk measures section. If supplied, will be included in report.
         leverage : Optional[AnnexIVLeverageSection], optional
             Leverage section. If supplied, will be included in report.
+        liquidity_profile : Optional[AnnexIVLiquidityProfileSection], optional
+            Liquidity profile section. If supplied, will be included in report.
 
         Returns
         -------
@@ -200,11 +236,14 @@ class AnnexIVReportingService:
             included_sections.append("Risk Measures")
         if leverage is not None:
             included_sections.append("Leverage")
+        if liquidity_profile is not None:
+            included_sections.append("Liquidity Profile")
 
         return AnnexIVReport(
             fund_identification=fund_identification,
             asset_breakdown=asset_breakdown,
             risk_measures=risk_measures,
             leverage=leverage,
+            liquidity_profile=liquidity_profile,
             included_sections=included_sections,
         )

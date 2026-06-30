@@ -16,6 +16,8 @@ from manco_risk.reporting import (
     AnnexIVFundIdentificationSection,
     AnnexIVLeverageInput,
     AnnexIVLeverageSection,
+    AnnexIVLiquidityProfileInput,
+    AnnexIVLiquidityProfileSection,
     AnnexIVReport,
     AnnexIVReportingService,
     AnnexIVRiskMeasuresInput,
@@ -1960,5 +1962,469 @@ class TestAnnexIVReportingServiceLeverage:
 
         section1 = AnnexIVReportingService.build_leverage(input_data)
         section2 = AnnexIVReportingService.build_leverage(input_data)
+
+        assert section1 == section2
+
+
+class TestAnnexIVLiquidityProfileInput:
+    """Test liquidity profile input validation."""
+
+    def test_valid_input(self) -> None:
+        """Valid liquidity profile input."""
+        input_data = AnnexIVLiquidityProfileInput(
+            redemption_frequency="Daily",
+            notice_period_days=5,
+            settlement_period_days=3,
+            liquidity_profile_description="Highly liquid fund",
+            average_time_to_liquidate_days=Decimal("1.5"),
+        )
+
+        assert input_data.redemption_frequency == "Daily"
+        assert input_data.notice_period_days == 5
+        assert input_data.settlement_period_days == 3
+        assert input_data.average_time_to_liquidate_days == Decimal("1.5")
+
+    def test_valid_input_minimal(self) -> None:
+        """Valid liquidity profile input with minimal fields."""
+        input_data = AnnexIVLiquidityProfileInput(
+            redemption_frequency="Weekly",
+            notice_period_days=0,
+            settlement_period_days=0,
+        )
+
+        assert input_data.redemption_frequency == "Weekly"
+        assert input_data.notice_period_days == 0
+        assert input_data.settlement_period_days == 0
+        assert input_data.liquidity_profile_description is None
+
+    def test_empty_redemption_frequency_rejected(self) -> None:
+        """Empty redemption frequency is rejected."""
+        with pytest.raises(ValueError, match="redemption_frequency must be non-empty"):
+            AnnexIVLiquidityProfileInput(
+                redemption_frequency="",
+                notice_period_days=0,
+                settlement_period_days=0,
+            )
+
+    def test_negative_notice_period_rejected(self) -> None:
+        """Negative notice period is rejected."""
+        with pytest.raises(ValueError, match="notice_period_days must be non-negative"):
+            AnnexIVLiquidityProfileInput(
+                redemption_frequency="Daily",
+                notice_period_days=-1,
+                settlement_period_days=0,
+            )
+
+    def test_negative_settlement_period_rejected(self) -> None:
+        """Negative settlement period is rejected."""
+        with pytest.raises(ValueError, match="settlement_period_days must be non-negative"):
+            AnnexIVLiquidityProfileInput(
+                redemption_frequency="Daily",
+                notice_period_days=0,
+                settlement_period_days=-1,
+            )
+
+    def test_negative_average_time_to_liquidate_rejected(self) -> None:
+        """Negative average time-to-liquidate is rejected."""
+        with pytest.raises(ValueError, match="average_time_to_liquidate_days must be non-negative"):
+            AnnexIVLiquidityProfileInput(
+                redemption_frequency="Daily",
+                notice_period_days=0,
+                settlement_period_days=0,
+                average_time_to_liquidate_days=Decimal("-1.5"),
+            )
+
+    def test_decimal_preservation(self) -> None:
+        """Decimal type is preserved."""
+        input_data = AnnexIVLiquidityProfileInput(
+            redemption_frequency="Daily",
+            notice_period_days=0,
+            settlement_period_days=0,
+            average_time_to_liquidate_days=Decimal("2.345"),
+        )
+
+        assert isinstance(input_data.average_time_to_liquidate_days, Decimal)
+        assert input_data.average_time_to_liquidate_days == Decimal("2.345")
+
+    def test_immutability(self) -> None:
+        """Liquidity profile input is immutable."""
+        input_data = AnnexIVLiquidityProfileInput(
+            redemption_frequency="Daily",
+            notice_period_days=0,
+            settlement_period_days=0,
+        )
+
+        with pytest.raises(Exception):  # Pydantic frozen model raises
+            input_data.redemption_frequency = "Weekly"  # type: ignore
+
+
+class TestAnnexIVLiquidityProfileSection:
+    """Test liquidity profile section model."""
+
+    def test_valid_section(self) -> None:
+        """Valid liquidity profile section."""
+        section = AnnexIVLiquidityProfileSection(
+            redemption_frequency="Monthly",
+            notice_period_days=10,
+            settlement_period_days=5,
+            liquidity_profile_description="Moderate liquidity",
+            liquidity_bucket_summary="80% liquid within 1 week",
+            average_time_to_liquidate_days=Decimal("3.0"),
+        )
+
+        assert section.redemption_frequency == "Monthly"
+        assert section.notice_period_days == 10
+        assert section.settlement_period_days == 5
+
+    def test_empty_redemption_frequency_rejected(self) -> None:
+        """Empty redemption frequency is rejected."""
+        with pytest.raises(ValueError, match="redemption_frequency must be non-empty"):
+            AnnexIVLiquidityProfileSection(
+                redemption_frequency="",
+                notice_period_days=0,
+                settlement_period_days=0,
+            )
+
+    def test_immutability(self) -> None:
+        """Liquidity profile section is immutable."""
+        section = AnnexIVLiquidityProfileSection(
+            redemption_frequency="Daily",
+            notice_period_days=0,
+            settlement_period_days=0,
+        )
+
+        with pytest.raises(Exception):  # Pydantic frozen model raises
+            section.redemption_frequency = "Weekly"  # type: ignore
+
+
+class TestAnnexIVReportWithAllSections:
+    """Test Annex IV report with all sections."""
+
+    def test_report_with_all_sections_complete(self) -> None:
+        """Report with all sections including liquidity profile."""
+        fund_id_section = AnnexIVFundIdentificationSection(
+            fund_id=1,
+            fund_name="Complete Fund",
+            fund_regime="UCITS",
+            domicile="LU",
+            base_currency="EUR",
+            valuation_date=date(2024, 6, 30),
+            reporting_period_end=date(2024, 6, 30),
+        )
+
+        rows = [
+            AnnexIVAssetBreakdownRow(
+                asset_class="Equities",
+                market_value=Decimal("500000.00"),
+                nav_percentage=Decimal("0.50"),
+            ),
+        ]
+        asset_breakdown_section = AnnexIVAssetBreakdownSection(rows=rows)
+
+        risk_measures_section = AnnexIVRiskMeasuresSection(
+            var_value=Decimal("0.025"),
+            var_method="Historical",
+            var_confidence_level=Decimal("0.95"),
+            var_horizon_days=1,
+        )
+
+        leverage_section = AnnexIVLeverageSection(
+            gross_leverage_ratio=Decimal("1.2"),
+        )
+
+        liquidity_profile_section = AnnexIVLiquidityProfileSection(
+            redemption_frequency="Daily",
+            notice_period_days=5,
+            settlement_period_days=3,
+        )
+
+        report = AnnexIVReport(
+            fund_identification=fund_id_section,
+            asset_breakdown=asset_breakdown_section,
+            risk_measures=risk_measures_section,
+            leverage=leverage_section,
+            liquidity_profile=liquidity_profile_section,
+            included_sections=[
+                "Fund Identification",
+                "Asset Breakdown",
+                "Risk Measures",
+                "Leverage",
+                "Liquidity Profile",
+            ],
+        )
+
+        assert report.liquidity_profile is not None
+        assert report.liquidity_profile.redemption_frequency == "Daily"
+        assert "Liquidity Profile" in report.included_sections
+        assert len(report.included_sections) == 5
+
+    def test_report_without_liquidity_profile(self) -> None:
+        """Report without liquidity profile still works."""
+        fund_id_section = AnnexIVFundIdentificationSection(
+            fund_id=1,
+            fund_name="Test Fund",
+            fund_regime="UCITS",
+            domicile="LU",
+            base_currency="EUR",
+            valuation_date=date(2024, 6, 30),
+            reporting_period_end=date(2024, 6, 30),
+        )
+
+        report = AnnexIVReport(
+            fund_identification=fund_id_section,
+            included_sections=["Fund Identification"],
+        )
+
+        assert report.liquidity_profile is None
+        assert "Liquidity Profile" not in report.included_sections
+
+    def test_report_immutability_with_liquidity_profile(self) -> None:
+        """Annex IV report with liquidity profile is immutable."""
+        fund_id_section = AnnexIVFundIdentificationSection(
+            fund_id=1,
+            fund_name="Test Fund",
+            fund_regime="UCITS",
+            domicile="LU",
+            base_currency="EUR",
+            valuation_date=date(2024, 6, 30),
+            reporting_period_end=date(2024, 6, 30),
+        )
+
+        liquidity_profile_section = AnnexIVLiquidityProfileSection(
+            redemption_frequency="Daily",
+            notice_period_days=0,
+            settlement_period_days=0,
+        )
+
+        report = AnnexIVReport(
+            fund_identification=fund_id_section,
+            liquidity_profile=liquidity_profile_section,
+            included_sections=["Fund Identification", "Liquidity Profile"],
+        )
+
+        with pytest.raises(Exception):  # Pydantic frozen model raises
+            report.liquidity_profile = None  # type: ignore
+
+
+class TestAnnexIVReportingServiceLiquidityProfile:
+    """Test liquidity profile service methods."""
+
+    def test_build_liquidity_profile(self) -> None:
+        """Service builds liquidity profile section."""
+        input_data = AnnexIVLiquidityProfileInput(
+            redemption_frequency="Daily",
+            notice_period_days=5,
+            settlement_period_days=3,
+            liquidity_profile_description="Highly liquid",
+        )
+
+        section = AnnexIVReportingService.build_liquidity_profile(input_data)
+
+        assert section.redemption_frequency == "Daily"
+        assert section.notice_period_days == 5
+        assert section.settlement_period_days == 3
+
+    def test_build_report_with_all_sections(self) -> None:
+        """Service builds report with all sections."""
+        fund_id_section = AnnexIVFundIdentificationSection(
+            fund_id=1,
+            fund_name="Test Fund",
+            fund_regime="UCITS",
+            domicile="LU",
+            base_currency="EUR",
+            valuation_date=date(2024, 6, 30),
+            reporting_period_end=date(2024, 6, 30),
+        )
+
+        rows = [
+            AnnexIVAssetBreakdownRow(
+                asset_class="Equities",
+                market_value=Decimal("500000.00"),
+                nav_percentage=Decimal("0.50"),
+            ),
+        ]
+        asset_breakdown_section = AnnexIVAssetBreakdownSection(rows=rows)
+
+        risk_measures_section = AnnexIVRiskMeasuresSection(
+            var_value=Decimal("0.025"),
+            var_method="Historical",
+            var_confidence_level=Decimal("0.95"),
+            var_horizon_days=1,
+        )
+
+        leverage_section = AnnexIVLeverageSection(
+            gross_leverage_ratio=Decimal("1.0"),
+        )
+
+        liquidity_profile_section = AnnexIVLiquidityProfileSection(
+            redemption_frequency="Daily",
+            notice_period_days=0,
+            settlement_period_days=0,
+        )
+
+        report = AnnexIVReportingService.build_report(
+            fund_id_section,
+            asset_breakdown_section,
+            risk_measures_section,
+            leverage_section,
+            liquidity_profile_section,
+        )
+
+        assert report.liquidity_profile is not None
+        assert "Liquidity Profile" in report.included_sections
+        assert len(report.included_sections) == 5
+
+    def test_full_workflow_ucits_complete(self) -> None:
+        """Full workflow: UCITS with all sections."""
+        fund_id_input = AnnexIVFundIdentificationInput(
+            fund_id=101,
+            fund_name="European Growth UCITS",
+            fund_regime="UCITS",
+            domicile="LU",
+            base_currency="EUR",
+            valuation_date=date(2024, 6, 30),
+            reporting_period_end=date(2024, 6, 30),
+        )
+        fund_id_section = AnnexIVReportingService.build_fund_identification(fund_id_input)
+
+        rows = [
+            AnnexIVAssetBreakdownRow(
+                asset_class="Equities",
+                market_value=Decimal("700000.00"),
+                nav_percentage=Decimal("0.70"),
+            ),
+            AnnexIVAssetBreakdownRow(
+                asset_class="Bonds",
+                market_value=Decimal("300000.00"),
+                nav_percentage=Decimal("0.30"),
+            ),
+        ]
+        asset_breakdown_input = AnnexIVAssetBreakdownInput(rows=rows)
+        asset_breakdown_section = AnnexIVReportingService.build_asset_breakdown(
+            asset_breakdown_input
+        )
+
+        risk_measures_input = AnnexIVRiskMeasuresInput(
+            var_value=Decimal("0.020"),
+            var_method="Historical",
+            var_confidence_level=Decimal("0.95"),
+            var_horizon_days=1,
+        )
+        risk_measures_section = AnnexIVReportingService.build_risk_measures(risk_measures_input)
+
+        leverage_input = AnnexIVLeverageInput(
+            gross_leverage_ratio=Decimal("1.0"),
+        )
+        leverage_section = AnnexIVReportingService.build_leverage(leverage_input)
+
+        liquidity_profile_input = AnnexIVLiquidityProfileInput(
+            redemption_frequency="Daily",
+            notice_period_days=1,
+            settlement_period_days=1,
+            liquidity_profile_description="Daily dealing",
+            average_time_to_liquidate_days=Decimal("1.0"),
+        )
+        liquidity_profile_section = AnnexIVReportingService.build_liquidity_profile(
+            liquidity_profile_input
+        )
+
+        report = AnnexIVReportingService.build_report(
+            fund_id_section,
+            asset_breakdown_section,
+            risk_measures_section,
+            leverage_section,
+            liquidity_profile_section,
+        )
+
+        assert len(report.included_sections) == 5
+        assert report.liquidity_profile.redemption_frequency == "Daily"
+
+    def test_full_workflow_aif_complete(self) -> None:
+        """Full workflow: AIF with all sections."""
+        fund_id_input = AnnexIVFundIdentificationInput(
+            fund_id=202,
+            fund_name="Strategic AIF",
+            fund_regime="AIF",
+            domicile="IE",
+            base_currency="USD",
+            valuation_date=date(2024, 6, 30),
+            reporting_period_end=date(2024, 6, 30),
+        )
+        fund_id_section = AnnexIVReportingService.build_fund_identification(fund_id_input)
+
+        rows = [
+            AnnexIVAssetBreakdownRow(
+                asset_class="Equities",
+                market_value=Decimal("600000.00"),
+                nav_percentage=Decimal("0.60"),
+            ),
+        ]
+        asset_breakdown_input = AnnexIVAssetBreakdownInput(rows=rows)
+        asset_breakdown_section = AnnexIVReportingService.build_asset_breakdown(
+            asset_breakdown_input
+        )
+
+        risk_measures_input = AnnexIVRiskMeasuresInput(
+            var_value=Decimal("0.035"),
+            var_method="Parametric",
+            var_confidence_level=Decimal("0.95"),
+            var_horizon_days=1,
+        )
+        risk_measures_section = AnnexIVReportingService.build_risk_measures(risk_measures_input)
+
+        leverage_input = AnnexIVLeverageInput(
+            gross_leverage_ratio=Decimal("1.5"),
+            commitment_leverage_ratio=Decimal("1.2"),
+        )
+        leverage_section = AnnexIVReportingService.build_leverage(leverage_input)
+
+        liquidity_profile_input = AnnexIVLiquidityProfileInput(
+            redemption_frequency="Monthly",
+            notice_period_days=30,
+            settlement_period_days=5,
+            liquidity_profile_description="Moderate liquidity, monthly redemptions",
+            liquidity_bucket_summary="60% liquid within 1 week",
+            average_time_to_liquidate_days=Decimal("7.5"),
+        )
+        liquidity_profile_section = AnnexIVReportingService.build_liquidity_profile(
+            liquidity_profile_input
+        )
+
+        report = AnnexIVReportingService.build_report(
+            fund_id_section,
+            asset_breakdown_section,
+            risk_measures_section,
+            leverage_section,
+            liquidity_profile_section,
+        )
+
+        assert len(report.included_sections) == 5
+        assert report.liquidity_profile.redemption_frequency == "Monthly"
+        assert report.liquidity_profile.notice_period_days == 30
+
+    def test_service_does_not_calculate_liquidity(self) -> None:
+        """Service accepts liquidity values as-is, does not calculate."""
+        input_data = AnnexIVLiquidityProfileInput(
+            redemption_frequency="Daily",
+            notice_period_days=5,
+            settlement_period_days=3,
+            average_time_to_liquidate_days=Decimal("1.5"),
+        )
+
+        section = AnnexIVReportingService.build_liquidity_profile(input_data)
+
+        # Values are passed through unchanged
+        assert section.average_time_to_liquidate_days == Decimal("1.5")
+
+    def test_service_is_stateless(self) -> None:
+        """Service is stateless."""
+        input_data = AnnexIVLiquidityProfileInput(
+            redemption_frequency="Daily",
+            notice_period_days=0,
+            settlement_period_days=0,
+        )
+
+        section1 = AnnexIVReportingService.build_liquidity_profile(input_data)
+        section2 = AnnexIVReportingService.build_liquidity_profile(input_data)
 
         assert section1 == section2

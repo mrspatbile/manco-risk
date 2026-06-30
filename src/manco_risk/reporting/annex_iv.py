@@ -663,18 +663,203 @@ class AnnexIVLeverageSection(BaseModel):
         return v
 
 
+class AnnexIVLiquidityProfileInput(BaseModel):
+    """Input to Annex IV liquidity profile builder.
+
+    Contains already-computed liquidity information.
+    The reporting layer does NOT calculate liquidity metrics.
+
+    Fields:
+    - redemption_frequency: Redemption frequency description (str, non-empty).
+    - notice_period_days: Notice period in days (int, non-negative).
+    - settlement_period_days: Settlement period in days (int, non-negative).
+    - liquidity_profile_description: Overall liquidity profile description (str, optional).
+    - liquidity_bucket_summary: Summary of liquidity buckets (str, optional).
+    - average_time_to_liquidate_days: Average time-to-liquidate in days (Decimal, optional).
+    - methodology_version: Version of liquidity methodology (str, optional).
+
+    Invariants:
+    - redemption_frequency must be non-empty.
+    - notice_period_days must be non-negative.
+    - settlement_period_days must be non-negative.
+    - average_time_to_liquidate_days (if supplied) must be non-negative.
+    - Optional strings (if supplied) must be non-empty.
+    """
+
+    redemption_frequency: str
+    notice_period_days: int
+    settlement_period_days: int
+    liquidity_profile_description: Optional[str] = None
+    liquidity_bucket_summary: Optional[str] = None
+    average_time_to_liquidate_days: Optional[Decimal] = None
+    methodology_version: Optional[str] = None
+
+    model_config = ConfigDict(frozen=True)
+
+    @field_validator("redemption_frequency")
+    @classmethod
+    def validate_redemption_frequency(cls, v: str) -> str:
+        """Redemption frequency must be non-empty."""
+        if not v or not v.strip():
+            raise ValueError("redemption_frequency must be non-empty")
+        return v.strip()
+
+    @field_validator("notice_period_days")
+    @classmethod
+    def validate_notice_period_days(cls, v: int) -> int:
+        """Notice period must be non-negative."""
+        if v < 0:
+            raise ValueError(f"notice_period_days must be non-negative, got {v}")
+        return v
+
+    @field_validator("settlement_period_days")
+    @classmethod
+    def validate_settlement_period_days(cls, v: int) -> int:
+        """Settlement period must be non-negative."""
+        if v < 0:
+            raise ValueError(f"settlement_period_days must be non-negative, got {v}")
+        return v
+
+    @field_validator("liquidity_profile_description")
+    @classmethod
+    def validate_liquidity_profile_description(cls, v: Optional[str]) -> Optional[str]:
+        """Liquidity profile description must be non-empty if supplied."""
+        if v is None:
+            return v
+        if not v or not v.strip():
+            raise ValueError("liquidity_profile_description must be non-empty")
+        return v.strip()
+
+    @field_validator("liquidity_bucket_summary")
+    @classmethod
+    def validate_liquidity_bucket_summary(cls, v: Optional[str]) -> Optional[str]:
+        """Liquidity bucket summary must be non-empty if supplied."""
+        if v is None:
+            return v
+        if not v or not v.strip():
+            raise ValueError("liquidity_bucket_summary must be non-empty")
+        return v.strip()
+
+    @field_validator("average_time_to_liquidate_days")
+    @classmethod
+    def validate_average_time_to_liquidate_days(cls, v: Optional[Decimal]) -> Optional[Decimal]:
+        """Average time-to-liquidate must be non-negative if supplied."""
+        if v is None:
+            return v
+        v_decimal = v if isinstance(v, Decimal) else Decimal(str(v))
+        if v_decimal < Decimal("0"):
+            raise ValueError(
+                f"average_time_to_liquidate_days must be non-negative, got {v_decimal}"
+            )
+        return v_decimal
+
+
+class AnnexIVLiquidityProfileSection(BaseModel):
+    """Result of Annex IV liquidity profile assembly.
+
+    Immutable liquidity profile section for Annex IV reporting.
+    Contains already-computed liquidity information.
+
+    Fields:
+    - redemption_frequency: Redemption frequency description (str).
+    - notice_period_days: Notice period in days (int).
+    - settlement_period_days: Settlement period in days (int).
+    - liquidity_profile_description: Overall liquidity profile description (str, optional).
+    - liquidity_bucket_summary: Summary of liquidity buckets (str, optional).
+    - average_time_to_liquidate_days: Average time-to-liquidate in days (Decimal, optional).
+    - methodology_version: Version of liquidity methodology (str, optional).
+
+    Invariants (defensive checks):
+    - redemption_frequency must be non-empty.
+    - notice_period_days must be non-negative.
+    - settlement_period_days must be non-negative.
+    - average_time_to_liquidate_days (if supplied) must be non-negative.
+    - Optional strings (if supplied) must be non-empty.
+    """
+
+    redemption_frequency: str
+    notice_period_days: int
+    settlement_period_days: int
+    liquidity_profile_description: Optional[str] = None
+    liquidity_bucket_summary: Optional[str] = None
+    average_time_to_liquidate_days: Optional[Decimal] = None
+    methodology_version: Optional[str] = None
+
+    model_config = ConfigDict(frozen=True)
+
+    @field_validator("redemption_frequency")
+    @classmethod
+    def validate_redemption_frequency(cls, v: str) -> str:
+        """Redemption frequency must be non-empty."""
+        if not v or not v.strip():
+            raise ValueError("redemption_frequency must be non-empty")
+        return v
+
+    @field_validator("notice_period_days")
+    @classmethod
+    def validate_notice_period_days(cls, v: int) -> int:
+        """Notice period must be non-negative."""
+        if v < 0:
+            raise ValueError(f"notice_period_days must be non-negative, got {v}")
+        return v
+
+    @field_validator("settlement_period_days")
+    @classmethod
+    def validate_settlement_period_days(cls, v: int) -> int:
+        """Settlement period must be non-negative."""
+        if v < 0:
+            raise ValueError(f"settlement_period_days must be non-negative, got {v}")
+        return v
+
+    @field_validator("liquidity_profile_description")
+    @classmethod
+    def validate_liquidity_profile_description(cls, v: Optional[str]) -> Optional[str]:
+        """Liquidity profile description must be non-empty if supplied."""
+        if v is None:
+            return v
+        if not v or not v.strip():
+            raise ValueError("liquidity_profile_description must be non-empty")
+        return v
+
+    @field_validator("liquidity_bucket_summary")
+    @classmethod
+    def validate_liquidity_bucket_summary(cls, v: Optional[str]) -> Optional[str]:
+        """Liquidity bucket summary must be non-empty if supplied."""
+        if v is None:
+            return v
+        if not v or not v.strip():
+            raise ValueError("liquidity_bucket_summary must be non-empty")
+        return v
+
+    @field_validator("average_time_to_liquidate_days")
+    @classmethod
+    def validate_average_time_to_liquidate_days(cls, v: Optional[Decimal]) -> Optional[Decimal]:
+        """Average time-to-liquidate must be non-negative if supplied."""
+        if v is None:
+            return v
+        v_decimal = v if isinstance(v, Decimal) else Decimal(str(v))
+        if v_decimal < Decimal("0"):
+            raise ValueError(
+                f"average_time_to_liquidate_days must be non-negative, got {v_decimal}"
+            )
+        return v_decimal
+
+
 class AnnexIVReport(BaseModel):
     """Annex IV-style reporting container.
 
-    Immutable report that assembles Annex IV sections.
-    Contains fund identification, optionally asset breakdown, risk measures, and leverage.
-    Future slices will add liquidity.
+    Immutable report that assembles all Annex IV sections.
+    Contains fund identification, optionally asset breakdown, risk measures, leverage,
+    and liquidity profile.
+
+    This is the complete Annex IV reporting implementation for Issue #12.
 
     Fields:
     - fund_identification: Fund identification section.
     - asset_breakdown: Optional asset breakdown section.
     - risk_measures: Optional risk measures section.
     - leverage: Optional leverage section.
+    - liquidity_profile: Optional liquidity profile section.
     - included_sections: List of included report sections (informational).
 
     Invariants (defensive checks):
@@ -683,12 +868,14 @@ class AnnexIVReport(BaseModel):
     - If asset_breakdown is supplied, included_sections must include "Asset Breakdown".
     - If risk_measures is supplied, included_sections must include "Risk Measures".
     - If leverage is supplied, included_sections must include "Leverage".
+    - If liquidity_profile is supplied, included_sections must include "Liquidity Profile".
     """
 
     fund_identification: AnnexIVFundIdentificationSection
     asset_breakdown: Optional[AnnexIVAssetBreakdownSection] = None
     risk_measures: Optional[AnnexIVRiskMeasuresSection] = None
     leverage: Optional[AnnexIVLeverageSection] = None
+    liquidity_profile: Optional[AnnexIVLiquidityProfileSection] = None
     included_sections: list[str]
 
     model_config = ConfigDict(frozen=True)

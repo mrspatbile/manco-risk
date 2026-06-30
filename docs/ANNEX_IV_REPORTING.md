@@ -33,7 +33,7 @@ The reporting module:
 - Return immutable, explicitly typed objects
 - Document assumptions about input data
 
-## Current Scope: Fund Identification, Asset Breakdown, Risk Measures, and Leverage
+## Current Scope: Complete Annex IV Reporting Implementation
 
 **Slice 1** covered **fund identification**.
 
@@ -41,10 +41,11 @@ The reporting module:
 
 **Slice 3** covered **risk measures**.
 
-**Slice 4** (this slice) covers **leverage**.
+**Slice 4** covered **leverage**.
 
-Future slices will add:
-- Liquidity profile
+**Slice 5** (final slice) covers **liquidity profile**.
+
+This is the complete implementation of Issue #12: Annex IV-style Reporting Foundation.
 
 ### Fund Identification Section
 
@@ -113,6 +114,24 @@ Leverage measures include:
 - `methodology_version`: Version of leverage methodology (str, optional)
 
 **Important:** The leverage section does NOT calculate gross or commitment leverage. All ratios and exposures are already-computed and supplied pre-calculated. The service accepts at least one measure (gross or commitment) but does not require both.
+
+### Liquidity Profile Section
+
+Contains already-computed liquidity information (redemption frequency, notice periods, liquidation horizons).
+
+**Final slice scope:** Liquidity profile accepts pre-computed liquidity values and does NOT calculate liquidity metrics.
+
+Liquidity profile information includes:
+
+- `redemption_frequency`: Redemption frequency description (e.g., "Daily", "Weekly", "Monthly")
+- `notice_period_days`: Notice period in days (int, non-negative)
+- `settlement_period_days`: Settlement period in days (int, non-negative)
+- `liquidity_profile_description`: Overall liquidity profile description (str, optional)
+- `liquidity_bucket_summary`: Summary of liquidity buckets (str, optional)
+- `average_time_to_liquidate_days`: Average time-to-liquidate in days (Decimal, optional)
+- `methodology_version`: Version of liquidity methodology (str, optional)
+
+**Important:** The liquidity profile section does NOT calculate liquidity buckets, liquidation horizons, redemption stress, or LMT effects. All values are already-computed and supplied pre-calculated.
 
 ## Inputs
 
@@ -266,6 +285,35 @@ input_data = AnnexIVLeverageInput(
 
 Raises `ValueError` if validation fails.
 
+### AnnexIVLiquidityProfileInput
+
+Container for already-computed liquidity information.
+
+**Constructor:**
+```python
+from decimal import Decimal
+from manco_risk.reporting import AnnexIVLiquidityProfileInput
+
+input_data = AnnexIVLiquidityProfileInput(
+    redemption_frequency="Daily",
+    notice_period_days=1,
+    settlement_period_days=1,
+    liquidity_profile_description="Highly liquid, daily redemptions",
+    average_time_to_liquidate_days=Decimal("1.0"),
+    methodology_version="1.0",
+)
+```
+
+**Validation:**
+- `redemption_frequency`: Must be non-empty
+- `notice_period_days`: Must be non-negative (int)
+- `settlement_period_days`: Must be non-negative (int)
+- `liquidity_profile_description` (if supplied): Must be non-empty
+- `liquidity_bucket_summary` (if supplied): Must be non-empty
+- `average_time_to_liquidate_days` (if supplied): Must be non-negative (Decimal preserved)
+
+Raises `ValueError` if validation fails.
+
 ## Outputs
 
 ### AnnexIVFundIdentificationSection
@@ -339,15 +387,38 @@ All values are defensive-checked during construction:
 **Immutability:**
 Once constructed, the section cannot be modified.
 
+### AnnexIVLiquidityProfileSection
+
+Immutable liquidity profile result. Contains already-computed liquidity information.
+
+**Fields:**
+- `redemption_frequency`: Redemption frequency description (str)
+- `notice_period_days`: Notice period in days (int)
+- `settlement_period_days`: Settlement period in days (int)
+- `liquidity_profile_description`: Overall liquidity profile description (str, optional)
+- `liquidity_bucket_summary`: Summary of liquidity buckets (str, optional)
+- `average_time_to_liquidate_days`: Average time-to-liquidate in days (Decimal, optional)
+- `methodology_version`: Version of liquidity methodology (str, optional)
+
+All values are defensive-checked during construction:
+- redemption_frequency must be non-empty
+- notice_period_days and settlement_period_days must be non-negative
+- Optional strings must be non-empty if supplied
+- average_time_to_liquidate_days must be non-negative if supplied
+
+**Immutability:**
+Once constructed, the section cannot be modified.
+
 ### AnnexIVReport
 
-Immutable report container that references one or more report sections.
+Immutable report container that references all Annex IV report sections.
 
 **Fields:**
 - `fund_identification`: AnnexIVFundIdentificationSection (required)
 - `asset_breakdown`: AnnexIVAssetBreakdownSection (optional, default None)
 - `risk_measures`: AnnexIVRiskMeasuresSection (optional, default None)
 - `leverage`: AnnexIVLeverageSection (optional, default None)
+- `liquidity_profile`: AnnexIVLiquidityProfileSection (optional, default None)
 - `included_sections`: List of section names (informational)
 
 **Invariants:**
@@ -356,8 +427,9 @@ Immutable report container that references one or more report sections.
 - If `asset_breakdown` is supplied, `included_sections` must include `"Asset Breakdown"`
 - If `risk_measures` is supplied, `included_sections` must include `"Risk Measures"`
 - If `leverage` is supplied, `included_sections` must include `"Leverage"`
+- If `liquidity_profile` is supplied, `included_sections` must include `"Liquidity Profile"`
 
-Future slices will add additional sections (e.g., `"Liquidity"`).
+This completes the Annex IV reporting implementation for Issue #12.
 
 ## Service: AnnexIVReportingService
 
@@ -432,6 +504,25 @@ section = AnnexIVReportingService.build_leverage(input_data)
 
 **Important:** This method does NOT calculate leverage ratios or exposures. It accepts already-computed values and validates them.
 
+### build_liquidity_profile()
+
+Assembles a liquidity profile section from already-computed values.
+
+```python
+input_data = AnnexIVLiquidityProfileInput(
+    redemption_frequency="Daily",
+    notice_period_days=1,
+    settlement_period_days=1,
+)
+section = AnnexIVReportingService.build_liquidity_profile(input_data)
+```
+
+**Returns:** `AnnexIVLiquidityProfileSection`
+
+**Raises:** `ValueError` if values are invalid.
+
+**Important:** This method does NOT calculate liquidity metrics. It accepts already-computed values and validates them.
+
 ### build_report()
 
 Assembles a complete Annex IV report from section objects.
@@ -441,22 +532,18 @@ fund_id_section = AnnexIVFundIdentificationSection(...)
 asset_breakdown_section = AnnexIVAssetBreakdownSection(...)
 risk_measures_section = AnnexIVRiskMeasuresSection(...)
 leverage_section = AnnexIVLeverageSection(...)
+liquidity_profile_section = AnnexIVLiquidityProfileSection(...)
 
 # With fund identification only
 report = AnnexIVReportingService.build_report(fund_id_section)
 
-# With fund identification and asset breakdown
-report = AnnexIVReportingService.build_report(
-    fund_id_section,
-    asset_breakdown_section,
-)
-
-# With all sections
+# With multiple sections
 report = AnnexIVReportingService.build_report(
     fund_id_section,
     asset_breakdown_section,
     risk_measures_section,
     leverage_section,
+    liquidity_profile_section,
 )
 ```
 
@@ -465,6 +552,7 @@ report = AnnexIVReportingService.build_report(
 - `asset_breakdown`: AnnexIVAssetBreakdownSection (optional)
 - `risk_measures`: AnnexIVRiskMeasuresSection (optional)
 - `leverage`: AnnexIVLeverageSection (optional)
+- `liquidity_profile`: AnnexIVLiquidityProfileSection (optional)
 
 **Returns:** `AnnexIVReport`
 
@@ -723,6 +811,13 @@ print(f"Sections: {report.included_sections}")
 - The reporting layer accepts leverage values exactly as supplied
 - At least one leverage measure (gross or commitment) should be supplied but both are optional
 
+**Liquidity Profile Data:**
+- All liquidity information must be **pre-computed** by the liquidity module
+- `redemption_frequency`, notice periods, and liquidation horizons are already-computed
+- The reporting layer does NOT calculate liquidity buckets, liquidation horizons, or redemption stress
+- The reporting layer does NOT perform LMT or other liquidity simulations
+- The reporting layer accepts liquidity values exactly as supplied
+
 **No Calculations:**
 - No risk metrics are calculated in the reporting layer
 - No positions are aggregated
@@ -741,18 +836,21 @@ print(f"Sections: {report.included_sections}")
 - Asset breakdown does NOT aggregate positions. Callers must supply pre-aggregated rows.
 - Risk measures do NOT calculate VaR, ES, or any risk metrics. Values must be pre-computed.
 - Leverage measures do NOT calculate gross/commitment leverage. Values must be pre-computed.
+- Liquidity profile does NOT calculate buckets, horizons, or stress. Values must be pre-computed.
 - NAV percentages are not validated to sum to 1.0 (different fund structures may vary).
-- No calculation of market values, NAV percentages, risk metrics, or leverage ratios.
+- No calculation of market values, NAV percentages, risk metrics, leverage ratios, or liquidity horizons.
 - No position-level detail (only aggregated asset class rows).
 - No netting, hedging, or derivative aggregation rules applied.
 - No automatic consistency checks between sections (e.g., asset breakdown, global exposure, leverage).
 - At least one leverage measure (gross or commitment) recommended but not required.
+- No position-level liquidity detail, only aggregate measures.
 
-**Future slices will add:**
-- Liquidity profiling or time-to-liquidate
+**Out-of-scope enhancements (not in Issue #12):**
 - XML or PDF generation
 - CSSF or regulatory submission workflows
 - Streamlit dashboard integration
+- Cross-section consistency validation
+- Regulatory limit enforcement
 
 ## Out of Scope
 
@@ -776,11 +874,17 @@ Run tests with:
 uv run pytest tests/test_annex_iv_reporting.py -v
 ```
 
-## Future Extensions
+## Summary
 
-Planned future slices will add sections for:
+Issue #12 has been completed with all five slices implemented:
 
-1. **Liquidity Profile** — Time-to-liquidate buckets, redemption stress scenarios
+1. ✓ Fund Identification — Slice 1
+2. ✓ Asset Breakdown — Slice 2
+3. ✓ Risk Measures — Slice 3
+4. ✓ Leverage — Slice 4
+5. ✓ Liquidity Profile — Slice 5
+
+The Annex IV reporting foundation is now complete with all core sections implemented.
 
 Each section will follow the same pattern:
 - Immutable input model
