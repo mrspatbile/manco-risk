@@ -5,11 +5,19 @@ MSFT US Equity,Microsoft Corp,Equity,USD,,,,0.95,
 JPM US Equity,JPMorgan Chase,Equity,USD,,,,1.05,
 GLD US Equity,SPDR Gold Shares,Equity,USD,,,,0.15,
 TLT US Equity,iShares 20+ Year Treasury,Equity,USD,,,16.40,,
+EXS1 Equity,iShares STOXX Europe 600 ETF,Equity,EUR,,,,1.05,
+ASML US Equity,ASML Holding NV,Equity,EUR,,,,1.15,
+SAP US Equity,SAP SE,Equity,EUR,,,,0.90,
+NESN VX Equity,Nestle AG,Equity,CHF,,,,0.85,
 US912828YK09 Govt,US Treasury 2.875 05/15/28,Bond,USD,2028-05-15,0.02875,2.31,,0.0
 US912810TM79 Govt,US Treasury 4.25 02/15/54,Bond,USD,2054-02-15,0.0425,17.82,,0.0
 DBR 0 08/15/29 Govt,German Bund 0% 08/15/29,Bond,EUR,2029-08-15,0.00,3.98,,0.0
+DBAB Govt,German Bund 1.5 08/15/26,Bond,EUR,2026-08-15,0.015,1.45,,0.0
 XS2543791470 Corp,LVMH 3.5 06/15/31,Bond,EUR,2031-06-15,0.035,4.71,,4.71
+SX5E01 Corp,BMW 2.25 03/15/27,Bond,EUR,2027-03-15,0.0225,2.87,,2.87
 EURUSD Curncy,Euro / US Dollar,FX,USD,,,,,
 GBPUSD Curncy,British Pound / US Dollar,FX,USD,,,,,
+CHFUSD Curncy,Swiss Franc / US Dollar,FX,USD,,,,,
 SPX Index,S&P 500 Index,Index,USD,,,,1.00,
 SX5E Index,Euro Stoxx 50,Index,EUR,,,,1.00,
+Cash,Cash Equivalents,Cash,EUR,,,,0.00,
