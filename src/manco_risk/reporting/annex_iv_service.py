@@ -15,6 +15,8 @@ from manco_risk.reporting.annex_iv import (
     AnnexIVFundIdentificationInput,
     AnnexIVFundIdentificationSection,
     AnnexIVReport,
+    AnnexIVRiskMeasuresInput,
+    AnnexIVRiskMeasuresSection,
 )
 
 
@@ -93,13 +95,47 @@ class AnnexIVReportingService:
         return AnnexIVAssetBreakdownSection(rows=input_data.rows)
 
     @staticmethod
+    def build_risk_measures(
+        input_data: AnnexIVRiskMeasuresInput,
+    ) -> AnnexIVRiskMeasuresSection:
+        """Build risk measures section from already-computed values.
+
+        Parameters
+        ----------
+        input_data : AnnexIVRiskMeasuresInput
+            Already-computed risk measure values (not calculated by this service).
+
+        Returns
+        -------
+        AnnexIVRiskMeasuresSection
+            Immutable risk measures section.
+
+        Raises
+        ------
+        ValueError
+            If values are invalid.
+        """
+        return AnnexIVRiskMeasuresSection(
+            var_value=input_data.var_value,
+            var_method=input_data.var_method,
+            var_confidence_level=input_data.var_confidence_level,
+            var_horizon_days=input_data.var_horizon_days,
+            expected_shortfall=input_data.expected_shortfall,
+            es_confidence_level=input_data.es_confidence_level,
+            stress_test_reference=input_data.stress_test_reference,
+            global_exposure=input_data.global_exposure,
+            methodology_version=input_data.methodology_version,
+        )
+
+    @staticmethod
     def build_report(
         fund_identification: AnnexIVFundIdentificationSection,
         asset_breakdown: Optional[AnnexIVAssetBreakdownSection] = None,
+        risk_measures: Optional[AnnexIVRiskMeasuresSection] = None,
     ) -> AnnexIVReport:
         """Build Annex IV report from sections.
 
-        Assembles fund identification and optionally asset breakdown
+        Assembles fund identification and optionally asset breakdown and risk measures
         into a consolidated report.
 
         Parameters
@@ -108,6 +144,8 @@ class AnnexIVReportingService:
             Fund identification section.
         asset_breakdown : Optional[AnnexIVAssetBreakdownSection], optional
             Asset breakdown section. If supplied, will be included in report.
+        risk_measures : Optional[AnnexIVRiskMeasuresSection], optional
+            Risk measures section. If supplied, will be included in report.
 
         Returns
         -------
@@ -122,9 +160,12 @@ class AnnexIVReportingService:
         included_sections = ["Fund Identification"]
         if asset_breakdown is not None:
             included_sections.append("Asset Breakdown")
+        if risk_measures is not None:
+            included_sections.append("Risk Measures")
 
         return AnnexIVReport(
             fund_identification=fund_identification,
             asset_breakdown=asset_breakdown,
+            risk_measures=risk_measures,
             included_sections=included_sections,
         )

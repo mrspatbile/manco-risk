@@ -256,26 +256,243 @@ class AnnexIVAssetBreakdownSection(BaseModel):
         return v
 
 
+class AnnexIVRiskMeasuresInput(BaseModel):
+    """Input to Annex IV risk measures builder.
+
+    Contains already-computed risk measure values.
+    The reporting layer does NOT calculate risk measures.
+
+    Fields:
+    - var_value: Value-at-Risk loss threshold (Decimal, non-negative).
+    - var_method: VaR calculation method (e.g., "Historical", "Parametric", "Student-t").
+    - var_confidence_level: Confidence level for VaR (Decimal, e.g., 0.95).
+    - var_horizon_days: Horizon in days for VaR (int, typically 1).
+    - expected_shortfall: Expected Shortfall loss threshold (Decimal, non-negative, optional).
+    - es_confidence_level: Confidence level for ES (Decimal, optional).
+    - stress_test_reference: Reference to stress test scenario (str, optional).
+    - global_exposure: Global exposure measure (Decimal, optional).
+    - methodology_version: Version of risk methodology (str, optional).
+
+    Invariants:
+    - var_value must be non-negative.
+    - var_method must be non-empty.
+    - var_confidence_level must be non-negative decimal.
+    - var_horizon_days must be positive.
+    - expected_shortfall (if supplied) must be non-negative.
+    - es_confidence_level (if supplied) must be non-negative decimal.
+    - global_exposure (if supplied) must be non-negative.
+    """
+
+    var_value: Decimal
+    var_method: str
+    var_confidence_level: Decimal
+    var_horizon_days: int
+    expected_shortfall: Optional[Decimal] = None
+    es_confidence_level: Optional[Decimal] = None
+    stress_test_reference: Optional[str] = None
+    global_exposure: Optional[Decimal] = None
+    methodology_version: Optional[str] = None
+
+    model_config = ConfigDict(frozen=True)
+
+    @field_validator("var_value")
+    @classmethod
+    def validate_var_value(cls, v: Decimal) -> Decimal:
+        """VaR value must be non-negative."""
+        v_decimal = v if isinstance(v, Decimal) else Decimal(str(v))
+        if v_decimal < Decimal("0"):
+            raise ValueError(f"var_value must be non-negative, got {v_decimal}")
+        return v_decimal
+
+    @field_validator("var_method")
+    @classmethod
+    def validate_var_method(cls, v: str) -> str:
+        """VaR method must be non-empty."""
+        if not v or not v.strip():
+            raise ValueError("var_method must be non-empty")
+        return v.strip()
+
+    @field_validator("var_confidence_level")
+    @classmethod
+    def validate_var_confidence_level(cls, v: Decimal) -> Decimal:
+        """VaR confidence level must be non-negative."""
+        v_decimal = v if isinstance(v, Decimal) else Decimal(str(v))
+        if v_decimal < Decimal("0"):
+            raise ValueError(f"var_confidence_level must be non-negative, got {v_decimal}")
+        return v_decimal
+
+    @field_validator("var_horizon_days")
+    @classmethod
+    def validate_var_horizon_days(cls, v: int) -> int:
+        """VaR horizon must be positive."""
+        if v <= 0:
+            raise ValueError(f"var_horizon_days must be positive, got {v}")
+        return v
+
+    @field_validator("expected_shortfall")
+    @classmethod
+    def validate_expected_shortfall(cls, v: Optional[Decimal]) -> Optional[Decimal]:
+        """Expected Shortfall must be non-negative if supplied."""
+        if v is None:
+            return v
+        v_decimal = v if isinstance(v, Decimal) else Decimal(str(v))
+        if v_decimal < Decimal("0"):
+            raise ValueError(f"expected_shortfall must be non-negative, got {v_decimal}")
+        return v_decimal
+
+    @field_validator("es_confidence_level")
+    @classmethod
+    def validate_es_confidence_level(cls, v: Optional[Decimal]) -> Optional[Decimal]:
+        """ES confidence level must be non-negative if supplied."""
+        if v is None:
+            return v
+        v_decimal = v if isinstance(v, Decimal) else Decimal(str(v))
+        if v_decimal < Decimal("0"):
+            raise ValueError(f"es_confidence_level must be non-negative, got {v_decimal}")
+        return v_decimal
+
+    @field_validator("global_exposure")
+    @classmethod
+    def validate_global_exposure(cls, v: Optional[Decimal]) -> Optional[Decimal]:
+        """Global exposure must be non-negative if supplied."""
+        if v is None:
+            return v
+        v_decimal = v if isinstance(v, Decimal) else Decimal(str(v))
+        if v_decimal < Decimal("0"):
+            raise ValueError(f"global_exposure must be non-negative, got {v_decimal}")
+        return v_decimal
+
+
+class AnnexIVRiskMeasuresSection(BaseModel):
+    """Result of Annex IV risk measures assembly.
+
+    Immutable risk measures section for Annex IV reporting.
+    Contains already-computed risk measure values.
+
+    Fields:
+    - var_value: Value-at-Risk loss threshold (Decimal).
+    - var_method: VaR calculation method.
+    - var_confidence_level: Confidence level for VaR (Decimal).
+    - var_horizon_days: Horizon in days for VaR (int).
+    - expected_shortfall: Expected Shortfall loss threshold (Decimal, optional).
+    - es_confidence_level: Confidence level for ES (Decimal, optional).
+    - stress_test_reference: Reference to stress test scenario (str, optional).
+    - global_exposure: Global exposure measure (Decimal, optional).
+    - methodology_version: Version of risk methodology (str, optional).
+
+    Invariants (defensive checks):
+    - var_value must be non-negative.
+    - var_method must be non-empty.
+    - var_confidence_level must be non-negative.
+    - var_horizon_days must be positive.
+    - expected_shortfall (if supplied) must be non-negative.
+    - es_confidence_level (if supplied) must be non-negative.
+    - global_exposure (if supplied) must be non-negative.
+    """
+
+    var_value: Decimal
+    var_method: str
+    var_confidence_level: Decimal
+    var_horizon_days: int
+    expected_shortfall: Optional[Decimal] = None
+    es_confidence_level: Optional[Decimal] = None
+    stress_test_reference: Optional[str] = None
+    global_exposure: Optional[Decimal] = None
+    methodology_version: Optional[str] = None
+
+    model_config = ConfigDict(frozen=True)
+
+    @field_validator("var_value")
+    @classmethod
+    def validate_var_value(cls, v: Decimal) -> Decimal:
+        """VaR value must be non-negative."""
+        v_decimal = v if isinstance(v, Decimal) else Decimal(str(v))
+        if v_decimal < Decimal("0"):
+            raise ValueError(f"var_value must be non-negative, got {v_decimal}")
+        return v_decimal
+
+    @field_validator("var_method")
+    @classmethod
+    def validate_var_method(cls, v: str) -> str:
+        """VaR method must be non-empty."""
+        if not v or not v.strip():
+            raise ValueError("var_method must be non-empty")
+        return v
+
+    @field_validator("var_confidence_level")
+    @classmethod
+    def validate_var_confidence_level(cls, v: Decimal) -> Decimal:
+        """VaR confidence level must be non-negative."""
+        v_decimal = v if isinstance(v, Decimal) else Decimal(str(v))
+        if v_decimal < Decimal("0"):
+            raise ValueError(f"var_confidence_level must be non-negative, got {v_decimal}")
+        return v_decimal
+
+    @field_validator("var_horizon_days")
+    @classmethod
+    def validate_var_horizon_days(cls, v: int) -> int:
+        """VaR horizon must be positive."""
+        if v <= 0:
+            raise ValueError(f"var_horizon_days must be positive, got {v}")
+        return v
+
+    @field_validator("expected_shortfall")
+    @classmethod
+    def validate_expected_shortfall(cls, v: Optional[Decimal]) -> Optional[Decimal]:
+        """Expected Shortfall must be non-negative if supplied."""
+        if v is None:
+            return v
+        v_decimal = v if isinstance(v, Decimal) else Decimal(str(v))
+        if v_decimal < Decimal("0"):
+            raise ValueError(f"expected_shortfall must be non-negative, got {v_decimal}")
+        return v_decimal
+
+    @field_validator("es_confidence_level")
+    @classmethod
+    def validate_es_confidence_level(cls, v: Optional[Decimal]) -> Optional[Decimal]:
+        """ES confidence level must be non-negative if supplied."""
+        if v is None:
+            return v
+        v_decimal = v if isinstance(v, Decimal) else Decimal(str(v))
+        if v_decimal < Decimal("0"):
+            raise ValueError(f"es_confidence_level must be non-negative, got {v_decimal}")
+        return v_decimal
+
+    @field_validator("global_exposure")
+    @classmethod
+    def validate_global_exposure(cls, v: Optional[Decimal]) -> Optional[Decimal]:
+        """Global exposure must be non-negative if supplied."""
+        if v is None:
+            return v
+        v_decimal = v if isinstance(v, Decimal) else Decimal(str(v))
+        if v_decimal < Decimal("0"):
+            raise ValueError(f"global_exposure must be non-negative, got {v_decimal}")
+        return v_decimal
+
+
 class AnnexIVReport(BaseModel):
     """Annex IV-style reporting container.
 
     Immutable report that assembles Annex IV sections.
-    Contains fund identification and optionally asset breakdown.
-    Future slices will add risk measures, leverage, liquidity.
+    Contains fund identification, optionally asset breakdown and risk measures.
+    Future slices will add leverage and liquidity.
 
     Fields:
     - fund_identification: Fund identification section.
     - asset_breakdown: Optional asset breakdown section.
+    - risk_measures: Optional risk measures section.
     - included_sections: List of included report sections (informational).
 
     Invariants (defensive checks):
     - fund_identification must be present.
     - included_sections must list "Fund Identification".
     - If asset_breakdown is supplied, included_sections must include "Asset Breakdown".
+    - If risk_measures is supplied, included_sections must include "Risk Measures".
     """
 
     fund_identification: AnnexIVFundIdentificationSection
     asset_breakdown: Optional[AnnexIVAssetBreakdownSection] = None
+    risk_measures: Optional[AnnexIVRiskMeasuresSection] = None
     included_sections: list[str]
 
     model_config = ConfigDict(frozen=True)

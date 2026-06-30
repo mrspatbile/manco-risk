@@ -16,6 +16,8 @@ from manco_risk.reporting import (
     AnnexIVFundIdentificationSection,
     AnnexIVReport,
     AnnexIVReportingService,
+    AnnexIVRiskMeasuresInput,
+    AnnexIVRiskMeasuresSection,
 )
 
 
@@ -906,3 +908,562 @@ class TestAnnexIVReportingServiceAssetBreakdown:
         assert section.rows[0].asset_class == "Equities"
         assert section.rows[1].asset_class == "Equities"
         # Not aggregated to single Equities row with 500000
+
+
+class TestAnnexIVRiskMeasuresInput:
+    """Test risk measures input validation."""
+
+    def test_valid_input_var_only(self) -> None:
+        """Valid risk measures input with VaR only."""
+        input_data = AnnexIVRiskMeasuresInput(
+            var_value=Decimal("0.025"),
+            var_method="Historical",
+            var_confidence_level=Decimal("0.95"),
+            var_horizon_days=1,
+        )
+
+        assert input_data.var_value == Decimal("0.025")
+        assert input_data.var_method == "Historical"
+        assert input_data.var_confidence_level == Decimal("0.95")
+        assert input_data.var_horizon_days == 1
+        assert input_data.expected_shortfall is None
+
+    def test_valid_input_with_es(self) -> None:
+        """Valid risk measures input with VaR and ES."""
+        input_data = AnnexIVRiskMeasuresInput(
+            var_value=Decimal("0.025"),
+            var_method="Historical",
+            var_confidence_level=Decimal("0.95"),
+            var_horizon_days=1,
+            expected_shortfall=Decimal("0.040"),
+            es_confidence_level=Decimal("0.95"),
+        )
+
+        assert input_data.var_value == Decimal("0.025")
+        assert input_data.expected_shortfall == Decimal("0.040")
+        assert input_data.es_confidence_level == Decimal("0.95")
+
+    def test_valid_input_with_all_fields(self) -> None:
+        """Valid risk measures input with all optional fields."""
+        input_data = AnnexIVRiskMeasuresInput(
+            var_value=Decimal("0.025"),
+            var_method="Parametric",
+            var_confidence_level=Decimal("0.95"),
+            var_horizon_days=1,
+            expected_shortfall=Decimal("0.040"),
+            es_confidence_level=Decimal("0.95"),
+            stress_test_reference="Market Stress 2020",
+            global_exposure=Decimal("1.5"),
+            methodology_version="1.2",
+        )
+
+        assert input_data.var_method == "Parametric"
+        assert input_data.stress_test_reference == "Market Stress 2020"
+        assert input_data.global_exposure == Decimal("1.5")
+        assert input_data.methodology_version == "1.2"
+
+    def test_empty_var_method_rejected(self) -> None:
+        """Empty var_method is rejected."""
+        with pytest.raises(ValueError, match="var_method must be non-empty"):
+            AnnexIVRiskMeasuresInput(
+                var_value=Decimal("0.025"),
+                var_method="",
+                var_confidence_level=Decimal("0.95"),
+                var_horizon_days=1,
+            )
+
+    def test_negative_var_value_rejected(self) -> None:
+        """Negative var_value is rejected."""
+        with pytest.raises(ValueError, match="var_value must be non-negative"):
+            AnnexIVRiskMeasuresInput(
+                var_value=Decimal("-0.025"),
+                var_method="Historical",
+                var_confidence_level=Decimal("0.95"),
+                var_horizon_days=1,
+            )
+
+    def test_negative_var_confidence_level_rejected(self) -> None:
+        """Negative var_confidence_level is rejected."""
+        with pytest.raises(ValueError, match="var_confidence_level must be non-negative"):
+            AnnexIVRiskMeasuresInput(
+                var_value=Decimal("0.025"),
+                var_method="Historical",
+                var_confidence_level=Decimal("-0.95"),
+                var_horizon_days=1,
+            )
+
+    def test_non_positive_var_horizon_days_rejected(self) -> None:
+        """Non-positive var_horizon_days is rejected."""
+        with pytest.raises(ValueError, match="var_horizon_days must be positive"):
+            AnnexIVRiskMeasuresInput(
+                var_value=Decimal("0.025"),
+                var_method="Historical",
+                var_confidence_level=Decimal("0.95"),
+                var_horizon_days=0,
+            )
+
+    def test_negative_expected_shortfall_rejected(self) -> None:
+        """Negative expected_shortfall is rejected."""
+        with pytest.raises(ValueError, match="expected_shortfall must be non-negative"):
+            AnnexIVRiskMeasuresInput(
+                var_value=Decimal("0.025"),
+                var_method="Historical",
+                var_confidence_level=Decimal("0.95"),
+                var_horizon_days=1,
+                expected_shortfall=Decimal("-0.040"),
+            )
+
+    def test_negative_global_exposure_rejected(self) -> None:
+        """Negative global_exposure is rejected."""
+        with pytest.raises(ValueError, match="global_exposure must be non-negative"):
+            AnnexIVRiskMeasuresInput(
+                var_value=Decimal("0.025"),
+                var_method="Historical",
+                var_confidence_level=Decimal("0.95"),
+                var_horizon_days=1,
+                global_exposure=Decimal("-0.5"),
+            )
+
+    def test_zero_values_allowed(self) -> None:
+        """Zero values are allowed."""
+        input_data = AnnexIVRiskMeasuresInput(
+            var_value=Decimal("0.0"),
+            var_method="Historical",
+            var_confidence_level=Decimal("0.0"),
+            var_horizon_days=1,
+        )
+
+        assert input_data.var_value == Decimal("0.0")
+        assert input_data.var_confidence_level == Decimal("0.0")
+
+    def test_decimal_preservation(self) -> None:
+        """Decimal type is preserved."""
+        input_data = AnnexIVRiskMeasuresInput(
+            var_value=Decimal("0.0251234567"),
+            var_method="Historical",
+            var_confidence_level=Decimal("0.95"),
+            var_horizon_days=1,
+        )
+
+        assert isinstance(input_data.var_value, Decimal)
+        assert input_data.var_value == Decimal("0.0251234567")
+
+    def test_immutability(self) -> None:
+        """Risk measures input is immutable."""
+        input_data = AnnexIVRiskMeasuresInput(
+            var_value=Decimal("0.025"),
+            var_method="Historical",
+            var_confidence_level=Decimal("0.95"),
+            var_horizon_days=1,
+        )
+
+        with pytest.raises(Exception):  # Pydantic frozen model raises
+            input_data.var_method = "Parametric"  # type: ignore
+
+
+class TestAnnexIVRiskMeasuresSection:
+    """Test risk measures section model."""
+
+    def test_valid_section_var_only(self) -> None:
+        """Valid risk measures section with VaR only."""
+        section = AnnexIVRiskMeasuresSection(
+            var_value=Decimal("0.025"),
+            var_method="Historical",
+            var_confidence_level=Decimal("0.95"),
+            var_horizon_days=1,
+        )
+
+        assert section.var_value == Decimal("0.025")
+        assert section.var_method == "Historical"
+        assert section.var_confidence_level == Decimal("0.95")
+        assert section.var_horizon_days == 1
+
+    def test_valid_section_with_es(self) -> None:
+        """Valid risk measures section with VaR and ES."""
+        section = AnnexIVRiskMeasuresSection(
+            var_value=Decimal("0.025"),
+            var_method="Historical",
+            var_confidence_level=Decimal("0.95"),
+            var_horizon_days=1,
+            expected_shortfall=Decimal("0.040"),
+            es_confidence_level=Decimal("0.95"),
+        )
+
+        assert section.expected_shortfall == Decimal("0.040")
+        assert section.es_confidence_level == Decimal("0.95")
+
+    def test_valid_section_with_all_fields(self) -> None:
+        """Valid risk measures section with all fields."""
+        section = AnnexIVRiskMeasuresSection(
+            var_value=Decimal("0.025"),
+            var_method="Student-t",
+            var_confidence_level=Decimal("0.95"),
+            var_horizon_days=1,
+            expected_shortfall=Decimal("0.040"),
+            es_confidence_level=Decimal("0.95"),
+            stress_test_reference="Scenario A",
+            global_exposure=Decimal("2.0"),
+            methodology_version="2.1",
+        )
+
+        assert section.var_method == "Student-t"
+        assert section.global_exposure == Decimal("2.0")
+        assert section.methodology_version == "2.1"
+
+    def test_empty_var_method_rejected(self) -> None:
+        """Empty var_method is rejected."""
+        with pytest.raises(ValueError, match="var_method must be non-empty"):
+            AnnexIVRiskMeasuresSection(
+                var_value=Decimal("0.025"),
+                var_method="",
+                var_confidence_level=Decimal("0.95"),
+                var_horizon_days=1,
+            )
+
+    def test_negative_var_value_rejected(self) -> None:
+        """Negative var_value is rejected."""
+        with pytest.raises(ValueError, match="var_value must be non-negative"):
+            AnnexIVRiskMeasuresSection(
+                var_value=Decimal("-0.025"),
+                var_method="Historical",
+                var_confidence_level=Decimal("0.95"),
+                var_horizon_days=1,
+            )
+
+    def test_immutability(self) -> None:
+        """Risk measures section is immutable."""
+        section = AnnexIVRiskMeasuresSection(
+            var_value=Decimal("0.025"),
+            var_method="Historical",
+            var_confidence_level=Decimal("0.95"),
+            var_horizon_days=1,
+        )
+
+        with pytest.raises(Exception):  # Pydantic frozen model raises
+            section.var_method = "Parametric"  # type: ignore
+
+
+class TestAnnexIVReportWithRiskMeasures:
+    """Test Annex IV report with risk measures."""
+
+    def test_report_with_all_sections(self) -> None:
+        """Report with fund identification, asset breakdown, and risk measures."""
+        fund_id_section = AnnexIVFundIdentificationSection(
+            fund_id=1,
+            fund_name="Test Fund",
+            fund_regime="UCITS",
+            domicile="LU",
+            base_currency="EUR",
+            valuation_date=date(2024, 6, 30),
+            reporting_period_end=date(2024, 6, 30),
+        )
+
+        rows = [
+            AnnexIVAssetBreakdownRow(
+                asset_class="Equities",
+                market_value=Decimal("500000.00"),
+                nav_percentage=Decimal("0.50"),
+            ),
+        ]
+        asset_breakdown_section = AnnexIVAssetBreakdownSection(rows=rows)
+
+        risk_measures_section = AnnexIVRiskMeasuresSection(
+            var_value=Decimal("0.025"),
+            var_method="Historical",
+            var_confidence_level=Decimal("0.95"),
+            var_horizon_days=1,
+            expected_shortfall=Decimal("0.040"),
+        )
+
+        report = AnnexIVReport(
+            fund_identification=fund_id_section,
+            asset_breakdown=asset_breakdown_section,
+            risk_measures=risk_measures_section,
+            included_sections=["Fund Identification", "Asset Breakdown", "Risk Measures"],
+        )
+
+        assert report.fund_identification is not None
+        assert report.asset_breakdown is not None
+        assert report.risk_measures is not None
+        assert "Fund Identification" in report.included_sections
+        assert "Asset Breakdown" in report.included_sections
+        assert "Risk Measures" in report.included_sections
+
+    def test_report_with_fund_id_and_risk_measures(self) -> None:
+        """Report with fund identification and risk measures (no asset breakdown)."""
+        fund_id_section = AnnexIVFundIdentificationSection(
+            fund_id=1,
+            fund_name="Test Fund",
+            fund_regime="UCITS",
+            domicile="LU",
+            base_currency="EUR",
+            valuation_date=date(2024, 6, 30),
+            reporting_period_end=date(2024, 6, 30),
+        )
+
+        risk_measures_section = AnnexIVRiskMeasuresSection(
+            var_value=Decimal("0.025"),
+            var_method="Historical",
+            var_confidence_level=Decimal("0.95"),
+            var_horizon_days=1,
+        )
+
+        report = AnnexIVReport(
+            fund_identification=fund_id_section,
+            risk_measures=risk_measures_section,
+            included_sections=["Fund Identification", "Risk Measures"],
+        )
+
+        assert report.asset_breakdown is None
+        assert report.risk_measures is not None
+        assert "Asset Breakdown" not in report.included_sections
+        assert "Risk Measures" in report.included_sections
+
+    def test_report_immutability_with_risk_measures(self) -> None:
+        """Annex IV report with risk measures is immutable."""
+        fund_id_section = AnnexIVFundIdentificationSection(
+            fund_id=1,
+            fund_name="Test Fund",
+            fund_regime="UCITS",
+            domicile="LU",
+            base_currency="EUR",
+            valuation_date=date(2024, 6, 30),
+            reporting_period_end=date(2024, 6, 30),
+        )
+
+        risk_measures_section = AnnexIVRiskMeasuresSection(
+            var_value=Decimal("0.025"),
+            var_method="Historical",
+            var_confidence_level=Decimal("0.95"),
+            var_horizon_days=1,
+        )
+
+        report = AnnexIVReport(
+            fund_identification=fund_id_section,
+            risk_measures=risk_measures_section,
+            included_sections=["Fund Identification", "Risk Measures"],
+        )
+
+        with pytest.raises(Exception):  # Pydantic frozen model raises
+            report.risk_measures = None  # type: ignore
+
+
+class TestAnnexIVReportingServiceRiskMeasures:
+    """Test risk measures service methods."""
+
+    def test_build_risk_measures(self) -> None:
+        """Service builds risk measures section from input."""
+        input_data = AnnexIVRiskMeasuresInput(
+            var_value=Decimal("0.025"),
+            var_method="Historical",
+            var_confidence_level=Decimal("0.95"),
+            var_horizon_days=1,
+            expected_shortfall=Decimal("0.040"),
+        )
+
+        section = AnnexIVReportingService.build_risk_measures(input_data)
+
+        assert section.var_value == Decimal("0.025")
+        assert section.var_method == "Historical"
+        assert section.expected_shortfall == Decimal("0.040")
+
+    def test_build_report_with_all_sections(self) -> None:
+        """Service builds report with all sections."""
+        fund_id_section = AnnexIVFundIdentificationSection(
+            fund_id=1,
+            fund_name="Test Fund",
+            fund_regime="UCITS",
+            domicile="LU",
+            base_currency="EUR",
+            valuation_date=date(2024, 6, 30),
+            reporting_period_end=date(2024, 6, 30),
+        )
+
+        rows = [
+            AnnexIVAssetBreakdownRow(
+                asset_class="Equities",
+                market_value=Decimal("500000.00"),
+                nav_percentage=Decimal("0.50"),
+            ),
+        ]
+        asset_breakdown_section = AnnexIVAssetBreakdownSection(rows=rows)
+
+        risk_measures_section = AnnexIVRiskMeasuresSection(
+            var_value=Decimal("0.025"),
+            var_method="Historical",
+            var_confidence_level=Decimal("0.95"),
+            var_horizon_days=1,
+        )
+
+        report = AnnexIVReportingService.build_report(
+            fund_id_section,
+            asset_breakdown_section,
+            risk_measures_section,
+        )
+
+        assert report.fund_identification is not None
+        assert report.asset_breakdown is not None
+        assert report.risk_measures is not None
+        assert "Fund Identification" in report.included_sections
+        assert "Asset Breakdown" in report.included_sections
+        assert "Risk Measures" in report.included_sections
+
+    def test_full_workflow_ucits_with_risk_measures(self) -> None:
+        """Full workflow: UCITS fund with all sections."""
+        # Fund identification
+        fund_id_input = AnnexIVFundIdentificationInput(
+            fund_id=101,
+            fund_name="European Growth UCITS Fund",
+            fund_regime="UCITS",
+            domicile="LU",
+            base_currency="EUR",
+            valuation_date=date(2024, 6, 30),
+            reporting_period_end=date(2024, 6, 30),
+        )
+        fund_id_section = AnnexIVReportingService.build_fund_identification(fund_id_input)
+
+        # Asset breakdown
+        rows = [
+            AnnexIVAssetBreakdownRow(
+                asset_class="Equities",
+                market_value=Decimal("600000.00"),
+                nav_percentage=Decimal("0.60"),
+            ),
+            AnnexIVAssetBreakdownRow(
+                asset_class="Bonds",
+                market_value=Decimal("400000.00"),
+                nav_percentage=Decimal("0.40"),
+            ),
+        ]
+        asset_breakdown_input = AnnexIVAssetBreakdownInput(rows=rows)
+        asset_breakdown_section = AnnexIVReportingService.build_asset_breakdown(
+            asset_breakdown_input
+        )
+
+        # Risk measures
+        risk_measures_input = AnnexIVRiskMeasuresInput(
+            var_value=Decimal("0.0250"),
+            var_method="Historical",
+            var_confidence_level=Decimal("0.95"),
+            var_horizon_days=1,
+            expected_shortfall=Decimal("0.0400"),
+            es_confidence_level=Decimal("0.95"),
+            global_exposure=Decimal("1.0"),
+            methodology_version="1.0",
+        )
+        risk_measures_section = AnnexIVReportingService.build_risk_measures(risk_measures_input)
+
+        # Build report
+        report = AnnexIVReportingService.build_report(
+            fund_id_section,
+            asset_breakdown_section,
+            risk_measures_section,
+        )
+
+        assert report.fund_identification.fund_name == "European Growth UCITS Fund"
+        assert report.asset_breakdown.rows[0].asset_class == "Equities"
+        assert report.risk_measures.var_value == Decimal("0.0250")
+        assert report.risk_measures.var_method == "Historical"
+        assert len(report.included_sections) == 3
+
+    def test_full_workflow_aif_with_risk_measures(self) -> None:
+        """Full workflow: AIF fund with risk measures."""
+        fund_id_input = AnnexIVFundIdentificationInput(
+            fund_id=202,
+            fund_name="Strategic Opportunities AIF",
+            fund_regime="AIF",
+            domicile="IE",
+            base_currency="USD",
+            valuation_date=date(2024, 6, 30),
+            reporting_period_end=date(2024, 6, 30),
+        )
+        fund_id_section = AnnexIVReportingService.build_fund_identification(fund_id_input)
+
+        rows = [
+            AnnexIVAssetBreakdownRow(
+                asset_class="Equities",
+                market_value=Decimal("400000.00"),
+                nav_percentage=Decimal("0.40"),
+                exposure_basis="Long",
+            ),
+            AnnexIVAssetBreakdownRow(
+                asset_class="Equities",
+                market_value=Decimal("100000.00"),
+                nav_percentage=Decimal("0.10"),
+                exposure_basis="Short",
+            ),
+        ]
+        asset_breakdown_input = AnnexIVAssetBreakdownInput(rows=rows)
+        asset_breakdown_section = AnnexIVReportingService.build_asset_breakdown(
+            asset_breakdown_input
+        )
+
+        risk_measures_input = AnnexIVRiskMeasuresInput(
+            var_value=Decimal("0.0350"),
+            var_method="Parametric",
+            var_confidence_level=Decimal("0.95"),
+            var_horizon_days=1,
+            expected_shortfall=Decimal("0.0550"),
+            stress_test_reference="Market Stress 2022",
+            global_exposure=Decimal("1.5"),
+            methodology_version="2.0",
+        )
+        risk_measures_section = AnnexIVReportingService.build_risk_measures(risk_measures_input)
+
+        report = AnnexIVReportingService.build_report(
+            fund_id_section,
+            asset_breakdown_section,
+            risk_measures_section,
+        )
+
+        assert report.fund_identification.fund_regime == "AIF"
+        assert report.risk_measures.var_method == "Parametric"
+        assert report.risk_measures.global_exposure == Decimal("1.5")
+        assert report.risk_measures.stress_test_reference == "Market Stress 2022"
+
+    def test_service_does_not_calculate_var(self) -> None:
+        """Service accepts VaR values as-is, does not calculate."""
+        # Service accepts pre-computed VaR
+        input_data = AnnexIVRiskMeasuresInput(
+            var_value=Decimal("0.025"),
+            var_method="Historical",
+            var_confidence_level=Decimal("0.95"),
+            var_horizon_days=1,
+        )
+
+        section = AnnexIVReportingService.build_risk_measures(input_data)
+
+        # Value is passed through unchanged
+        assert section.var_value == Decimal("0.025")
+        # No calculation fields
+        assert not hasattr(section, "num_scenarios")
+        assert not hasattr(section, "quantile_index")
+
+    def test_service_does_not_calculate_es(self) -> None:
+        """Service accepts ES values as-is, does not calculate."""
+        input_data = AnnexIVRiskMeasuresInput(
+            var_value=Decimal("0.025"),
+            var_method="Historical",
+            var_confidence_level=Decimal("0.95"),
+            var_horizon_days=1,
+            expected_shortfall=Decimal("0.040"),
+        )
+
+        section = AnnexIVReportingService.build_risk_measures(input_data)
+
+        # Value is passed through unchanged
+        assert section.expected_shortfall == Decimal("0.040")
+
+    def test_service_is_stateless(self) -> None:
+        """Service is stateless."""
+        input_data = AnnexIVRiskMeasuresInput(
+            var_value=Decimal("0.025"),
+            var_method="Historical",
+            var_confidence_level=Decimal("0.95"),
+            var_horizon_days=1,
+        )
+
+        section1 = AnnexIVReportingService.build_risk_measures(input_data)
+        section2 = AnnexIVReportingService.build_risk_measures(input_data)
+
+        assert section1 == section2

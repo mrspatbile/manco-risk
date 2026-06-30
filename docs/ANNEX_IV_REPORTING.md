@@ -33,14 +33,15 @@ The reporting module:
 - Return immutable, explicitly typed objects
 - Document assumptions about input data
 
-## Current Scope: Fund Identification and Asset Breakdown
+## Current Scope: Fund Identification, Asset Breakdown, and Risk Measures
 
 **Slice 1** covered **fund identification**.
 
-**Slice 2** (this slice) covers **asset breakdown**.
+**Slice 2** covered **asset breakdown**.
+
+**Slice 3** (this slice) covers **risk measures**.
 
 Future slices will add:
-- Risk measures (VaR, ES, backtesting)
 - Leverage
 - Liquidity profile
 
@@ -73,6 +74,26 @@ Each asset breakdown row contains:
 - `exposure_basis`: Optional exposure basis (e.g., "Long", "Short", "Notional")
 
 **Important:** The asset breakdown section does NOT aggregate positions. Callers must supply already-aggregated rows. The service only validates and packages the supplied data.
+
+### Risk Measures Section
+
+Contains already-computed market risk measures (VaR, Expected Shortfall, etc.).
+
+**Slice 3 scope:** Risk measures accepts pre-computed risk values and does NOT calculate risk.
+
+Risk measures include:
+
+- `var_value`: Value-at-Risk loss threshold (Decimal, non-negative)
+- `var_method`: VaR calculation method (e.g., "Historical", "Parametric", "Student-t")
+- `var_confidence_level`: Confidence level for VaR (Decimal, e.g., 0.95)
+- `var_horizon_days`: Horizon in days for VaR (int, typically 1)
+- `expected_shortfall`: Expected Shortfall loss threshold (Decimal, non-negative, optional)
+- `es_confidence_level`: Confidence level for ES (Decimal, optional)
+- `stress_test_reference`: Reference to stress test scenario (str, optional)
+- `global_exposure`: Global exposure measure (Decimal, optional)
+- `methodology_version`: Version of risk methodology (str, optional)
+
+**Important:** The risk measures section does NOT calculate VaR, ES, or any risk metrics. All values are already-computed by the risk module and supplied pre-calculated.
 
 ## Inputs
 
@@ -164,6 +185,38 @@ input_data = AnnexIVAssetBreakdownInput(rows=rows)
 
 Raises `ValueError` if validation fails.
 
+### AnnexIVRiskMeasuresInput
+
+Container for already-computed risk measure values.
+
+**Constructor:**
+```python
+from decimal import Decimal
+from manco_risk.reporting import AnnexIVRiskMeasuresInput
+
+input_data = AnnexIVRiskMeasuresInput(
+    var_value=Decimal("0.0250"),
+    var_method="Historical",
+    var_confidence_level=Decimal("0.95"),
+    var_horizon_days=1,
+    expected_shortfall=Decimal("0.0400"),
+    es_confidence_level=Decimal("0.95"),
+    global_exposure=Decimal("1.0"),
+    methodology_version="1.0",
+)
+```
+
+**Validation:**
+- `var_value`: Must be non-negative (Decimal preserved)
+- `var_method`: Must be non-empty
+- `var_confidence_level`: Must be non-negative (Decimal preserved)
+- `var_horizon_days`: Must be positive (int)
+- `expected_shortfall` (if supplied): Must be non-negative (Decimal preserved)
+- `es_confidence_level` (if supplied): Must be non-negative (Decimal preserved)
+- `global_exposure` (if supplied): Must be non-negative (Decimal preserved)
+
+Raises `ValueError` if validation fails.
+
 ## Outputs
 
 ### AnnexIVFundIdentificationSection
@@ -192,6 +245,31 @@ All rows are defensive-checked during construction:
 **Immutability:**
 Once constructed, the section cannot be modified.
 
+### AnnexIVRiskMeasuresSection
+
+Immutable risk measures result. Contains already-computed risk measure values.
+
+**Fields:**
+- `var_value`: Value-at-Risk loss threshold (Decimal)
+- `var_method`: VaR calculation method (str)
+- `var_confidence_level`: Confidence level for VaR (Decimal)
+- `var_horizon_days`: Horizon in days for VaR (int)
+- `expected_shortfall`: Expected Shortfall (Decimal, optional)
+- `es_confidence_level`: Confidence level for ES (Decimal, optional)
+- `stress_test_reference`: Stress test reference (str, optional)
+- `global_exposure`: Global exposure measure (Decimal, optional)
+- `methodology_version`: Methodology version (str, optional)
+
+All values are defensive-checked during construction:
+- var_value must be non-negative
+- var_method must be non-empty
+- var_confidence_level must be non-negative
+- var_horizon_days must be positive
+- Optional fields must be non-negative if supplied
+
+**Immutability:**
+Once constructed, the section cannot be modified.
+
 ### AnnexIVReport
 
 Immutable report container that references one or more report sections.
@@ -199,14 +277,16 @@ Immutable report container that references one or more report sections.
 **Fields:**
 - `fund_identification`: AnnexIVFundIdentificationSection (required)
 - `asset_breakdown`: AnnexIVAssetBreakdownSection (optional, default None)
+- `risk_measures`: AnnexIVRiskMeasuresSection (optional, default None)
 - `included_sections`: List of section names (informational)
 
 **Invariants:**
 - `fund_identification` must be present
 - `included_sections` must contain `"Fund Identification"`
 - If `asset_breakdown` is supplied, `included_sections` must include `"Asset Breakdown"`
+- If `risk_measures` is supplied, `included_sections` must include `"Risk Measures"`
 
-Future slices will add additional sections (e.g., `"Risk Measures"`, `"Leverage"`, `"Liquidity"`).
+Future slices will add additional sections (e.g., `"Leverage"`, `"Liquidity"`).
 
 ## Service: AnnexIVReportingService
 
@@ -242,6 +322,26 @@ section = AnnexIVReportingService.build_asset_breakdown(input_data)
 
 **Important:** This method does NOT aggregate positions. It accepts pre-aggregated rows and validates them.
 
+### build_risk_measures()
+
+Assembles a risk measures section from already-computed values.
+
+```python
+input_data = AnnexIVRiskMeasuresInput(
+    var_value=Decimal("0.025"),
+    var_method="Historical",
+    var_confidence_level=Decimal("0.95"),
+    var_horizon_days=1,
+)
+section = AnnexIVReportingService.build_risk_measures(input_data)
+```
+
+**Returns:** `AnnexIVRiskMeasuresSection`
+
+**Raises:** `ValueError` if values are invalid.
+
+**Important:** This method does NOT calculate risk measures. It accepts already-computed values and validates them.
+
 ### build_report()
 
 Assembles a complete Annex IV report from section objects.
@@ -249,6 +349,7 @@ Assembles a complete Annex IV report from section objects.
 ```python
 fund_id_section = AnnexIVFundIdentificationSection(...)
 asset_breakdown_section = AnnexIVAssetBreakdownSection(...)
+risk_measures_section = AnnexIVRiskMeasuresSection(...)
 
 # With fund identification only
 report = AnnexIVReportingService.build_report(fund_id_section)
@@ -258,11 +359,19 @@ report = AnnexIVReportingService.build_report(
     fund_id_section,
     asset_breakdown_section,
 )
+
+# With all sections
+report = AnnexIVReportingService.build_report(
+    fund_id_section,
+    asset_breakdown_section,
+    risk_measures_section,
+)
 ```
 
 **Parameters:**
 - `fund_identification`: AnnexIVFundIdentificationSection (required)
 - `asset_breakdown`: AnnexIVAssetBreakdownSection (optional)
+- `risk_measures`: AnnexIVRiskMeasuresSection (optional)
 
 **Returns:** `AnnexIVReport`
 
@@ -393,6 +502,77 @@ report = AnnexIVReportingService.build_report(
 )
 ```
 
+### All Sections: UCITS with Risk Measures
+
+```python
+from datetime import date
+from decimal import Decimal
+from manco_risk.reporting import (
+    AnnexIVFundIdentificationInput,
+    AnnexIVAssetBreakdownInput,
+    AnnexIVAssetBreakdownRow,
+    AnnexIVRiskMeasuresInput,
+    AnnexIVReportingService,
+)
+
+# Fund identification
+fund_id_input = AnnexIVFundIdentificationInput(
+    fund_id=101,
+    fund_name="European Growth UCITS Fund",
+    fund_regime="UCITS",
+    domicile="LU",
+    base_currency="EUR",
+    valuation_date=date(2024, 6, 30),
+    reporting_period_end=date(2024, 6, 30),
+)
+fund_id_section = AnnexIVReportingService.build_fund_identification(fund_id_input)
+
+# Asset breakdown
+rows = [
+    AnnexIVAssetBreakdownRow(
+        asset_class="Equities",
+        market_value=Decimal("600000.00"),
+        nav_percentage=Decimal("0.60"),
+    ),
+    AnnexIVAssetBreakdownRow(
+        asset_class="Bonds",
+        market_value=Decimal("400000.00"),
+        nav_percentage=Decimal("0.40"),
+    ),
+]
+asset_breakdown_input = AnnexIVAssetBreakdownInput(rows=rows)
+asset_breakdown_section = AnnexIVReportingService.build_asset_breakdown(
+    asset_breakdown_input
+)
+
+# Risk measures (already-computed from risk module)
+risk_measures_input = AnnexIVRiskMeasuresInput(
+    var_value=Decimal("0.0250"),
+    var_method="Historical",
+    var_confidence_level=Decimal("0.95"),
+    var_horizon_days=1,
+    expected_shortfall=Decimal("0.0400"),
+    es_confidence_level=Decimal("0.95"),
+    global_exposure=Decimal("1.0"),
+    methodology_version="1.0",
+)
+risk_measures_section = AnnexIVReportingService.build_risk_measures(
+    risk_measures_input
+)
+
+# Build complete report
+report = AnnexIVReportingService.build_report(
+    fund_id_section,
+    asset_breakdown_section,
+    risk_measures_section,
+)
+
+print(f"Fund: {report.fund_identification.fund_name}")
+print(f"VaR (95%, 1-day): {report.risk_measures.var_value}")
+print(f"Expected Shortfall: {report.risk_measures.expected_shortfall}")
+print(f"Sections: {report.included_sections}")
+```
+
 ### Fund Identification Only
 
 ```python
@@ -414,7 +594,7 @@ input_data = AnnexIVFundIdentificationInput(
 
 section = AnnexIVReportingService.build_fund_identification(input_data)
 
-# Report with only fund identification (asset breakdown is optional)
+# Report with only fund identification (other sections are optional)
 report = AnnexIVReportingService.build_report(section)
 
 print(f"Fund: {report.fund_identification.fund_name}")
@@ -435,11 +615,19 @@ print(f"Sections: {report.included_sections}")
 - Multiple rows for the same asset class are accepted as-is (e.g., Long and Short equities)
 - NAV percentages do not need to sum to 1.0 (funds may have leverage or other structures)
 
+**Risk Measures Data:**
+- All risk measure values must be **pre-computed** by the risk module
+- `var_value`, `expected_shortfall`, and `global_exposure` are already-computed, not calculated
+- The reporting layer does NOT calculate VaR, ES, or any risk metrics
+- The reporting layer does NOT fetch market data or query positions
+- The reporting layer accepts risk values exactly as supplied
+
 **No Calculations:**
 - No risk metrics are calculated in the reporting layer
 - No positions are aggregated
 - No portfolio analysis is performed
 - No market values or NAV percentages are calculated
+- No VaR, ES, or stress tests are calculated
 
 **Data Integrity:**
 - Callers are responsible for ensuring all data is valid and up-to-date
@@ -450,12 +638,14 @@ print(f"Sections: {report.included_sections}")
 
 **Current limitations (by design, not bugs):**
 - Asset breakdown does NOT aggregate positions. Callers must supply pre-aggregated rows.
+- Risk measures do NOT calculate VaR, ES, or any risk metrics. Values must be pre-computed.
 - NAV percentages are not validated to sum to 1.0 (different fund structures may vary).
-- No calculation of market values or NAV percentages.
+- No calculation of market values, NAV percentages, or risk metrics.
 - No position-level detail (only aggregated asset class rows).
+- No risk calculation details (e.g., number of scenarios, quantile index).
+- No automatic consistency checks between sections (e.g., asset breakdown and global exposure).
 
 **Future slices will add:**
-- Risk measures (VaR, Expected Shortfall, backtesting results)
 - Leverage calculations or ratios
 - Liquidity profiling or time-to-liquidate
 - XML or PDF generation
@@ -488,9 +678,8 @@ uv run pytest tests/test_annex_iv_reporting.py -v
 
 Planned future slices will add sections for:
 
-1. **Risk Measures** — VaR, Expected Shortfall, backtesting results
-2. **Leverage** — Leverage ratios, notional exposures
-3. **Liquidity Profile** — Time-to-liquidate buckets, redemption stress scenarios
+1. **Leverage** — Leverage ratios, notional exposures
+2. **Liquidity Profile** — Time-to-liquidate buckets, redemption stress scenarios
 
 Each section will follow the same pattern:
 - Immutable input model
