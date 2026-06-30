@@ -210,3 +210,90 @@ The engine does not infer or calculate borrowing. It consumes pre-observed direc
 - Does not distinguish between different types of borrowing (term, revolving, repo).
 - Does not account for borrowing costs or collateral requirements.
 - Assumes NAV is current and accurate at observation time.
+
+---
+
+## Single-Issuer Concentration Monitoring
+
+### Purpose
+
+Monitor fund exposure to individual issuers against regulatory limits under the UCITS framework.
+
+This engine evaluates **single-issuer concentration only**, not aggregated issuer groups.
+
+### Regulatory Basis
+
+UCITS Directive Article 52(1): Single Issuer Limit  
+Exposure to a single issuer must not exceed 10% of NAV.
+
+**Related Article 52 rules (out of scope for this slice):**
+- 20% limit for groups of issuers with a common control (future slice)
+- 20% limit for deposits (future slice)
+- 10% limit for OTC counterparty exposure (future slice)
+- Exemptions for government securities and index replication (deliberately out of scope)
+
+### Scope
+
+This engine monitors **single issuers only**:
+- Individual issuer exposure by LEI, ticker, or identifier
+- Bonds, equities, derivatives notional (if pre-computed as exposure amount)
+
+This engine does **NOT**:
+- Aggregate issuer exposure from positions
+- Perform group issuer logic or look-through
+- Apply exemptions (government securities, index replication, etc.) — exemptions are deliberately out of scope for this slice
+- Calculate issuer exposure
+- Infer exposure from derivatives or SFT leverage
+- Perform portfolio aggregation or backtesting
+
+### Compliance Status
+
+| Status | Meaning |
+|--------|---------|
+| WITHIN_LIMIT | Issuer exposure ≤ 10% of NAV (compliant) |
+| BREACH | Issuer exposure > 10% of NAV (non-compliant) |
+
+### Engine Behavior
+
+The `UCITSConcentrationEngine`:
+
+- Accepts a single-issuer exposure observation (fund, date, NAV, issuer, exposure amount).
+- Calculates exposure ratio from exposure amount and NAV.
+- Compares exposure ratio to 10% threshold.
+- Returns status, threshold, and excess fields.
+
+The engine does not aggregate or calculate issuer exposure. It consumes pre-computed single-issuer observations.
+
+### Input and Output
+
+**Input** (`UCITSConcentrationInput`):
+- `fund_id`: Fund identifier
+- `valuation_date`: Snapshot date
+- `nav`: Net asset value
+- `issuer_id`: Issuer identifier (LEI or code)
+- `issuer_name`: Issuer name for audit (optional)
+- `issuer_exposure_amount`: Total exposure to this issuer (positive monetary amount)
+
+**Output** (`UCITSConcentrationResult`):
+- `status`: WITHIN_LIMIT or BREACH
+- `exposure_ratio`: Issuer exposure as fraction of NAV (calculated)
+- `limit_ratio`: Regulatory limit as fraction (0.10)
+- `limit_amount`: Limit in base currency (calculated)
+- `excess_amount`: Overage amount (if any, calculated)
+- `excess_ratio`: Overage ratio (if any, calculated)
+- Audit fields: fund_id, issuer_id, issuer_name, valuation_date, NAV, exposure amount (preserved)
+
+### Assumptions
+
+- Issuer exposure is pre-computed and provided as input.
+- Exposure represents total fund holding in that issuer across all instruments.
+- Issuer exposure is accurate and complete.
+
+### Limitations
+
+- Does not aggregate group issuer exposures (20% rule for groups is separate)
+- Does not handle exemptions (government securities, index replication, etc.)
+- Does not perform look-through for collective investments
+- Does not monitor OTC counterparty or deposit limits separately
+- Assumes NAV is current and accurate at observation time
+- Does not distinguish between different types of issuer (financial, non-financial, sovereign)

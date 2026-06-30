@@ -33,3 +33,7 @@ SRRI_VOLATILITY_BANDS = (
 # UCITS Directive Article 51: Maximum direct borrowing limit
 # Direct borrowing must not exceed 10% of NAV
 UCITS_BORROWING_LIMIT_RATIO = Decimal("0.10")
+
+# UCITS Directive Article 52(1): Single issuer concentration limit
+# Exposure to a single issuer must not exceed 10% of NAV
+UCITS_ISSUER_CONCENTRATION_LIMIT_RATIO = Decimal("0.10")

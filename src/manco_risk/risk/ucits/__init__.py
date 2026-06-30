@@ -26,10 +26,17 @@ from manco_risk.risk.ucits.borrowing import (
 )
 from manco_risk.risk.ucits.borrowing_engine import UCITSBorrowingEngine
 from manco_risk.risk.ucits.commitment_engine import UCITSCommitmentGlobalExposureEngine
+from manco_risk.risk.ucits.concentration import (
+    UCITSConcentrationInput,
+    UCITSConcentrationResult,
+    UCITSConcentrationStatus,
+)
+from manco_risk.risk.ucits.concentration_engine import UCITSConcentrationEngine
 from manco_risk.risk.ucits.constants import (
     SRRI_VOLATILITY_BANDS,
     UCITS_ABSOLUTE_VAR_LIMIT_RATIO,
     UCITS_BORROWING_LIMIT_RATIO,
+    UCITS_ISSUER_CONCENTRATION_LIMIT_RATIO,
 )
 from manco_risk.risk.ucits.global_exposure_models import (
     UCITSGlobalExposureInput,
@@ -55,6 +62,11 @@ __all__ = [
     "UCITSBorrowingResult",
     "UCITSBorrowingStatus",
     "UCITS_BORROWING_LIMIT_RATIO",
+    "UCITSConcentrationEngine",
+    "UCITSConcentrationInput",
+    "UCITSConcentrationResult",
+    "UCITSConcentrationStatus",
+    "UCITS_ISSUER_CONCENTRATION_LIMIT_RATIO",
     "UCITSCommitmentGlobalExposureEngine",
     "UCITSGlobalExposureInput",
     "UCITSGlobalExposureMethod",
