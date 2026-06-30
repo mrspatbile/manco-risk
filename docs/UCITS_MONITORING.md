@@ -297,3 +297,88 @@ The engine does not aggregate or calculate issuer exposure. It consumes pre-comp
 - Does not monitor OTC counterparty or deposit limits separately
 - Assumes NAV is current and accurate at observation time
 - Does not distinguish between different types of issuer (financial, non-financial, sovereign)
+
+---
+
+## Relative VaR Monitoring
+
+### Purpose
+
+Monitor fund VaR against a reference portfolio (benchmark) VaR under the UCITS framework.
+
+The relative VaR approach allows fund managers to manage risk relative to a chosen reference index or strategy.
+
+### Regulatory Basis
+
+CESR/ESMA Guidelines 10-788: Relative VaR Global Exposure Monitoring  
+Fund VaR must not exceed 200% of reference portfolio VaR (limit ratio = 2.0x).
+
+This is one of three ESMA-approved global exposure methods for UCITS funds:
+1. **Commitment approach** (derivative-based, already implemented)
+2. **Absolute VaR approach** (20% of NAV, already implemented)
+3. **Relative VaR approach** (fund VaR up to 2x benchmark VaR, this slice)
+
+### Scope
+
+This engine monitors **relative VaR only**:
+- Fund VaR vs. reference portfolio VaR
+- Pre-computed VaR observations (any methodology)
+
+This engine does **NOT**:
+- Calculate VaR (consumes pre-calculated observations)
+- Construct or select reference portfolios/benchmarks
+- Perform VaR simulation or backtesting
+- Fetch market data
+- Handle fund selection or portfolio construction
+
+### Compliance Status
+
+| Status | Meaning |
+|--------|---------|
+| WITHIN_LIMIT | Fund VaR ≤ 200% of Reference Portfolio VaR (compliant) |
+| BREACH | Fund VaR > 200% of Reference Portfolio VaR (non-compliant) |
+
+### Engine Behavior
+
+The `UCITSRelativeVaREngine`:
+
+- Accepts VaR observations (fund, date, fund VaR, reference portfolio VaR, confidence, horizon).
+- Calculates relative VaR ratio from fund VaR and reference portfolio VaR.
+- Compares ratio to 1.0x threshold.
+- Returns status, ratio, and excess fields.
+
+The engine does not calculate or construct VaR/benchmarks. It consumes pre-computed observations.
+
+### Input and Output
+
+**Input** (`UCITSRelativeVaRInput`):
+- `fund_id`: Fund identifier
+- `valuation_date`: Snapshot date
+- `fund_var`: Fund VaR amount (non-negative)
+- `reference_portfolio_var`: Reference portfolio/benchmark VaR amount (positive)
+- `confidence_level`: VaR confidence level (audit)
+- `holding_period_days`: VaR holding period (audit)
+
+**Output** (`UCITSRelativeVaRResult`):
+- `status`: WITHIN_LIMIT or BREACH
+- `relative_var_ratio`: Fund VaR as multiple of reference VaR (calculated)
+- `limit_ratio`: Regulatory limit as multiple (2.0 = fund VaR must not exceed 2× reference)
+- `excess_ratio`: Excess as multiple above reference (calculated)
+- Audit fields: fund_id, date, fund VaR, reference VaR, confidence level, holding period (preserved)
+
+### Assumptions
+
+- Fund VaR and reference portfolio VaR are pre-computed using consistent methodology.
+- Both VaR observations use the same confidence level and holding period.
+- Reference portfolio is appropriate for the fund's strategy.
+- VaR calculations are accurate and complete.
+
+### Limitations
+
+- Does not calculate or simulate VaR
+- Does not construct or validate reference portfolios
+- Does not handle benchmark selection
+- Does not distinguish between different VaR methodologies
+- Assumes pre-computed VaR observations are correct
+- Does not monitor other global exposure methods (commitment approach, absolute VaR)
+- Assumes both VaR values use consistent parameters (confidence level, holding period)

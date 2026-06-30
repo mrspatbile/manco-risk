@@ -37,3 +37,7 @@ UCITS_BORROWING_LIMIT_RATIO = Decimal("0.10")
 # UCITS Directive Article 52(1): Single issuer concentration limit
 # Exposure to a single issuer must not exceed 10% of NAV
 UCITS_ISSUER_CONCENTRATION_LIMIT_RATIO = Decimal("0.10")
+
+# CESR/ESMA Guidelines 10-788: Relative VaR global exposure monitoring
+# Fund VaR must not exceed 200% of the reference portfolio VaR (limit ratio = 2.0)
+UCITS_RELATIVE_VAR_LIMIT_RATIO = Decimal("2.0")

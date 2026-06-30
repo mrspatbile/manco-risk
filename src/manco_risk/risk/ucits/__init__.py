@@ -37,6 +37,7 @@ from manco_risk.risk.ucits.constants import (
     UCITS_ABSOLUTE_VAR_LIMIT_RATIO,
     UCITS_BORROWING_LIMIT_RATIO,
     UCITS_ISSUER_CONCENTRATION_LIMIT_RATIO,
+    UCITS_RELATIVE_VAR_LIMIT_RATIO,
 )
 from manco_risk.risk.ucits.global_exposure_models import (
     UCITSGlobalExposureInput,
@@ -44,6 +45,12 @@ from manco_risk.risk.ucits.global_exposure_models import (
     UCITSGlobalExposureResult,
     UCITSGlobalExposureStatus,
 )
+from manco_risk.risk.ucits.relative_var import (
+    UCITSRelativeVaRInput,
+    UCITSRelativeVaRResult,
+    UCITSRelativeVaRStatus,
+)
+from manco_risk.risk.ucits.relative_var_engine import UCITSRelativeVaREngine
 from manco_risk.risk.ucits.srri import SRRIInput, SRRIResult
 from manco_risk.risk.ucits.srri_engine import SRRIEngine
 
@@ -72,4 +79,9 @@ __all__ = [
     "UCITSGlobalExposureMethod",
     "UCITSGlobalExposureResult",
     "UCITSGlobalExposureStatus",
+    "UCITSRelativeVaREngine",
+    "UCITSRelativeVaRInput",
+    "UCITSRelativeVaRResult",
+    "UCITSRelativeVaRStatus",
+    "UCITS_RELATIVE_VAR_LIMIT_RATIO",
 ]
