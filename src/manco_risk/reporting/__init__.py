@@ -11,6 +11,8 @@ from manco_risk.reporting.annex_iv import (
     AnnexIVAssetBreakdownSection,
     AnnexIVFundIdentificationInput,
     AnnexIVFundIdentificationSection,
+    AnnexIVLeverageInput,
+    AnnexIVLeverageSection,
     AnnexIVReport,
     AnnexIVRiskMeasuresInput,
     AnnexIVRiskMeasuresSection,
@@ -25,6 +27,8 @@ __all__ = [
     "AnnexIVAssetBreakdownSection",
     "AnnexIVRiskMeasuresInput",
     "AnnexIVRiskMeasuresSection",
+    "AnnexIVLeverageInput",
+    "AnnexIVLeverageSection",
     "AnnexIVReport",
     "AnnexIVReportingService",
 ]

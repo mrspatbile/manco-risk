@@ -14,6 +14,8 @@ from manco_risk.reporting.annex_iv import (
     AnnexIVAssetBreakdownSection,
     AnnexIVFundIdentificationInput,
     AnnexIVFundIdentificationSection,
+    AnnexIVLeverageInput,
+    AnnexIVLeverageSection,
     AnnexIVReport,
     AnnexIVRiskMeasuresInput,
     AnnexIVRiskMeasuresSection,
@@ -128,15 +130,47 @@ class AnnexIVReportingService:
         )
 
     @staticmethod
+    def build_leverage(
+        input_data: AnnexIVLeverageInput,
+    ) -> AnnexIVLeverageSection:
+        """Build leverage section from already-computed values.
+
+        Parameters
+        ----------
+        input_data : AnnexIVLeverageInput
+            Already-computed leverage measures (not calculated by this service).
+
+        Returns
+        -------
+        AnnexIVLeverageSection
+            Immutable leverage section.
+
+        Raises
+        ------
+        ValueError
+            If values are invalid.
+        """
+        return AnnexIVLeverageSection(
+            gross_leverage_ratio=input_data.gross_leverage_ratio,
+            commitment_leverage_ratio=input_data.commitment_leverage_ratio,
+            gross_exposure=input_data.gross_exposure,
+            commitment_exposure=input_data.commitment_exposure,
+            nav=input_data.nav,
+            leverage_methodology=input_data.leverage_methodology,
+            methodology_version=input_data.methodology_version,
+        )
+
+    @staticmethod
     def build_report(
         fund_identification: AnnexIVFundIdentificationSection,
         asset_breakdown: Optional[AnnexIVAssetBreakdownSection] = None,
         risk_measures: Optional[AnnexIVRiskMeasuresSection] = None,
+        leverage: Optional[AnnexIVLeverageSection] = None,
     ) -> AnnexIVReport:
         """Build Annex IV report from sections.
 
-        Assembles fund identification and optionally asset breakdown and risk measures
-        into a consolidated report.
+        Assembles fund identification and optionally asset breakdown, risk measures,
+        and leverage into a consolidated report.
 
         Parameters
         ----------
@@ -146,6 +180,8 @@ class AnnexIVReportingService:
             Asset breakdown section. If supplied, will be included in report.
         risk_measures : Optional[AnnexIVRiskMeasuresSection], optional
             Risk measures section. If supplied, will be included in report.
+        leverage : Optional[AnnexIVLeverageSection], optional
+            Leverage section. If supplied, will be included in report.
 
         Returns
         -------
@@ -162,10 +198,13 @@ class AnnexIVReportingService:
             included_sections.append("Asset Breakdown")
         if risk_measures is not None:
             included_sections.append("Risk Measures")
+        if leverage is not None:
+            included_sections.append("Leverage")
 
         return AnnexIVReport(
             fund_identification=fund_identification,
             asset_breakdown=asset_breakdown,
             risk_measures=risk_measures,
+            leverage=leverage,
             included_sections=included_sections,
         )

@@ -14,6 +14,8 @@ from manco_risk.reporting import (
     AnnexIVAssetBreakdownSection,
     AnnexIVFundIdentificationInput,
     AnnexIVFundIdentificationSection,
+    AnnexIVLeverageInput,
+    AnnexIVLeverageSection,
     AnnexIVReport,
     AnnexIVReportingService,
     AnnexIVRiskMeasuresInput,
@@ -1465,5 +1467,498 @@ class TestAnnexIVReportingServiceRiskMeasures:
 
         section1 = AnnexIVReportingService.build_risk_measures(input_data)
         section2 = AnnexIVReportingService.build_risk_measures(input_data)
+
+        assert section1 == section2
+
+
+class TestAnnexIVLeverageInput:
+    """Test leverage input validation."""
+
+    def test_valid_input_with_gross_and_commitment(self) -> None:
+        """Valid leverage input with both gross and commitment measures."""
+        input_data = AnnexIVLeverageInput(
+            gross_leverage_ratio=Decimal("1.5"),
+            commitment_leverage_ratio=Decimal("1.2"),
+            gross_exposure=Decimal("1500000.00"),
+            commitment_exposure=Decimal("1200000.00"),
+            nav=Decimal("1000000.00"),
+            leverage_methodology="Gross notional",
+            methodology_version="1.0",
+        )
+
+        assert input_data.gross_leverage_ratio == Decimal("1.5")
+        assert input_data.commitment_leverage_ratio == Decimal("1.2")
+        assert input_data.gross_exposure == Decimal("1500000.00")
+        assert input_data.nav == Decimal("1000000.00")
+        assert input_data.leverage_methodology == "Gross notional"
+
+    def test_valid_input_gross_only(self) -> None:
+        """Valid leverage input with only gross measures."""
+        input_data = AnnexIVLeverageInput(
+            gross_leverage_ratio=Decimal("2.0"),
+            gross_exposure=Decimal("2000000.00"),
+            nav=Decimal("1000000.00"),
+        )
+
+        assert input_data.gross_leverage_ratio == Decimal("2.0")
+        assert input_data.commitment_leverage_ratio is None
+        assert input_data.gross_exposure == Decimal("2000000.00")
+        assert input_data.commitment_exposure is None
+
+    def test_valid_input_commitment_only(self) -> None:
+        """Valid leverage input with only commitment measures."""
+        input_data = AnnexIVLeverageInput(
+            commitment_leverage_ratio=Decimal("1.0"),
+            commitment_exposure=Decimal("1000000.00"),
+        )
+
+        assert input_data.gross_leverage_ratio is None
+        assert input_data.commitment_leverage_ratio == Decimal("1.0")
+        assert input_data.gross_exposure is None
+        assert input_data.commitment_exposure == Decimal("1000000.00")
+
+    def test_zero_leverage_allowed(self) -> None:
+        """Zero leverage ratios are allowed."""
+        input_data = AnnexIVLeverageInput(
+            gross_leverage_ratio=Decimal("0.0"),
+            commitment_leverage_ratio=Decimal("0.0"),
+        )
+
+        assert input_data.gross_leverage_ratio == Decimal("0.0")
+        assert input_data.commitment_leverage_ratio == Decimal("0.0")
+
+    def test_negative_gross_leverage_ratio_rejected(self) -> None:
+        """Negative gross leverage ratio is rejected."""
+        with pytest.raises(ValueError, match="gross_leverage_ratio must be non-negative"):
+            AnnexIVLeverageInput(
+                gross_leverage_ratio=Decimal("-1.0"),
+            )
+
+    def test_negative_commitment_leverage_ratio_rejected(self) -> None:
+        """Negative commitment leverage ratio is rejected."""
+        with pytest.raises(ValueError, match="commitment_leverage_ratio must be non-negative"):
+            AnnexIVLeverageInput(
+                commitment_leverage_ratio=Decimal("-0.5"),
+            )
+
+    def test_negative_gross_exposure_rejected(self) -> None:
+        """Negative gross exposure is rejected."""
+        with pytest.raises(ValueError, match="gross_exposure must be non-negative"):
+            AnnexIVLeverageInput(
+                gross_exposure=Decimal("-100000.00"),
+            )
+
+    def test_negative_commitment_exposure_rejected(self) -> None:
+        """Negative commitment exposure is rejected."""
+        with pytest.raises(ValueError, match="commitment_exposure must be non-negative"):
+            AnnexIVLeverageInput(
+                commitment_exposure=Decimal("-100000.00"),
+            )
+
+    def test_negative_nav_rejected(self) -> None:
+        """Negative NAV is rejected."""
+        with pytest.raises(ValueError, match="nav must be non-negative"):
+            AnnexIVLeverageInput(
+                nav=Decimal("-500000.00"),
+            )
+
+    def test_empty_leverage_methodology_rejected(self) -> None:
+        """Empty leverage methodology is rejected."""
+        with pytest.raises(ValueError, match="leverage_methodology must be non-empty"):
+            AnnexIVLeverageInput(
+                leverage_methodology="",
+            )
+
+    def test_decimal_preservation(self) -> None:
+        """Decimal type is preserved."""
+        input_data = AnnexIVLeverageInput(
+            gross_leverage_ratio=Decimal("1.5234567"),
+            gross_exposure=Decimal("1234567.89"),
+        )
+
+        assert isinstance(input_data.gross_leverage_ratio, Decimal)
+        assert isinstance(input_data.gross_exposure, Decimal)
+        assert input_data.gross_leverage_ratio == Decimal("1.5234567")
+
+    def test_immutability(self) -> None:
+        """Leverage input is immutable."""
+        input_data = AnnexIVLeverageInput(
+            gross_leverage_ratio=Decimal("1.5"),
+        )
+
+        with pytest.raises(Exception):  # Pydantic frozen model raises
+            input_data.gross_leverage_ratio = Decimal("2.0")  # type: ignore
+
+
+class TestAnnexIVLeverageSection:
+    """Test leverage section model."""
+
+    def test_valid_section_with_both_measures(self) -> None:
+        """Valid leverage section with both gross and commitment."""
+        section = AnnexIVLeverageSection(
+            gross_leverage_ratio=Decimal("1.5"),
+            commitment_leverage_ratio=Decimal("1.2"),
+            gross_exposure=Decimal("1500000.00"),
+            commitment_exposure=Decimal("1200000.00"),
+            nav=Decimal("1000000.00"),
+            leverage_methodology="Gross notional",
+        )
+
+        assert section.gross_leverage_ratio == Decimal("1.5")
+        assert section.commitment_leverage_ratio == Decimal("1.2")
+
+    def test_valid_section_gross_only(self) -> None:
+        """Valid leverage section with only gross measures."""
+        section = AnnexIVLeverageSection(
+            gross_leverage_ratio=Decimal("2.0"),
+        )
+
+        assert section.gross_leverage_ratio == Decimal("2.0")
+        assert section.commitment_leverage_ratio is None
+
+    def test_valid_section_commitment_only(self) -> None:
+        """Valid leverage section with only commitment measures."""
+        section = AnnexIVLeverageSection(
+            commitment_leverage_ratio=Decimal("1.0"),
+        )
+
+        assert section.commitment_leverage_ratio == Decimal("1.0")
+        assert section.gross_leverage_ratio is None
+
+    def test_negative_ratio_rejected(self) -> None:
+        """Negative leverage ratio is rejected."""
+        with pytest.raises(ValueError, match="gross_leverage_ratio must be non-negative"):
+            AnnexIVLeverageSection(
+                gross_leverage_ratio=Decimal("-1.0"),
+            )
+
+    def test_immutability(self) -> None:
+        """Leverage section is immutable."""
+        section = AnnexIVLeverageSection(
+            gross_leverage_ratio=Decimal("1.5"),
+        )
+
+        with pytest.raises(Exception):  # Pydantic frozen model raises
+            section.gross_leverage_ratio = Decimal("2.0")  # type: ignore
+
+
+class TestAnnexIVReportWithLeverage:
+    """Test Annex IV report with leverage."""
+
+    def test_report_with_all_sections(self) -> None:
+        """Report with all sections including leverage."""
+        fund_id_section = AnnexIVFundIdentificationSection(
+            fund_id=1,
+            fund_name="Test Fund",
+            fund_regime="AIF",
+            domicile="LU",
+            base_currency="EUR",
+            valuation_date=date(2024, 6, 30),
+            reporting_period_end=date(2024, 6, 30),
+        )
+
+        rows = [
+            AnnexIVAssetBreakdownRow(
+                asset_class="Equities",
+                market_value=Decimal("500000.00"),
+                nav_percentage=Decimal("0.50"),
+            ),
+        ]
+        asset_breakdown_section = AnnexIVAssetBreakdownSection(rows=rows)
+
+        risk_measures_section = AnnexIVRiskMeasuresSection(
+            var_value=Decimal("0.025"),
+            var_method="Historical",
+            var_confidence_level=Decimal("0.95"),
+            var_horizon_days=1,
+        )
+
+        leverage_section = AnnexIVLeverageSection(
+            gross_leverage_ratio=Decimal("1.5"),
+            commitment_leverage_ratio=Decimal("1.2"),
+        )
+
+        report = AnnexIVReport(
+            fund_identification=fund_id_section,
+            asset_breakdown=asset_breakdown_section,
+            risk_measures=risk_measures_section,
+            leverage=leverage_section,
+            included_sections=[
+                "Fund Identification",
+                "Asset Breakdown",
+                "Risk Measures",
+                "Leverage",
+            ],
+        )
+
+        assert report.leverage is not None
+        assert report.leverage.gross_leverage_ratio == Decimal("1.5")
+        assert "Leverage" in report.included_sections
+
+    def test_report_without_leverage(self) -> None:
+        """Report without leverage still works."""
+        fund_id_section = AnnexIVFundIdentificationSection(
+            fund_id=1,
+            fund_name="Test Fund",
+            fund_regime="UCITS",
+            domicile="LU",
+            base_currency="EUR",
+            valuation_date=date(2024, 6, 30),
+            reporting_period_end=date(2024, 6, 30),
+        )
+
+        report = AnnexIVReport(
+            fund_identification=fund_id_section,
+            included_sections=["Fund Identification"],
+        )
+
+        assert report.leverage is None
+        assert "Leverage" not in report.included_sections
+
+    def test_report_immutability_with_leverage(self) -> None:
+        """Annex IV report with leverage is immutable."""
+        fund_id_section = AnnexIVFundIdentificationSection(
+            fund_id=1,
+            fund_name="Test Fund",
+            fund_regime="AIF",
+            domicile="LU",
+            base_currency="EUR",
+            valuation_date=date(2024, 6, 30),
+            reporting_period_end=date(2024, 6, 30),
+        )
+
+        leverage_section = AnnexIVLeverageSection(
+            gross_leverage_ratio=Decimal("1.5"),
+        )
+
+        report = AnnexIVReport(
+            fund_identification=fund_id_section,
+            leverage=leverage_section,
+            included_sections=["Fund Identification", "Leverage"],
+        )
+
+        with pytest.raises(Exception):  # Pydantic frozen model raises
+            report.leverage = None  # type: ignore
+
+
+class TestAnnexIVReportingServiceLeverage:
+    """Test leverage service methods."""
+
+    def test_build_leverage_with_both_measures(self) -> None:
+        """Service builds leverage section with both measures."""
+        input_data = AnnexIVLeverageInput(
+            gross_leverage_ratio=Decimal("1.5"),
+            commitment_leverage_ratio=Decimal("1.2"),
+            gross_exposure=Decimal("1500000.00"),
+            commitment_exposure=Decimal("1200000.00"),
+        )
+
+        section = AnnexIVReportingService.build_leverage(input_data)
+
+        assert section.gross_leverage_ratio == Decimal("1.5")
+        assert section.commitment_leverage_ratio == Decimal("1.2")
+        assert section.gross_exposure == Decimal("1500000.00")
+
+    def test_build_leverage_gross_only(self) -> None:
+        """Service builds leverage section with only gross measures."""
+        input_data = AnnexIVLeverageInput(
+            gross_leverage_ratio=Decimal("2.0"),
+        )
+
+        section = AnnexIVReportingService.build_leverage(input_data)
+
+        assert section.gross_leverage_ratio == Decimal("2.0")
+        assert section.commitment_leverage_ratio is None
+
+    def test_build_leverage_commitment_only(self) -> None:
+        """Service builds leverage section with only commitment measures."""
+        input_data = AnnexIVLeverageInput(
+            commitment_leverage_ratio=Decimal("1.0"),
+        )
+
+        section = AnnexIVReportingService.build_leverage(input_data)
+
+        assert section.commitment_leverage_ratio == Decimal("1.0")
+        assert section.gross_leverage_ratio is None
+
+    def test_build_report_with_all_sections(self) -> None:
+        """Service builds report with all sections including leverage."""
+        fund_id_section = AnnexIVFundIdentificationSection(
+            fund_id=1,
+            fund_name="Test Fund",
+            fund_regime="AIF",
+            domicile="LU",
+            base_currency="EUR",
+            valuation_date=date(2024, 6, 30),
+            reporting_period_end=date(2024, 6, 30),
+        )
+
+        rows = [
+            AnnexIVAssetBreakdownRow(
+                asset_class="Equities",
+                market_value=Decimal("500000.00"),
+                nav_percentage=Decimal("0.50"),
+            ),
+        ]
+        asset_breakdown_section = AnnexIVAssetBreakdownSection(rows=rows)
+
+        risk_measures_section = AnnexIVRiskMeasuresSection(
+            var_value=Decimal("0.025"),
+            var_method="Historical",
+            var_confidence_level=Decimal("0.95"),
+            var_horizon_days=1,
+        )
+
+        leverage_section = AnnexIVLeverageSection(
+            gross_leverage_ratio=Decimal("1.5"),
+        )
+
+        report = AnnexIVReportingService.build_report(
+            fund_id_section,
+            asset_breakdown_section,
+            risk_measures_section,
+            leverage_section,
+        )
+
+        assert report.leverage is not None
+        assert "Leverage" in report.included_sections
+        assert len(report.included_sections) == 4
+
+    def test_full_workflow_aif_with_leverage(self) -> None:
+        """Full workflow: AIF with all sections including leverage."""
+        # Fund identification
+        fund_id_input = AnnexIVFundIdentificationInput(
+            fund_id=202,
+            fund_name="Strategic Opportunities AIF",
+            fund_regime="AIF",
+            domicile="IE",
+            base_currency="USD",
+            valuation_date=date(2024, 6, 30),
+            reporting_period_end=date(2024, 6, 30),
+        )
+        fund_id_section = AnnexIVReportingService.build_fund_identification(fund_id_input)
+
+        # Asset breakdown
+        rows = [
+            AnnexIVAssetBreakdownRow(
+                asset_class="Equities",
+                market_value=Decimal("600000.00"),
+                nav_percentage=Decimal("0.60"),
+            ),
+        ]
+        asset_breakdown_input = AnnexIVAssetBreakdownInput(rows=rows)
+        asset_breakdown_section = AnnexIVReportingService.build_asset_breakdown(
+            asset_breakdown_input
+        )
+
+        # Risk measures
+        risk_measures_input = AnnexIVRiskMeasuresInput(
+            var_value=Decimal("0.035"),
+            var_method="Parametric",
+            var_confidence_level=Decimal("0.95"),
+            var_horizon_days=1,
+        )
+        risk_measures_section = AnnexIVReportingService.build_risk_measures(risk_measures_input)
+
+        # Leverage
+        leverage_input = AnnexIVLeverageInput(
+            gross_leverage_ratio=Decimal("1.8"),
+            commitment_leverage_ratio=Decimal("1.5"),
+            gross_exposure=Decimal("1800000.00"),
+            nav=Decimal("1000000.00"),
+            leverage_methodology="Gross notional including derivatives",
+        )
+        leverage_section = AnnexIVReportingService.build_leverage(leverage_input)
+
+        # Build report
+        report = AnnexIVReportingService.build_report(
+            fund_id_section,
+            asset_breakdown_section,
+            risk_measures_section,
+            leverage_section,
+        )
+
+        assert report.fund_identification.fund_regime == "AIF"
+        assert report.leverage.gross_leverage_ratio == Decimal("1.8")
+        assert report.leverage.leverage_methodology == "Gross notional including derivatives"
+        assert len(report.included_sections) == 4
+
+    def test_full_workflow_ucits_with_leverage(self) -> None:
+        """Full workflow: UCITS with leverage."""
+        fund_id_input = AnnexIVFundIdentificationInput(
+            fund_id=101,
+            fund_name="European Growth UCITS Fund",
+            fund_regime="UCITS",
+            domicile="LU",
+            base_currency="EUR",
+            valuation_date=date(2024, 6, 30),
+            reporting_period_end=date(2024, 6, 30),
+        )
+        fund_id_section = AnnexIVReportingService.build_fund_identification(fund_id_input)
+
+        rows = [
+            AnnexIVAssetBreakdownRow(
+                asset_class="Equities",
+                market_value=Decimal("700000.00"),
+                nav_percentage=Decimal("0.70"),
+            ),
+            AnnexIVAssetBreakdownRow(
+                asset_class="Bonds",
+                market_value=Decimal("300000.00"),
+                nav_percentage=Decimal("0.30"),
+            ),
+        ]
+        asset_breakdown_input = AnnexIVAssetBreakdownInput(rows=rows)
+        asset_breakdown_section = AnnexIVReportingService.build_asset_breakdown(
+            asset_breakdown_input
+        )
+
+        risk_measures_input = AnnexIVRiskMeasuresInput(
+            var_value=Decimal("0.020"),
+            var_method="Historical",
+            var_confidence_level=Decimal("0.95"),
+            var_horizon_days=1,
+        )
+        risk_measures_section = AnnexIVReportingService.build_risk_measures(risk_measures_input)
+
+        leverage_input = AnnexIVLeverageInput(
+            gross_leverage_ratio=Decimal("1.0"),
+            commitment_leverage_ratio=Decimal("1.0"),
+            nav=Decimal("1000000.00"),
+        )
+        leverage_section = AnnexIVReportingService.build_leverage(leverage_input)
+
+        report = AnnexIVReportingService.build_report(
+            fund_id_section,
+            asset_breakdown_section,
+            risk_measures_section,
+            leverage_section,
+        )
+
+        assert report.fund_identification.fund_regime == "UCITS"
+        assert report.leverage.gross_leverage_ratio == Decimal("1.0")
+        assert len(report.included_sections) == 4
+
+    def test_service_does_not_calculate_leverage(self) -> None:
+        """Service accepts leverage values as-is, does not calculate."""
+        input_data = AnnexIVLeverageInput(
+            gross_leverage_ratio=Decimal("1.5"),
+            commitment_leverage_ratio=Decimal("1.2"),
+        )
+
+        section = AnnexIVReportingService.build_leverage(input_data)
+
+        # Values are passed through unchanged
+        assert section.gross_leverage_ratio == Decimal("1.5")
+        assert section.commitment_leverage_ratio == Decimal("1.2")
+
+    def test_service_is_stateless(self) -> None:
+        """Service is stateless."""
+        input_data = AnnexIVLeverageInput(
+            gross_leverage_ratio=Decimal("1.5"),
+        )
+
+        section1 = AnnexIVReportingService.build_leverage(input_data)
+        section2 = AnnexIVReportingService.build_leverage(input_data)
 
         assert section1 == section2

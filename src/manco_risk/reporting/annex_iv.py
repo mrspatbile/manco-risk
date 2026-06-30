@@ -470,17 +470,211 @@ class AnnexIVRiskMeasuresSection(BaseModel):
         return v_decimal
 
 
+class AnnexIVLeverageInput(BaseModel):
+    """Input to Annex IV leverage builder.
+
+    Contains already-computed leverage measures.
+    The reporting layer does NOT calculate leverage.
+
+    Fields:
+    - gross_leverage_ratio: Gross leverage ratio (Decimal, non-negative, optional).
+    - commitment_leverage_ratio: Commitment leverage ratio (Decimal, non-negative, optional).
+    - gross_exposure: Gross exposure in base currency (Decimal, non-negative, optional).
+    - commitment_exposure: Commitment exposure in base currency (Decimal, non-negative, optional).
+    - nav: Net Asset Value (Decimal, non-negative, optional).
+    - leverage_methodology: Description of leverage calculation method (str, optional).
+    - methodology_version: Version of leverage methodology (str, optional).
+
+    Invariants:
+    - All Decimal fields must be non-negative if supplied.
+    - leverage_methodology (if supplied) must be non-empty.
+    - At least one leverage measure should be supplied (not enforced here, validation at use).
+    """
+
+    gross_leverage_ratio: Optional[Decimal] = None
+    commitment_leverage_ratio: Optional[Decimal] = None
+    gross_exposure: Optional[Decimal] = None
+    commitment_exposure: Optional[Decimal] = None
+    nav: Optional[Decimal] = None
+    leverage_methodology: Optional[str] = None
+    methodology_version: Optional[str] = None
+
+    model_config = ConfigDict(frozen=True)
+
+    @field_validator("gross_leverage_ratio")
+    @classmethod
+    def validate_gross_leverage_ratio(cls, v: Optional[Decimal]) -> Optional[Decimal]:
+        """Gross leverage ratio must be non-negative if supplied."""
+        if v is None:
+            return v
+        v_decimal = v if isinstance(v, Decimal) else Decimal(str(v))
+        if v_decimal < Decimal("0"):
+            raise ValueError(f"gross_leverage_ratio must be non-negative, got {v_decimal}")
+        return v_decimal
+
+    @field_validator("commitment_leverage_ratio")
+    @classmethod
+    def validate_commitment_leverage_ratio(cls, v: Optional[Decimal]) -> Optional[Decimal]:
+        """Commitment leverage ratio must be non-negative if supplied."""
+        if v is None:
+            return v
+        v_decimal = v if isinstance(v, Decimal) else Decimal(str(v))
+        if v_decimal < Decimal("0"):
+            raise ValueError(f"commitment_leverage_ratio must be non-negative, got {v_decimal}")
+        return v_decimal
+
+    @field_validator("gross_exposure")
+    @classmethod
+    def validate_gross_exposure(cls, v: Optional[Decimal]) -> Optional[Decimal]:
+        """Gross exposure must be non-negative if supplied."""
+        if v is None:
+            return v
+        v_decimal = v if isinstance(v, Decimal) else Decimal(str(v))
+        if v_decimal < Decimal("0"):
+            raise ValueError(f"gross_exposure must be non-negative, got {v_decimal}")
+        return v_decimal
+
+    @field_validator("commitment_exposure")
+    @classmethod
+    def validate_commitment_exposure(cls, v: Optional[Decimal]) -> Optional[Decimal]:
+        """Commitment exposure must be non-negative if supplied."""
+        if v is None:
+            return v
+        v_decimal = v if isinstance(v, Decimal) else Decimal(str(v))
+        if v_decimal < Decimal("0"):
+            raise ValueError(f"commitment_exposure must be non-negative, got {v_decimal}")
+        return v_decimal
+
+    @field_validator("nav")
+    @classmethod
+    def validate_nav(cls, v: Optional[Decimal]) -> Optional[Decimal]:
+        """NAV must be non-negative if supplied."""
+        if v is None:
+            return v
+        v_decimal = v if isinstance(v, Decimal) else Decimal(str(v))
+        if v_decimal < Decimal("0"):
+            raise ValueError(f"nav must be non-negative, got {v_decimal}")
+        return v_decimal
+
+    @field_validator("leverage_methodology")
+    @classmethod
+    def validate_leverage_methodology(cls, v: Optional[str]) -> Optional[str]:
+        """Leverage methodology must be non-empty if supplied."""
+        if v is None:
+            return v
+        if not v or not v.strip():
+            raise ValueError("leverage_methodology must be non-empty")
+        return v.strip()
+
+
+class AnnexIVLeverageSection(BaseModel):
+    """Result of Annex IV leverage assembly.
+
+    Immutable leverage section for Annex IV reporting.
+    Contains already-computed leverage measures.
+
+    Fields:
+    - gross_leverage_ratio: Gross leverage ratio (Decimal, optional).
+    - commitment_leverage_ratio: Commitment leverage ratio (Decimal, optional).
+    - gross_exposure: Gross exposure in base currency (Decimal, optional).
+    - commitment_exposure: Commitment exposure in base currency (Decimal, optional).
+    - nav: Net Asset Value (Decimal, optional).
+    - leverage_methodology: Description of leverage calculation method (str, optional).
+    - methodology_version: Version of leverage methodology (str, optional).
+
+    Invariants (defensive checks):
+    - All Decimal fields must be non-negative if supplied.
+    - leverage_methodology (if supplied) must be non-empty.
+    """
+
+    gross_leverage_ratio: Optional[Decimal] = None
+    commitment_leverage_ratio: Optional[Decimal] = None
+    gross_exposure: Optional[Decimal] = None
+    commitment_exposure: Optional[Decimal] = None
+    nav: Optional[Decimal] = None
+    leverage_methodology: Optional[str] = None
+    methodology_version: Optional[str] = None
+
+    model_config = ConfigDict(frozen=True)
+
+    @field_validator("gross_leverage_ratio")
+    @classmethod
+    def validate_gross_leverage_ratio(cls, v: Optional[Decimal]) -> Optional[Decimal]:
+        """Gross leverage ratio must be non-negative if supplied."""
+        if v is None:
+            return v
+        v_decimal = v if isinstance(v, Decimal) else Decimal(str(v))
+        if v_decimal < Decimal("0"):
+            raise ValueError(f"gross_leverage_ratio must be non-negative, got {v_decimal}")
+        return v_decimal
+
+    @field_validator("commitment_leverage_ratio")
+    @classmethod
+    def validate_commitment_leverage_ratio(cls, v: Optional[Decimal]) -> Optional[Decimal]:
+        """Commitment leverage ratio must be non-negative if supplied."""
+        if v is None:
+            return v
+        v_decimal = v if isinstance(v, Decimal) else Decimal(str(v))
+        if v_decimal < Decimal("0"):
+            raise ValueError(f"commitment_leverage_ratio must be non-negative, got {v_decimal}")
+        return v_decimal
+
+    @field_validator("gross_exposure")
+    @classmethod
+    def validate_gross_exposure(cls, v: Optional[Decimal]) -> Optional[Decimal]:
+        """Gross exposure must be non-negative if supplied."""
+        if v is None:
+            return v
+        v_decimal = v if isinstance(v, Decimal) else Decimal(str(v))
+        if v_decimal < Decimal("0"):
+            raise ValueError(f"gross_exposure must be non-negative, got {v_decimal}")
+        return v_decimal
+
+    @field_validator("commitment_exposure")
+    @classmethod
+    def validate_commitment_exposure(cls, v: Optional[Decimal]) -> Optional[Decimal]:
+        """Commitment exposure must be non-negative if supplied."""
+        if v is None:
+            return v
+        v_decimal = v if isinstance(v, Decimal) else Decimal(str(v))
+        if v_decimal < Decimal("0"):
+            raise ValueError(f"commitment_exposure must be non-negative, got {v_decimal}")
+        return v_decimal
+
+    @field_validator("nav")
+    @classmethod
+    def validate_nav(cls, v: Optional[Decimal]) -> Optional[Decimal]:
+        """NAV must be non-negative if supplied."""
+        if v is None:
+            return v
+        v_decimal = v if isinstance(v, Decimal) else Decimal(str(v))
+        if v_decimal < Decimal("0"):
+            raise ValueError(f"nav must be non-negative, got {v_decimal}")
+        return v_decimal
+
+    @field_validator("leverage_methodology")
+    @classmethod
+    def validate_leverage_methodology(cls, v: Optional[str]) -> Optional[str]:
+        """Leverage methodology must be non-empty if supplied."""
+        if v is None:
+            return v
+        if not v or not v.strip():
+            raise ValueError("leverage_methodology must be non-empty")
+        return v
+
+
 class AnnexIVReport(BaseModel):
     """Annex IV-style reporting container.
 
     Immutable report that assembles Annex IV sections.
-    Contains fund identification, optionally asset breakdown and risk measures.
-    Future slices will add leverage and liquidity.
+    Contains fund identification, optionally asset breakdown, risk measures, and leverage.
+    Future slices will add liquidity.
 
     Fields:
     - fund_identification: Fund identification section.
     - asset_breakdown: Optional asset breakdown section.
     - risk_measures: Optional risk measures section.
+    - leverage: Optional leverage section.
     - included_sections: List of included report sections (informational).
 
     Invariants (defensive checks):
@@ -488,11 +682,13 @@ class AnnexIVReport(BaseModel):
     - included_sections must list "Fund Identification".
     - If asset_breakdown is supplied, included_sections must include "Asset Breakdown".
     - If risk_measures is supplied, included_sections must include "Risk Measures".
+    - If leverage is supplied, included_sections must include "Leverage".
     """
 
     fund_identification: AnnexIVFundIdentificationSection
     asset_breakdown: Optional[AnnexIVAssetBreakdownSection] = None
     risk_measures: Optional[AnnexIVRiskMeasuresSection] = None
+    leverage: Optional[AnnexIVLeverageSection] = None
     included_sections: list[str]
 
     model_config = ConfigDict(frozen=True)

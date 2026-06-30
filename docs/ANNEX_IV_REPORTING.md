@@ -33,16 +33,17 @@ The reporting module:
 - Return immutable, explicitly typed objects
 - Document assumptions about input data
 
-## Current Scope: Fund Identification, Asset Breakdown, and Risk Measures
+## Current Scope: Fund Identification, Asset Breakdown, Risk Measures, and Leverage
 
 **Slice 1** covered **fund identification**.
 
 **Slice 2** covered **asset breakdown**.
 
-**Slice 3** (this slice) covers **risk measures**.
+**Slice 3** covered **risk measures**.
+
+**Slice 4** (this slice) covers **leverage**.
 
 Future slices will add:
-- Leverage
 - Liquidity profile
 
 ### Fund Identification Section
@@ -94,6 +95,24 @@ Risk measures include:
 - `methodology_version`: Version of risk methodology (str, optional)
 
 **Important:** The risk measures section does NOT calculate VaR, ES, or any risk metrics. All values are already-computed by the risk module and supplied pre-calculated.
+
+### Leverage Section
+
+Contains already-computed leverage measures (ratios and exposures).
+
+**Slice 4 scope:** Leverage accepts pre-computed leverage values and does NOT calculate leverage.
+
+Leverage measures include:
+
+- `gross_leverage_ratio`: Gross leverage ratio (Decimal, non-negative, optional)
+- `commitment_leverage_ratio`: Commitment leverage ratio (Decimal, non-negative, optional)
+- `gross_exposure`: Gross exposure in base currency (Decimal, non-negative, optional)
+- `commitment_exposure`: Commitment exposure in base currency (Decimal, non-negative, optional)
+- `nav`: Net Asset Value (Decimal, non-negative, optional)
+- `leverage_methodology`: Description of leverage calculation method (str, optional)
+- `methodology_version`: Version of leverage methodology (str, optional)
+
+**Important:** The leverage section does NOT calculate gross or commitment leverage. All ratios and exposures are already-computed and supplied pre-calculated. The service accepts at least one measure (gross or commitment) but does not require both.
 
 ## Inputs
 
@@ -217,6 +236,36 @@ input_data = AnnexIVRiskMeasuresInput(
 
 Raises `ValueError` if validation fails.
 
+### AnnexIVLeverageInput
+
+Container for already-computed leverage measure values.
+
+**Constructor:**
+```python
+from decimal import Decimal
+from manco_risk.reporting import AnnexIVLeverageInput
+
+input_data = AnnexIVLeverageInput(
+    gross_leverage_ratio=Decimal("1.5"),
+    commitment_leverage_ratio=Decimal("1.2"),
+    gross_exposure=Decimal("1500000.00"),
+    commitment_exposure=Decimal("1200000.00"),
+    nav=Decimal("1000000.00"),
+    leverage_methodology="Gross notional including derivatives",
+    methodology_version="1.0",
+)
+```
+
+**Validation:**
+- `gross_leverage_ratio` (if supplied): Must be non-negative (Decimal preserved)
+- `commitment_leverage_ratio` (if supplied): Must be non-negative (Decimal preserved)
+- `gross_exposure` (if supplied): Must be non-negative (Decimal preserved)
+- `commitment_exposure` (if supplied): Must be non-negative (Decimal preserved)
+- `nav` (if supplied): Must be non-negative (Decimal preserved)
+- `leverage_methodology` (if supplied): Must be non-empty
+
+Raises `ValueError` if validation fails.
+
 ## Outputs
 
 ### AnnexIVFundIdentificationSection
@@ -270,6 +319,26 @@ All values are defensive-checked during construction:
 **Immutability:**
 Once constructed, the section cannot be modified.
 
+### AnnexIVLeverageSection
+
+Immutable leverage result. Contains already-computed leverage measures.
+
+**Fields:**
+- `gross_leverage_ratio`: Gross leverage ratio (Decimal, optional)
+- `commitment_leverage_ratio`: Commitment leverage ratio (Decimal, optional)
+- `gross_exposure`: Gross exposure in base currency (Decimal, optional)
+- `commitment_exposure`: Commitment exposure in base currency (Decimal, optional)
+- `nav`: Net Asset Value (Decimal, optional)
+- `leverage_methodology`: Description of leverage calculation method (str, optional)
+- `methodology_version`: Version of leverage methodology (str, optional)
+
+All values are defensive-checked during construction:
+- All Decimal fields must be non-negative if supplied
+- leverage_methodology must be non-empty if supplied
+
+**Immutability:**
+Once constructed, the section cannot be modified.
+
 ### AnnexIVReport
 
 Immutable report container that references one or more report sections.
@@ -278,6 +347,7 @@ Immutable report container that references one or more report sections.
 - `fund_identification`: AnnexIVFundIdentificationSection (required)
 - `asset_breakdown`: AnnexIVAssetBreakdownSection (optional, default None)
 - `risk_measures`: AnnexIVRiskMeasuresSection (optional, default None)
+- `leverage`: AnnexIVLeverageSection (optional, default None)
 - `included_sections`: List of section names (informational)
 
 **Invariants:**
@@ -285,8 +355,9 @@ Immutable report container that references one or more report sections.
 - `included_sections` must contain `"Fund Identification"`
 - If `asset_breakdown` is supplied, `included_sections` must include `"Asset Breakdown"`
 - If `risk_measures` is supplied, `included_sections` must include `"Risk Measures"`
+- If `leverage` is supplied, `included_sections` must include `"Leverage"`
 
-Future slices will add additional sections (e.g., `"Leverage"`, `"Liquidity"`).
+Future slices will add additional sections (e.g., `"Liquidity"`).
 
 ## Service: AnnexIVReportingService
 
@@ -342,6 +413,25 @@ section = AnnexIVReportingService.build_risk_measures(input_data)
 
 **Important:** This method does NOT calculate risk measures. It accepts already-computed values and validates them.
 
+### build_leverage()
+
+Assembles a leverage section from already-computed values.
+
+```python
+input_data = AnnexIVLeverageInput(
+    gross_leverage_ratio=Decimal("1.5"),
+    commitment_leverage_ratio=Decimal("1.2"),
+    nav=Decimal("1000000.00"),
+)
+section = AnnexIVReportingService.build_leverage(input_data)
+```
+
+**Returns:** `AnnexIVLeverageSection`
+
+**Raises:** `ValueError` if values are invalid.
+
+**Important:** This method does NOT calculate leverage ratios or exposures. It accepts already-computed values and validates them.
+
 ### build_report()
 
 Assembles a complete Annex IV report from section objects.
@@ -350,6 +440,7 @@ Assembles a complete Annex IV report from section objects.
 fund_id_section = AnnexIVFundIdentificationSection(...)
 asset_breakdown_section = AnnexIVAssetBreakdownSection(...)
 risk_measures_section = AnnexIVRiskMeasuresSection(...)
+leverage_section = AnnexIVLeverageSection(...)
 
 # With fund identification only
 report = AnnexIVReportingService.build_report(fund_id_section)
@@ -365,6 +456,7 @@ report = AnnexIVReportingService.build_report(
     fund_id_section,
     asset_breakdown_section,
     risk_measures_section,
+    leverage_section,
 )
 ```
 
@@ -372,6 +464,7 @@ report = AnnexIVReportingService.build_report(
 - `fund_identification`: AnnexIVFundIdentificationSection (required)
 - `asset_breakdown`: AnnexIVAssetBreakdownSection (optional)
 - `risk_measures`: AnnexIVRiskMeasuresSection (optional)
+- `leverage`: AnnexIVLeverageSection (optional)
 
 **Returns:** `AnnexIVReport`
 
@@ -622,6 +715,14 @@ print(f"Sections: {report.included_sections}")
 - The reporting layer does NOT fetch market data or query positions
 - The reporting layer accepts risk values exactly as supplied
 
+**Leverage Data:**
+- All leverage measures must be **pre-computed** by the leverage module
+- `gross_leverage_ratio`, `commitment_leverage_ratio`, and exposures are already-computed
+- The reporting layer does NOT calculate gross or commitment leverage
+- The reporting layer does NOT apply netting, hedging, or derivative aggregation rules
+- The reporting layer accepts leverage values exactly as supplied
+- At least one leverage measure (gross or commitment) should be supplied but both are optional
+
 **No Calculations:**
 - No risk metrics are calculated in the reporting layer
 - No positions are aggregated
@@ -639,14 +740,15 @@ print(f"Sections: {report.included_sections}")
 **Current limitations (by design, not bugs):**
 - Asset breakdown does NOT aggregate positions. Callers must supply pre-aggregated rows.
 - Risk measures do NOT calculate VaR, ES, or any risk metrics. Values must be pre-computed.
+- Leverage measures do NOT calculate gross/commitment leverage. Values must be pre-computed.
 - NAV percentages are not validated to sum to 1.0 (different fund structures may vary).
-- No calculation of market values, NAV percentages, or risk metrics.
+- No calculation of market values, NAV percentages, risk metrics, or leverage ratios.
 - No position-level detail (only aggregated asset class rows).
-- No risk calculation details (e.g., number of scenarios, quantile index).
-- No automatic consistency checks between sections (e.g., asset breakdown and global exposure).
+- No netting, hedging, or derivative aggregation rules applied.
+- No automatic consistency checks between sections (e.g., asset breakdown, global exposure, leverage).
+- At least one leverage measure (gross or commitment) recommended but not required.
 
 **Future slices will add:**
-- Leverage calculations or ratios
 - Liquidity profiling or time-to-liquidate
 - XML or PDF generation
 - CSSF or regulatory submission workflows
@@ -678,8 +780,7 @@ uv run pytest tests/test_annex_iv_reporting.py -v
 
 Planned future slices will add sections for:
 
-1. **Leverage** — Leverage ratios, notional exposures
-2. **Liquidity Profile** — Time-to-liquidate buckets, redemption stress scenarios
+1. **Liquidity Profile** — Time-to-liquidate buckets, redemption stress scenarios
 
 Each section will follow the same pattern:
 - Immutable input model
