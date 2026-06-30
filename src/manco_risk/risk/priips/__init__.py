@@ -45,6 +45,8 @@ from manco_risk.risk.priips.performance_scenarios_engine import (
 )
 from manco_risk.risk.priips.sri import SRIInput, SRIResult
 from manco_risk.risk.priips.sri_engine import SRIEngine
+from manco_risk.risk.priips.summary import PRIIPSSummaryInput, PRIIPSSummaryResult
+from manco_risk.risk.priips.summary_service import PRIIPSSummaryService
 
 __all__ = [
     "SRIEngine",
@@ -64,6 +66,9 @@ __all__ = [
     "PRIIPSCostsEngine",
     "PRIIPSCostsInput",
     "PRIIPSCostsResult",
+    "PRIIPSSummaryService",
+    "PRIIPSSummaryInput",
+    "PRIIPSSummaryResult",
     "SCENARIO_TYPES",
     "COST_TYPES",
     "RHP_MIN_YEARS",

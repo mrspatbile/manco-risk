@@ -139,6 +139,53 @@ PRIIPs is implemented as a series of focused slices, each responsible for packag
 
 ---
 
+### Slice 4: Summary Assembly (Final Slice)
+
+**Status:** Implemented
+
+**Module:** `manco_risk.risk.priips.summary` + `manco_risk.risk.priips.summary_service`
+
+**Responsibility:**
+- Assemble pre-computed PRIIPs result objects (SRI, scenarios, costs)
+- Validate consistency across all result objects
+- Return immutable export-ready summary
+- Organise results for KID generation and reporting
+
+**Input:**
+- `sri_result: SRIResult` – Summary Risk Indicator result
+- `performance_scenarios_result: PerformanceScenariosResult` – Performance scenarios result
+- `costs_result: PRIIPSCostsResult` – Costs result
+
+**Output:**
+- `PRIIPSSummaryResult` containing:
+  - `product_id: str` – Product identifier (validated across all results)
+  - `valuation_date: date` – Snapshot date (validated across all results)
+  - `methodology_version: str` – PRIIPs RTS version (validated across scenarios/costs)
+  - `recommended_holding_period_years: int` – RHP (validated across scenarios/costs)
+  - `sri_result: SRIResult` – Reference to SRI result
+  - `performance_scenarios_result: PerformanceScenariosResult` – Reference to scenarios result
+  - `costs_result: PRIIPSCostsResult` – Reference to costs result
+  - `included_sections: list[str]` – List of included sections (SRI, scenarios, costs)
+
+**Regulatory Reference:**
+- Commission Delegated Regulation (EU) 2017/653
+  - Consolidated requirements across Annex II (SRI), IV/V (scenarios), VI/VII (costs)
+
+**Does NOT Include:**
+- SRI class calculation
+- Performance scenario calculation or simulation
+- Cost calculation or aggregation
+- KID document generation
+- Report formatting
+- Market data integration
+
+**Assumptions:**
+- All input result objects are pre-computed
+- Consistency validation ensures all objects represent the same product/date/methodology
+- No field duplication between result objects (references only)
+
+---
+
 ## Architecture
 
 All PRIIPs slices follow the same architectural pattern:
@@ -218,10 +265,11 @@ This implementation provides typed containers and table lookups only.
 It is **not** a complete PRIIPs calculation engine. It is a narrow, focused implementation of output packaging and type safety.
 
 ### What is Implemented
-- ✅ SRI class combination (table lookup)
-- ✅ Performance scenario packaging
-- ✅ Cost table structure
-- ✅ KID-ready export models
+- ✅ SRI class combination (table lookup) – Slice 1
+- ✅ Performance scenario packaging – Slice 2
+- ✅ Cost table structure – Slice 3
+- ✅ Summary assembly and consistency validation – Slice 4
+- ✅ Export-ready typed containers for all components
 
 ### What is NOT Implemented
 - ❌ VEV (Volatile-Equivalent VaR) calculation
