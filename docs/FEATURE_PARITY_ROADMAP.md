@@ -166,7 +166,9 @@ Dependent workflows (VaR, leverage, reporting, etc.) can only reach "Complete" w
 |-----------|--------|-----------|----------------|---------------|-----------|-------|-------|
 | AIFMD gross leverage | Complete | — | — | — | v0.2.0 | TBD | Sum of notionals, absolute value method. EU231/2013. |
 | AIFMD commitment leverage | Complete | — | — | — | v0.2.0 | TBD | Commitment approach, netting rules. EU231/2013. |
-| UCITS commitment exposure | Complete | — | — | — | v0.2.0 | TBD | 20% rule via commitment method. |
+| UCITS commitment approach | Complete | — | — | — | v0.2.0 | TBD | Derivative-based commitment exposure; 100% NAV limit. |
+| UCITS absolute VaR monitoring | Missing | — | — | — | v0.3.0 | TBD | VaR-based global exposure; 20% NAV threshold. |
+| UCITS relative VaR monitoring | Missing | — | — | — | v0.3.0 | TBD | VaR vs. benchmark approach; Annex II. |
 | Derivative notional exposure | Complete | — | — | — | v0.2.0 | TBD | Notional, delta, delta-plus methods. |
 | Borrowing treatment | Complete | — | — | — | v0.2.0 | TBD | Direct borrowings, interest rate exposure. |
 | Securities Financing Transactions (SFT) | Complete | — | — | — | v0.2.0 | TBD | Repos, reverse repos, securities lending. |
@@ -181,8 +183,8 @@ Dependent workflows (VaR, leverage, reporting, etc.) can only reach "Complete" w
 
 | Capability | Engine | Reporting | Visualization | Notebook/Demo | Milestone | Issue | Notes |
 |-----------|--------|-----------|----------------|---------------|-----------|-------|-------|
-| Commitment method (20% rule) | Complete | — | — | — | v0.2.0 | TBD | VaR-based global exposure limit. |
-| Absolute VaR monitoring | Missing | Complete | — | — | v0.3.0 | TBD | Daily VaR vs. 20% of NAV threshold. |
+| Commitment approach global exposure | Complete | — | — | — | v0.2.0 | TBD | Derivative-based; 100% NAV limit. (See Section 7.) |
+| Absolute VaR monitoring | Missing | Complete | — | — | v0.3.0 | TBD | VaR-based global exposure; 20% of NAV threshold. |
 | Relative VaR monitoring | Missing | Complete | — | — | v0.3.0 | TBD | VaR vs. benchmark VaR; Annex II. |
 | SRRI calculation | Missing | Complete | — | — | v0.3.0 | TBD | Synthetic Risk and Reward Indicator; 7-point scale. |
 | Stress scenarios (Annex II) | Missing | Complete | — | — | v0.3.0 | TBD | Eight regulatory scenarios defined by ESMA. |
