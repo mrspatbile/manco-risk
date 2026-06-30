@@ -75,3 +75,60 @@ from any VaR methodology (historical, parametric, Monte Carlo, etc.).
 - `excess_amount`: Overage amount (if any, calculated)
 - `excess_ratio`: Overage ratio (if any, calculated)
 - Audit fields: fund_id, date, confidence level, holding period
+
+---
+
+## SRRI (Synthetic Risk and Reward Indicator)
+
+### Purpose
+
+SRRI is a 7-point scale measuring the synthetic risk of a fund based on volatility.
+Used in investor communications and regulatory disclosures under PRIIPs.
+
+### Volatility Bands
+
+The engine maps annualised volatility to SRRI class per CESR/ESMA methodology:
+
+| SRRI Class | Volatility Range |
+|------------|------------------|
+| 1 | < 0.5% |
+| 2 | 0.5% - < 2% |
+| 3 | 2% - < 5% |
+| 4 | 5% - < 10% |
+| 5 | 10% - < 15% |
+| 6 | 15% - < 25% |
+| 7 | ≥ 25% |
+
+### Engine Behavior
+
+The `SRRIEngine`:
+
+- Accepts an annualised volatility observation (fund, date, volatility).
+- Matches volatility against SRRI volatility bands.
+- Returns SRRI class (1-7).
+
+The engine does not calculate volatility. It consumes pre-calculated observations
+from any volatility methodology (historical, parametric, etc.).
+
+### Input and Output
+
+**Input** (`SRRIInput`):
+- `fund_id`: Fund identifier
+- `valuation_date`: Snapshot date
+- `annualised_volatility`: Annualised volatility as decimal (e.g., 0.15 = 15%)
+
+**Output** (`SRRIResult`):
+- `srri_class`: SRRI class 1-7 (calculated)
+- Audit fields: fund_id, date, annualised volatility (preserved)
+
+### Assumptions
+
+- Volatility is calculated independently and provided as input.
+- Volatility represents total fund risk (no concentration on specific risk factors).
+- Linear mapping between volatility and SRRI class (no volatility decay, regime shifts, or adaptive scaling).
+
+### Limitations
+
+- Does not account for credit risk, liquidity risk, or counterparty risk independently.
+- SRRI reflects historical volatility only; does not forecast future risk.
+- All funds with identical volatility receive identical SRRI regardless of asset class or strategy.

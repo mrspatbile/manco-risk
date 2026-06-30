@@ -20,15 +20,24 @@ from manco_risk.risk.ucits.absolute_var import (
 )
 from manco_risk.risk.ucits.absolute_var_engine import UCITSAbsoluteVaREngine
 from manco_risk.risk.ucits.commitment_engine import UCITSCommitmentGlobalExposureEngine
-from manco_risk.risk.ucits.constants import UCITS_ABSOLUTE_VAR_LIMIT_RATIO
+from manco_risk.risk.ucits.constants import (
+    SRRI_VOLATILITY_BANDS,
+    UCITS_ABSOLUTE_VAR_LIMIT_RATIO,
+)
 from manco_risk.risk.ucits.global_exposure_models import (
     UCITSGlobalExposureInput,
     UCITSGlobalExposureMethod,
     UCITSGlobalExposureResult,
     UCITSGlobalExposureStatus,
 )
+from manco_risk.risk.ucits.srri import SRRIInput, SRRIResult
+from manco_risk.risk.ucits.srri_engine import SRRIEngine
 
 __all__ = [
+    "SRRIEngine",
+    "SRRIInput",
+    "SRRIResult",
+    "SRRI_VOLATILITY_BANDS",
     "UCITSAbsoluteVaREngine",
     "UCITSAbsoluteVaRInput",
     "UCITSAbsoluteVaRResult",
