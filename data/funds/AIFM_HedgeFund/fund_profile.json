@@ -1,0 +1,40 @@
+{
+  "schema_version": "1.0",
+  "fund_id": "AIFM_HedgeFund",
+  "fund_name": "AIFM Hedge Fund - Long/Short Equity and Credit Strategy",
+  "fund_short_name": "AIFM Hedge Fund",
+  "fund_type": "AIFM",
+  "strategy": "Long/short equity and credit",
+  "currency": "EUR",
+  "domicile": "Luxembourg",
+  "regulator": "CSSF",
+  "inception_date": "2018-01-15",
+  "target_nav_eur": 250000000,
+  "redemption_terms": {
+    "structure": "open_ended",
+    "redemption_frequency": "daily",
+    "redemption_notice_days": 5,
+    "redemption_settlement_days": 1,
+    "display": "Daily redemption, 5 days' notice, T+1 settlement"
+  },
+  "regulatory_classification": {
+    "is_ucits": false,
+    "is_aif": true,
+    "is_annex_iv_reportable": true,
+    "is_priips_kid_required": false,
+    "is_sfdr_article_6": true,
+    "is_sfdr_article_8": false,
+    "is_sfdr_article_9": false
+  },
+  "data_model": {
+    "type": "positions_based",
+    "asset_types": [
+      "equity",
+      "credit",
+      "derivative",
+      "cash",
+      "fx"
+    ],
+    "time_series_frequency": "daily"
+  }
+}

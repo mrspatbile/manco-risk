@@ -1,0 +1,108 @@
+{
+  "schema_version": "1.0",
+  "fund_id": "UCITS_Balanced",
+  "notice_period_days": 1,
+  "lockup_days": 0,
+  "liquidity_profile": "daily_redemption",
+  "valuation_frequency": "daily",
+  "priips_kid": {
+    "risk_indicator": "Summary Risk Indicator (SRI)",
+    "sri_class": null,
+    "performance_scenarios": true,
+    "costs_disclosure": true
+  },
+  "global_exposure_policy": {
+    "method": "absolute_var",
+    "method_routing": {
+      "commitment": "commitment_exposure_pct_tna",
+      "absolute_var": "absolute_var_pct_tna",
+      "relative_var": "relative_var_pct"
+    },
+    "reference_portfolio_id": "global_equity_60_eur_gov_40",
+    "uses_commitment_disclosure": false,
+    "uses_derivative_notional_leverage_reporting": true
+  },
+  "stress_testing": {
+    "use_stress_testing": true,
+    "univariate_scenarios": {
+      "source": "ucits_univariate_stress_scenarios",
+      "prescribed_scenarios": [
+        "equity_markets_down_30",
+        "equity_markets_up_30",
+        "interest_rate_curves_up_200bps",
+        "credit_spreads_down_50pct",
+        "credit_spreads_up_100pct",
+        "base_currency_depreciation_30",
+        "base_currency_appreciation_30"
+      ]
+    },
+    "most_relevant_historical_scenarios": {
+      "source": "scenario_library_2_historical",
+      "selected_scenarios": [
+        "historical_2008_black_week",
+        "historical_2020_covid",
+        "historical_2022_rate_inflation"
+      ],
+      "requires_holding_period_days": true
+    }
+  },
+  "backtesting": {
+    "lookback_days": 250,
+    "observation_window_months": 12
+  },
+  "var_framework": {
+    "models": [
+      "historical",
+      "parametric"
+    ],
+    "parametric_distribution": "student_t",
+    "parametric_degrees_of_freedom": 5,
+    "scaling_method": "sqrt_time"
+  },
+  "attribution_policy": {
+    "enabled": true,
+    "method": "risk_factor_pnl",
+    "risk_factors": [
+      "equity",
+      "rates",
+      "credit",
+      "fx"
+    ],
+    "lookback_days": 250,
+    "frequency": "daily",
+    "reporting_use": "model_review"
+  },
+  "srri_monitoring": {
+    "current_disclosed_srri": 5,
+    "window_weeks": 260,
+    "update_frequency_months": 1,
+    "category_change_persistence_months": 4
+  },
+  "liquidity_monitoring": {
+    "pct_adv": 0.25,
+    "stress_window_days": 5,
+    "redemption_scenarios": [
+      {
+        "name": "Base",
+        "redemption_pct": 0.05
+      },
+      {
+        "name": "Large",
+        "redemption_pct": 0.15
+      },
+      {
+        "name": "Stress",
+        "redemption_pct": 0.25
+      },
+      {
+        "name": "Largest investor",
+        "redemption_pct": "largest_investor"
+      }
+    ]
+  },
+  "internal_monitoring": {
+    "largest_position_warning_pct": 8,
+    "liquidity_coverage_threshold_days": 5
+  },
+  "_note": "UCITS regulatory limits are defined centrally in reference_data/regulation/ucits_regulatory_framework.json. This file contains only fund-level operational parameters, monitoring choices, and internal thresholds."
+}
