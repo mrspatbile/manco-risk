@@ -195,22 +195,186 @@ class ManagementFundSummarySection(BaseModel):
         return v
 
 
+class ManagementMarketRiskInput(BaseModel):
+    """Input to management market risk summary builder.
+
+    Contains already-computed market risk outputs required for the market risk section.
+
+    Fields:
+    - var_value: Value-at-Risk measure (Decimal, non-negative). Non-empty when supplied.
+    - var_method: VaR calculation method (str, non-empty). E.g., "Historical Simulation", "Parametric".
+    - expected_shortfall: Expected shortfall measure (Decimal, optional, non-negative when supplied).
+    - srri_class: Synthetic Risk and Reward Indicator class (str, optional, non-empty when supplied).
+      E.g., "1", "2", ..., "7".
+    - global_exposure: Global exposure measure as ratio (Decimal, optional, non-negative when supplied).
+    - stress_summary_reference: Reference to stress testing results (str, optional, non-empty when supplied).
+    - methodology_version: Risk methodology version identifier (str, optional, non-empty when supplied).
+
+    Invariants:
+    - var_method must be non-empty.
+    - var_value must be non-negative when supplied.
+    - expected_shortfall must be non-negative when supplied.
+    - global_exposure must be non-negative when supplied.
+    - Optional string fields must be non-empty when supplied.
+
+    Note: These are already-computed outputs from the risk module.
+    This input model does not perform calculations.
+    """
+
+    var_value: Decimal
+    var_method: str
+    expected_shortfall: Optional[Decimal] = None
+    srri_class: Optional[str] = None
+    global_exposure: Optional[Decimal] = None
+    stress_summary_reference: Optional[str] = None
+    methodology_version: Optional[str] = None
+
+    model_config = ConfigDict(frozen=True)
+
+    @field_validator("var_method")
+    @classmethod
+    def validate_var_method(cls, v: str) -> str:
+        """VaR method must be non-empty."""
+        if not v or not v.strip():
+            raise ValueError("var_method must be non-empty")
+        return v.strip()
+
+    @field_validator("var_value")
+    @classmethod
+    def validate_var_value(cls, v: Decimal) -> Decimal:
+        """VaR value must be non-negative."""
+        if v < 0:
+            raise ValueError("var_value must be non-negative")
+        return v
+
+    @field_validator("expected_shortfall")
+    @classmethod
+    def validate_expected_shortfall(cls, v: Optional[Decimal]) -> Optional[Decimal]:
+        """Expected shortfall must be non-negative when supplied."""
+        if v is not None and v < 0:
+            raise ValueError("expected_shortfall must be non-negative")
+        return v
+
+    @field_validator("global_exposure")
+    @classmethod
+    def validate_global_exposure(cls, v: Optional[Decimal]) -> Optional[Decimal]:
+        """Global exposure must be non-negative when supplied."""
+        if v is not None and v < 0:
+            raise ValueError("global_exposure must be non-negative")
+        return v
+
+    @field_validator("srri_class")
+    @classmethod
+    def validate_srri_class(cls, v: Optional[str]) -> Optional[str]:
+        """SRRI class must be non-empty when supplied."""
+        if v is not None and (not v or not v.strip()):
+            raise ValueError("srri_class must be non-empty when supplied")
+        return v.strip() if v else None
+
+    @field_validator("stress_summary_reference")
+    @classmethod
+    def validate_stress_summary_reference(cls, v: Optional[str]) -> Optional[str]:
+        """Stress summary reference must be non-empty when supplied."""
+        if v is not None and (not v or not v.strip()):
+            raise ValueError("stress_summary_reference must be non-empty when supplied")
+        return v.strip() if v else None
+
+    @field_validator("methodology_version")
+    @classmethod
+    def validate_methodology_version(cls, v: Optional[str]) -> Optional[str]:
+        """Methodology version must be non-empty when supplied."""
+        if v is not None and (not v or not v.strip()):
+            raise ValueError("methodology_version must be non-empty when supplied")
+        return v.strip() if v else None
+
+
+class ManagementMarketRiskSection(BaseModel):
+    """Result of management market risk summary assembly.
+
+    Immutable market risk section for management reporting.
+    Contains already-computed market risk metrics.
+
+    Fields:
+    - var_value: Value-at-Risk measure.
+    - var_method: VaR calculation method.
+    - expected_shortfall: Expected shortfall measure (optional).
+    - srri_class: Synthetic Risk and Reward Indicator class (optional).
+    - global_exposure: Global exposure measure (optional).
+    - stress_summary_reference: Reference to stress testing results (optional).
+    - methodology_version: Risk methodology version (optional).
+
+    Invariants (defensive checks):
+    - var_method must be non-empty.
+    - var_value must be non-negative.
+    - expected_shortfall must be non-negative when present.
+    - global_exposure must be non-negative when present.
+
+    Note: These fields contain already-computed risk outputs.
+    No calculations are performed by this model.
+    """
+
+    var_value: Decimal
+    var_method: str
+    expected_shortfall: Optional[Decimal] = None
+    srri_class: Optional[str] = None
+    global_exposure: Optional[Decimal] = None
+    stress_summary_reference: Optional[str] = None
+    methodology_version: Optional[str] = None
+
+    model_config = ConfigDict(frozen=True)
+
+    @field_validator("var_method")
+    @classmethod
+    def validate_var_method(cls, v: str) -> str:
+        """VaR method must be non-empty (defensive check)."""
+        if not v or not v.strip():
+            raise ValueError("var_method must be non-empty")
+        return v
+
+    @field_validator("var_value")
+    @classmethod
+    def validate_var_value(cls, v: Decimal) -> Decimal:
+        """VaR value must be non-negative (defensive check)."""
+        if v < 0:
+            raise ValueError("var_value must be non-negative")
+        return v
+
+    @field_validator("expected_shortfall")
+    @classmethod
+    def validate_expected_shortfall(cls, v: Optional[Decimal]) -> Optional[Decimal]:
+        """Expected shortfall must be non-negative when present (defensive check)."""
+        if v is not None and v < 0:
+            raise ValueError("expected_shortfall must be non-negative")
+        return v
+
+    @field_validator("global_exposure")
+    @classmethod
+    def validate_global_exposure(cls, v: Optional[Decimal]) -> Optional[Decimal]:
+        """Global exposure must be non-negative when present (defensive check)."""
+        if v is not None and v < 0:
+            raise ValueError("global_exposure must be non-negative")
+        return v
+
+
 class ManagementRiskReport(BaseModel):
     """Management risk report container.
 
     Assembles management reporting sections into a consolidated report.
-    For Slice 1, only fund summary is included.
+    For Slice 1, includes fund summary only.
+    For Slice 2, optionally includes market risk.
 
     Fields:
     - fund_summary: Fund summary section (required).
+    - market_risk: Market risk section (optional).
     - included_sections: List of section names included in the report.
 
     Invariants:
-    - fund_summary must be present (fund summary is mandatory for Slice 1).
+    - fund_summary must be present.
     - included_sections is computed from supplied sections.
     """
 
     fund_summary: ManagementFundSummarySection
+    market_risk: Optional[ManagementMarketRiskSection] = None
     included_sections: list[str]
 
     model_config = ConfigDict(frozen=True)

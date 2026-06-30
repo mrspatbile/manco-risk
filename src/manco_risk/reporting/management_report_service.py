@@ -7,9 +7,13 @@ The service performs NO calculations. It only validates consistency
 and packages supplied data into immutable report objects.
 """
 
+from typing import Optional
+
 from manco_risk.reporting.management_report import (
     ManagementFundSummaryInput,
     ManagementFundSummarySection,
+    ManagementMarketRiskInput,
+    ManagementMarketRiskSection,
     ManagementRiskReport,
 )
 
@@ -68,17 +72,54 @@ class ManagementReportService:
         )
 
     @staticmethod
+    def build_market_risk(
+        input_data: ManagementMarketRiskInput,
+    ) -> ManagementMarketRiskSection:
+        """Build market risk section from already-computed outputs.
+
+        Parameters
+        ----------
+        input_data : ManagementMarketRiskInput
+            Already-computed market risk data (var_value, var_method,
+            optional expected_shortfall, srri_class, global_exposure,
+            stress_summary_reference, methodology_version).
+
+        Returns
+        -------
+        ManagementMarketRiskSection
+            Immutable market risk section.
+
+        Raises
+        ------
+        ValueError
+            If required fields are empty or invalid.
+        """
+        return ManagementMarketRiskSection(
+            var_value=input_data.var_value,
+            var_method=input_data.var_method,
+            expected_shortfall=input_data.expected_shortfall,
+            srri_class=input_data.srri_class,
+            global_exposure=input_data.global_exposure,
+            stress_summary_reference=input_data.stress_summary_reference,
+            methodology_version=input_data.methodology_version,
+        )
+
+    @staticmethod
     def build_report(
         fund_summary: ManagementFundSummarySection,
+        market_risk: Optional[ManagementMarketRiskSection] = None,
     ) -> ManagementRiskReport:
         """Build management report from sections.
 
         For Slice 1, includes fund summary section only.
+        For Slice 2+, optionally includes market risk.
 
         Parameters
         ----------
         fund_summary : ManagementFundSummarySection
-            Fund summary section.
+            Fund summary section (required).
+        market_risk : Optional[ManagementMarketRiskSection], optional
+            Market risk section. If supplied, will be included in report.
 
         Returns
         -------
@@ -91,8 +132,11 @@ class ManagementReportService:
             If sections are invalid.
         """
         included_sections = ["Fund Summary"]
+        if market_risk is not None:
+            included_sections.append("Market Risk")
 
         return ManagementRiskReport(
             fund_summary=fund_summary,
+            market_risk=market_risk,
             included_sections=included_sections,
         )

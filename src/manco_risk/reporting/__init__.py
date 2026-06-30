@@ -23,6 +23,8 @@ from manco_risk.reporting.annex_iv_service import AnnexIVReportingService
 from manco_risk.reporting.management_report import (
     ManagementFundSummaryInput,
     ManagementFundSummarySection,
+    ManagementMarketRiskInput,
+    ManagementMarketRiskSection,
     ManagementRiskReport,
 )
 from manco_risk.reporting.management_report_service import ManagementReportService
@@ -43,6 +45,8 @@ __all__ = [
     "AnnexIVReportingService",
     "ManagementFundSummaryInput",
     "ManagementFundSummarySection",
+    "ManagementMarketRiskInput",
+    "ManagementMarketRiskSection",
     "ManagementRiskReport",
     "ManagementReportService",
 ]
