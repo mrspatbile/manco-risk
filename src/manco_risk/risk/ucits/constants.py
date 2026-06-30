@@ -29,3 +29,7 @@ SRRI_VOLATILITY_BANDS = (
     # SRRI 7: >= 25%
     (Decimal("0.25"), Decimal("999.99"), 7),
 )
+
+# UCITS Directive Article 51: Maximum direct borrowing limit
+# Direct borrowing must not exceed 10% of NAV
+UCITS_BORROWING_LIMIT_RATIO = Decimal("0.10")

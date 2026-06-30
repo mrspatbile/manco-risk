@@ -19,10 +19,17 @@ from manco_risk.risk.ucits.absolute_var import (
     UCITSAbsoluteVaRStatus,
 )
 from manco_risk.risk.ucits.absolute_var_engine import UCITSAbsoluteVaREngine
+from manco_risk.risk.ucits.borrowing import (
+    UCITSBorrowingInput,
+    UCITSBorrowingResult,
+    UCITSBorrowingStatus,
+)
+from manco_risk.risk.ucits.borrowing_engine import UCITSBorrowingEngine
 from manco_risk.risk.ucits.commitment_engine import UCITSCommitmentGlobalExposureEngine
 from manco_risk.risk.ucits.constants import (
     SRRI_VOLATILITY_BANDS,
     UCITS_ABSOLUTE_VAR_LIMIT_RATIO,
+    UCITS_BORROWING_LIMIT_RATIO,
 )
 from manco_risk.risk.ucits.global_exposure_models import (
     UCITSGlobalExposureInput,
@@ -43,6 +50,11 @@ __all__ = [
     "UCITSAbsoluteVaRResult",
     "UCITSAbsoluteVaRStatus",
     "UCITS_ABSOLUTE_VAR_LIMIT_RATIO",
+    "UCITSBorrowingEngine",
+    "UCITSBorrowingInput",
+    "UCITSBorrowingResult",
+    "UCITSBorrowingStatus",
+    "UCITS_BORROWING_LIMIT_RATIO",
     "UCITSCommitmentGlobalExposureEngine",
     "UCITSGlobalExposureInput",
     "UCITSGlobalExposureMethod",

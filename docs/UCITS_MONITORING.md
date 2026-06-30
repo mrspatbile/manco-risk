@@ -132,3 +132,81 @@ from any volatility methodology (historical, parametric, etc.).
 - Does not account for credit risk, liquidity risk, or counterparty risk independently.
 - SRRI reflects historical volatility only; does not forecast future risk.
 - All funds with identical volatility receive identical SRRI regardless of asset class or strategy.
+
+---
+
+## Direct Borrowing Limit Monitoring
+
+### Purpose
+
+Monitor fund direct borrowing against the regulatory limit under the UCITS framework.
+
+Direct borrowing refers to explicit loan facilities, not borrowing inferred from positions or derivatives.
+
+### Regulatory Limit
+
+UCITS Directive Article 51 specifies that direct borrowing must not exceed 10% of NAV, defined by:
+
+```python
+UCITS_BORROWING_LIMIT_RATIO = Decimal("0.10")
+```
+
+### Scope
+
+This engine monitors **direct borrowings only**:
+- Loan facilities (term loans, lines of credit)
+- Cash borrowing for settlement
+- Explicit short-selling funding
+
+This engine does **not** infer borrowing from:
+- Position leverage or short positions
+- Derivative notional or delta-adjusted exposure
+- Securities financing transactions (SFT) implicit leverage
+
+### Compliance Status
+
+| Status | Meaning |
+|--------|---------|
+| WITHIN_LIMIT | Direct borrowing ≤ 10% of NAV (compliant) |
+| BREACH | Direct borrowing > 10% of NAV (non-compliant) |
+
+### Engine Behavior
+
+The `UCITSBorrowingEngine`:
+
+- Accepts a direct borrowing observation (fund, date, NAV, direct borrowing amount).
+- Calculates borrowing ratio from direct borrowing amount and NAV.
+- Compares borrowing ratio to 10% threshold.
+- Returns status, threshold, and excess fields.
+
+The engine does not infer or calculate borrowing. It consumes pre-observed direct borrowing amounts.
+
+### Input and Output
+
+**Input** (`UCITSBorrowingInput`):
+- `fund_id`: Fund identifier
+- `valuation_date`: Snapshot date
+- `nav`: Net asset value
+- `direct_borrowing_amount`: Total direct borrowings (positive monetary amount)
+
+**Output** (`UCITSBorrowingResult`):
+- `status`: WITHIN_LIMIT or BREACH
+- `borrowing_ratio`: Direct borrowing as fraction of NAV (calculated)
+- `limit_ratio`: Regulatory limit as fraction (0.10)
+- `limit_amount`: Limit in base currency (calculated)
+- `excess_amount`: Overage amount (if any, calculated)
+- `excess_ratio`: Overage ratio (if any, calculated)
+- Audit fields: fund_id, date, NAV, direct borrowing amount (preserved)
+
+### Assumptions
+
+- Direct borrowing is reported accurately and completely.
+- Borrowing includes all explicit loan facilities and cash borrowing.
+- Borrowing does not include implicit leverage from positions or derivatives.
+
+### Limitations
+
+- Does not monitor inferred borrowing from derivative notional or SFT leverage.
+- Does not distinguish between different types of borrowing (term, revolving, repo).
+- Does not account for borrowing costs or collateral requirements.
+- Assumes NAV is current and accurate at observation time.
