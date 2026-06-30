@@ -41,3 +41,9 @@ UCITS_ISSUER_CONCENTRATION_LIMIT_RATIO = Decimal("0.10")
 # CESR/ESMA Guidelines 10-788: Relative VaR global exposure monitoring
 # Fund VaR must not exceed 200% of the reference portfolio VaR (limit ratio = 2.0)
 UCITS_RELATIVE_VAR_LIMIT_RATIO = Decimal("2.0")
+
+# UCITS Directive Article 52(3): OTC counterparty exposure limits
+# Standard OTC counterparty: 10% of NAV (reduced to 5% in this implementation for prudence)
+# Eligible credit institution counterparty: 10% of NAV
+UCITS_OTC_COUNTERPARTY_LIMIT_RATIO = Decimal("0.05")
+UCITS_OTC_CREDIT_INSTITUTION_LIMIT_RATIO = Decimal("0.10")

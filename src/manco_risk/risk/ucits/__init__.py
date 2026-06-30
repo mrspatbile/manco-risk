@@ -37,6 +37,8 @@ from manco_risk.risk.ucits.constants import (
     UCITS_ABSOLUTE_VAR_LIMIT_RATIO,
     UCITS_BORROWING_LIMIT_RATIO,
     UCITS_ISSUER_CONCENTRATION_LIMIT_RATIO,
+    UCITS_OTC_COUNTERPARTY_LIMIT_RATIO,
+    UCITS_OTC_CREDIT_INSTITUTION_LIMIT_RATIO,
     UCITS_RELATIVE_VAR_LIMIT_RATIO,
 )
 from manco_risk.risk.ucits.global_exposure_models import (
@@ -45,6 +47,13 @@ from manco_risk.risk.ucits.global_exposure_models import (
     UCITSGlobalExposureResult,
     UCITSGlobalExposureStatus,
 )
+from manco_risk.risk.ucits.otc_counterparty import (
+    UCITSCounterpartyCategory,
+    UCITSOTCCounterpartyInput,
+    UCITSOTCCounterpartyResult,
+    UCITSOTCCounterpartyStatus,
+)
+from manco_risk.risk.ucits.otc_counterparty_engine import UCITSOTCCounterpartyEngine
 from manco_risk.risk.ucits.relative_var import (
     UCITSRelativeVaRInput,
     UCITSRelativeVaRResult,
@@ -69,16 +78,23 @@ __all__ = [
     "UCITSBorrowingResult",
     "UCITSBorrowingStatus",
     "UCITS_BORROWING_LIMIT_RATIO",
+    "UCITSCommitmentGlobalExposureEngine",
     "UCITSConcentrationEngine",
     "UCITSConcentrationInput",
     "UCITSConcentrationResult",
     "UCITSConcentrationStatus",
     "UCITS_ISSUER_CONCENTRATION_LIMIT_RATIO",
-    "UCITSCommitmentGlobalExposureEngine",
+    "UCITSCounterpartyCategory",
     "UCITSGlobalExposureInput",
     "UCITSGlobalExposureMethod",
     "UCITSGlobalExposureResult",
     "UCITSGlobalExposureStatus",
+    "UCITSOTCCounterpartyEngine",
+    "UCITSOTCCounterpartyInput",
+    "UCITSOTCCounterpartyResult",
+    "UCITSOTCCounterpartyStatus",
+    "UCITS_OTC_COUNTERPARTY_LIMIT_RATIO",
+    "UCITS_OTC_CREDIT_INSTITUTION_LIMIT_RATIO",
     "UCITSRelativeVaREngine",
     "UCITSRelativeVaRInput",
     "UCITSRelativeVaRResult",

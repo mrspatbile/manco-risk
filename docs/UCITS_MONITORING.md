@@ -382,3 +382,95 @@ The engine does not calculate or construct VaR/benchmarks. It consumes pre-compu
 - Assumes pre-computed VaR observations are correct
 - Does not monitor other global exposure methods (commitment approach, absolute VaR)
 - Assumes both VaR values use consistent parameters (confidence level, holding period)
+
+---
+
+## OTC Counterparty Exposure Monitoring
+
+### Purpose
+
+Monitor fund exposure to individual OTC derivative counterparties against regulatory limits under the UCITS framework.
+
+### Regulatory Basis
+
+UCITS Directive Article 52(3): Counterparty Limits  
+Exposure to a single OTC counterparty must not exceed defined thresholds based on counterparty type.
+
+**Limit structure:**
+- Standard OTC counterparty: 5% of NAV
+- Eligible credit institution counterparty: 10% of NAV
+
+### Scope
+
+This engine monitors **OTC counterparty exposure only**:
+- Direct exposure to a single OTC counterparty
+- Pre-computed counterparty exposure observations
+
+This engine does **NOT**:
+- Value derivatives (consumes pre-computed exposure observations)
+- Aggregate OTC positions by counterparty
+- Apply collateral netting or look-through logic
+- Handle issuer groups or exemptions
+- Fetch market data or prices
+- Infer exposure from position-level derivatives
+
+### Compliance Status
+
+| Status | Meaning |
+|--------|---------|
+| WITHIN_LIMIT | Counterparty exposure ≤ applicable threshold (compliant) |
+| BREACH | Counterparty exposure > applicable threshold (non-compliant) |
+
+**Thresholds by category:**
+- Standard OTC counterparty: 5% of NAV
+- Eligible credit institution: 10% of NAV
+
+### Engine Behavior
+
+The `UCITSOTCCounterpartyEngine`:
+
+- Accepts an OTC counterparty exposure observation (fund, date, NAV, counterparty, exposure, category).
+- Determines limit ratio based on counterparty category.
+- Calculates exposure ratio from exposure amount and NAV.
+- Compares exposure ratio to limit.
+- Returns status, threshold, and excess fields.
+
+The engine does not value derivatives or aggregate positions. It consumes pre-computed counterparty exposure.
+
+### Input and Output
+
+**Input** (`UCITSOTCCounterpartyInput`):
+- `fund_id`: Fund identifier
+- `valuation_date`: Snapshot date
+- `counterparty_id`: Counterparty identifier (LEI or code)
+- `counterparty_name`: Counterparty name for audit (optional)
+- `nav`: Net asset value
+- `exposure_amount`: Total OTC exposure to this counterparty (positive monetary amount)
+- `counterparty_category`: Counterparty type (STANDARD or ELIGIBLE_CREDIT_INSTITUTION)
+
+**Output** (`UCITSOTCCounterpartyResult`):
+- `status`: WITHIN_LIMIT or BREACH
+- `exposure_ratio`: Counterparty exposure as fraction of NAV (calculated)
+- `limit_ratio`: Regulatory limit as fraction (0.05 or 0.10, calculated based on category)
+- `limit_amount`: Limit in base currency (calculated)
+- `excess_amount`: Overage amount (if any, calculated)
+- `excess_ratio`: Overage ratio (if any, calculated)
+- Audit fields: fund_id, counterparty_id, counterparty_name, valuation_date, NAV, exposure (preserved)
+
+### Assumptions
+
+- OTC counterparty exposure is pre-computed and provided as input.
+- Exposure represents total fund holding in that counterparty across all OTC derivatives.
+- Counterparty category is correctly specified.
+- Exposure is accurate and complete.
+
+### Limitations
+
+- Does not value derivatives or calculate counterparty exposure
+- Does not aggregate positions by counterparty
+- Does not apply collateral netting or margining
+- Does not handle exemptions (government counterparties, clearing arrangements, etc.)
+- Does not perform issuer group logic or look-through
+- Assumes counterparty category is correctly specified
+- Assumes NAV is current and accurate at observation time
+- Does not distinguish between different types of OTC derivatives or exposures
