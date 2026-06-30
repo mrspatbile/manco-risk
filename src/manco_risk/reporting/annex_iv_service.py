@@ -1,13 +1,17 @@
 """Annex IV reporting service.
 
-Orchestration layer that assembles fund identification and report data
-from typed inputs.
+Orchestration layer that assembles fund identification, asset breakdown,
+and report data from typed inputs.
 
 The service performs NO calculations. It only validates consistency
 and packages supplied data into immutable report objects.
 """
 
+from typing import Optional
+
 from manco_risk.reporting.annex_iv import (
+    AnnexIVAssetBreakdownInput,
+    AnnexIVAssetBreakdownSection,
     AnnexIVFundIdentificationInput,
     AnnexIVFundIdentificationSection,
     AnnexIVReport,
@@ -65,18 +69,45 @@ class AnnexIVReportingService:
         )
 
     @staticmethod
+    def build_asset_breakdown(
+        input_data: AnnexIVAssetBreakdownInput,
+    ) -> AnnexIVAssetBreakdownSection:
+        """Build asset breakdown section from pre-aggregated rows.
+
+        Parameters
+        ----------
+        input_data : AnnexIVAssetBreakdownInput
+            Pre-aggregated asset breakdown rows (not calculated or aggregated
+            by this service).
+
+        Returns
+        -------
+        AnnexIVAssetBreakdownSection
+            Immutable asset breakdown section.
+
+        Raises
+        ------
+        ValueError
+            If rows are empty or invalid.
+        """
+        return AnnexIVAssetBreakdownSection(rows=input_data.rows)
+
+    @staticmethod
     def build_report(
         fund_identification: AnnexIVFundIdentificationSection,
+        asset_breakdown: Optional[AnnexIVAssetBreakdownSection] = None,
     ) -> AnnexIVReport:
         """Build Annex IV report from sections.
 
-        For this slice, the report contains only fund identification.
-        Future slices will add asset breakdown, risk measures, leverage, liquidity.
+        Assembles fund identification and optionally asset breakdown
+        into a consolidated report.
 
         Parameters
         ----------
         fund_identification : AnnexIVFundIdentificationSection
             Fund identification section.
+        asset_breakdown : Optional[AnnexIVAssetBreakdownSection], optional
+            Asset breakdown section. If supplied, will be included in report.
 
         Returns
         -------
@@ -86,9 +117,14 @@ class AnnexIVReportingService:
         Raises
         ------
         ValueError
-            If fund_identification is invalid.
+            If sections are invalid.
         """
+        included_sections = ["Fund Identification"]
+        if asset_breakdown is not None:
+            included_sections.append("Asset Breakdown")
+
         return AnnexIVReport(
             fund_identification=fund_identification,
-            included_sections=["Fund Identification"],
+            asset_breakdown=asset_breakdown,
+            included_sections=included_sections,
         )

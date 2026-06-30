@@ -1,6 +1,6 @@
 """Annex IV-style reporting models.
 
-Pure data models for fund identification and report assembly.
+Pure data models for fund identification, asset breakdown, and report assembly.
 No calculation or persistence logic.
 
 The reporting layer packages source data and risk outputs into export-ready
@@ -9,6 +9,8 @@ or market data access.
 """
 
 from datetime import date
+from decimal import Decimal
+from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
@@ -147,23 +149,133 @@ class AnnexIVFundIdentificationSection(BaseModel):
         return v
 
 
+class AnnexIVAssetBreakdownRow(BaseModel):
+    """Single asset class row for Annex IV asset breakdown.
+
+    Represents one asset class entry in the asset breakdown section.
+
+    Fields:
+    - asset_class: Asset class identifier (e.g., "Equities", "Bonds", "Cash").
+    - market_value: Market value in base currency (Decimal, non-negative).
+    - nav_percentage: Percentage of NAV as decimal (e.g., 0.25 = 25%, non-negative).
+    - currency: Optional currency code (e.g., "EUR", "USD").
+    - exposure_basis: Optional exposure basis (e.g., "Long", "Short", "Notional").
+
+    Invariants:
+    - asset_class must be non-empty.
+    - market_value must be non-negative.
+    - nav_percentage must be non-negative.
+    - Do not validate nav_percentage sum in this slice.
+    """
+
+    asset_class: str
+    market_value: Decimal
+    nav_percentage: Decimal
+    currency: Optional[str] = None
+    exposure_basis: Optional[str] = None
+
+    model_config = ConfigDict(frozen=True)
+
+    @field_validator("asset_class")
+    @classmethod
+    def validate_asset_class(cls, v: str) -> str:
+        """Asset class must be non-empty."""
+        if not v or not v.strip():
+            raise ValueError("asset_class must be non-empty")
+        return v.strip()
+
+    @field_validator("market_value")
+    @classmethod
+    def validate_market_value(cls, v: Decimal) -> Decimal:
+        """Market value must be non-negative."""
+        v_decimal = v if isinstance(v, Decimal) else Decimal(str(v))
+        if v_decimal < Decimal("0"):
+            raise ValueError(f"market_value must be non-negative, got {v_decimal}")
+        return v_decimal
+
+    @field_validator("nav_percentage")
+    @classmethod
+    def validate_nav_percentage(cls, v: Decimal) -> Decimal:
+        """NAV percentage must be non-negative."""
+        v_decimal = v if isinstance(v, Decimal) else Decimal(str(v))
+        if v_decimal < Decimal("0"):
+            raise ValueError(f"nav_percentage must be non-negative, got {v_decimal}")
+        return v_decimal
+
+
+class AnnexIVAssetBreakdownInput(BaseModel):
+    """Input to Annex IV asset breakdown builder.
+
+    Contains pre-aggregated asset breakdown rows for assembly.
+
+    Fields:
+    - rows: List of asset class breakdown rows (at least one required if supplied).
+
+    Invariants:
+    - rows must contain at least one row.
+    - Each row must be valid AnnexIVAssetBreakdownRow.
+    """
+
+    rows: list[AnnexIVAssetBreakdownRow]
+
+    model_config = ConfigDict(frozen=True)
+
+    @field_validator("rows")
+    @classmethod
+    def validate_rows(cls, v: list[AnnexIVAssetBreakdownRow]) -> list[AnnexIVAssetBreakdownRow]:
+        """Asset breakdown must contain at least one row."""
+        if not v or len(v) == 0:
+            raise ValueError("Asset breakdown must contain at least one row")
+        return v
+
+
+class AnnexIVAssetBreakdownSection(BaseModel):
+    """Result of Annex IV asset breakdown assembly.
+
+    Immutable asset breakdown section for Annex IV reporting.
+    Contains pre-aggregated asset class rows.
+
+    Fields:
+    - rows: List of asset class breakdown rows.
+
+    Invariants (defensive checks):
+    - rows must contain at least one row.
+    - Each row must be valid AnnexIVAssetBreakdownRow.
+    """
+
+    rows: list[AnnexIVAssetBreakdownRow]
+
+    model_config = ConfigDict(frozen=True)
+
+    @field_validator("rows")
+    @classmethod
+    def validate_rows(cls, v: list[AnnexIVAssetBreakdownRow]) -> list[AnnexIVAssetBreakdownRow]:
+        """Asset breakdown must contain at least one row."""
+        if not v or len(v) == 0:
+            raise ValueError("Asset breakdown must contain at least one row")
+        return v
+
+
 class AnnexIVReport(BaseModel):
     """Annex IV-style reporting container.
 
     Immutable report that assembles Annex IV sections.
-    For this slice, contains fund identification only.
-    Future slices will add asset breakdown, risk measures, leverage, liquidity.
+    Contains fund identification and optionally asset breakdown.
+    Future slices will add risk measures, leverage, liquidity.
 
     Fields:
     - fund_identification: Fund identification section.
+    - asset_breakdown: Optional asset breakdown section.
     - included_sections: List of included report sections (informational).
 
     Invariants (defensive checks):
     - fund_identification must be present.
     - included_sections must list "Fund Identification".
+    - If asset_breakdown is supplied, included_sections must include "Asset Breakdown".
     """
 
     fund_identification: AnnexIVFundIdentificationSection
+    asset_breakdown: Optional[AnnexIVAssetBreakdownSection] = None
     included_sections: list[str]
 
     model_config = ConfigDict(frozen=True)

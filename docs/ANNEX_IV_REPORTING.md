@@ -33,12 +33,13 @@ The reporting module:
 - Return immutable, explicitly typed objects
 - Document assumptions about input data
 
-## Current Scope: Fund Identification
+## Current Scope: Fund Identification and Asset Breakdown
 
-This first implementation slice covers **fund identification only**.
+**Slice 1** covered **fund identification**.
+
+**Slice 2** (this slice) covers **asset breakdown**.
 
 Future slices will add:
-- Asset breakdown
 - Risk measures (VaR, ES, backtesting)
 - Leverage
 - Liquidity profile
@@ -56,6 +57,22 @@ Contains basic fund identifying information:
 - `reporting_period_end`: End date of reporting period
 
 All fields are required. All models are immutable.
+
+### Asset Breakdown Section
+
+Contains pre-aggregated asset class breakdown rows.
+
+**Slice 2 scope:** Asset breakdown accepts pre-aggregated rows and does NOT aggregate positions.
+
+Each asset breakdown row contains:
+
+- `asset_class`: Asset class identifier (e.g., "Equities", "Bonds", "Cash", "Derivatives")
+- `market_value`: Market value in base currency (Decimal, non-negative)
+- `nav_percentage`: Percentage of NAV as decimal (e.g., 0.25 = 25%, non-negative)
+- `currency`: Optional currency code (e.g., "EUR", "USD")
+- `exposure_basis`: Optional exposure basis (e.g., "Long", "Short", "Notional")
+
+**Important:** The asset breakdown section does NOT aggregate positions. Callers must supply already-aggregated rows. The service only validates and packages the supplied data.
 
 ## Inputs
 
@@ -90,6 +107,63 @@ input_data = AnnexIVFundIdentificationInput(
 
 Raises `ValueError` if validation fails.
 
+### AnnexIVAssetBreakdownRow
+
+Represents a single asset class row in the asset breakdown.
+
+**Constructor:**
+```python
+from decimal import Decimal
+from manco_risk.reporting import AnnexIVAssetBreakdownRow
+
+row = AnnexIVAssetBreakdownRow(
+    asset_class="Equities",
+    market_value=Decimal("500000.00"),
+    nav_percentage=Decimal("0.50"),
+    currency="EUR",
+    exposure_basis="Long",
+)
+```
+
+**Validation:**
+- `asset_class`: Must be non-empty
+- `market_value`: Must be non-negative (Decimal preserved)
+- `nav_percentage`: Must be non-negative (Decimal preserved)
+- `currency`: Optional
+- `exposure_basis`: Optional
+
+Raises `ValueError` if validation fails.
+
+### AnnexIVAssetBreakdownInput
+
+Container for pre-aggregated asset breakdown rows.
+
+**Constructor:**
+```python
+from decimal import Decimal
+from manco_risk.reporting import AnnexIVAssetBreakdownInput, AnnexIVAssetBreakdownRow
+
+rows = [
+    AnnexIVAssetBreakdownRow(
+        asset_class="Equities",
+        market_value=Decimal("600000.00"),
+        nav_percentage=Decimal("0.60"),
+    ),
+    AnnexIVAssetBreakdownRow(
+        asset_class="Bonds",
+        market_value=Decimal("400000.00"),
+        nav_percentage=Decimal("0.40"),
+    ),
+]
+
+input_data = AnnexIVAssetBreakdownInput(rows=rows)
+```
+
+**Validation:**
+- `rows`: Must contain at least one row
+
+Raises `ValueError` if validation fails.
+
 ## Outputs
 
 ### AnnexIVFundIdentificationSection
@@ -104,23 +178,39 @@ All fields are defensive-checked during construction:
 **Immutability:**
 Once constructed, the section cannot be modified. Attempts to reassign fields raise an exception.
 
+### AnnexIVAssetBreakdownSection
+
+Immutable asset breakdown result. Contains pre-aggregated asset class rows.
+
+**Fields:**
+- `rows`: List of AnnexIVAssetBreakdownRow (at least one required)
+
+All rows are defensive-checked during construction:
+- Each row must be valid AnnexIVAssetBreakdownRow
+- List must contain at least one row
+
+**Immutability:**
+Once constructed, the section cannot be modified.
+
 ### AnnexIVReport
 
 Immutable report container that references one or more report sections.
 
-For this slice, contains only `fund_identification`.
-
 **Fields:**
-- `fund_identification`: AnnexIVFundIdentificationSection
+- `fund_identification`: AnnexIVFundIdentificationSection (required)
+- `asset_breakdown`: AnnexIVAssetBreakdownSection (optional, default None)
 - `included_sections`: List of section names (informational)
 
-For this slice, `included_sections` must contain `"Fund Identification"`.
+**Invariants:**
+- `fund_identification` must be present
+- `included_sections` must contain `"Fund Identification"`
+- If `asset_breakdown` is supplied, `included_sections` must include `"Asset Breakdown"`
 
-Future slices will add additional sections (e.g., `"Asset Breakdown"`, `"Risk Measures"`).
+Future slices will add additional sections (e.g., `"Risk Measures"`, `"Leverage"`, `"Liquidity"`).
 
 ## Service: AnnexIVReportingService
 
-Stateless service for building report objects.
+Stateless service for building report objects. All methods are static.
 
 ### build_fund_identification()
 
@@ -137,32 +227,63 @@ section = AnnexIVReportingService.build_fund_identification(input_data)
 
 **Raises:** `ValueError` if input validation fails.
 
+### build_asset_breakdown()
+
+Assembles an asset breakdown section from pre-aggregated rows.
+
+```python
+input_data = AnnexIVAssetBreakdownInput(rows=[...])
+section = AnnexIVReportingService.build_asset_breakdown(input_data)
+```
+
+**Returns:** `AnnexIVAssetBreakdownSection`
+
+**Raises:** `ValueError` if rows are empty or invalid.
+
+**Important:** This method does NOT aggregate positions. It accepts pre-aggregated rows and validates them.
+
 ### build_report()
 
 Assembles a complete Annex IV report from section objects.
 
 ```python
 fund_id_section = AnnexIVFundIdentificationSection(...)
+asset_breakdown_section = AnnexIVAssetBreakdownSection(...)
+
+# With fund identification only
 report = AnnexIVReportingService.build_report(fund_id_section)
+
+# With fund identification and asset breakdown
+report = AnnexIVReportingService.build_report(
+    fund_id_section,
+    asset_breakdown_section,
+)
 ```
+
+**Parameters:**
+- `fund_identification`: AnnexIVFundIdentificationSection (required)
+- `asset_breakdown`: AnnexIVAssetBreakdownSection (optional)
 
 **Returns:** `AnnexIVReport`
 
 **Raises:** `ValueError` if section objects are invalid.
 
-## Example Workflow
+## Example Workflows
 
-### UCITS Fund
+### UCITS Fund with Asset Breakdown
 
 ```python
 from datetime import date
+from decimal import Decimal
 from manco_risk.reporting import (
     AnnexIVFundIdentificationInput,
+    AnnexIVAssetBreakdownInput,
+    AnnexIVAssetBreakdownRow,
     AnnexIVReportingService,
 )
 
-# 1. Create input data (from database or supplied source)
-input_data = AnnexIVFundIdentificationInput(
+# 1. Create fund identification input
+fund_id_input = AnnexIVFundIdentificationInput(
     fund_id=101,
     fund_name="European Growth UCITS Fund",
     fund_regime="UCITS",
@@ -173,21 +294,62 @@ input_data = AnnexIVFundIdentificationInput(
 )
 
 # 2. Build fund identification section
-fund_id_section = AnnexIVReportingService.build_fund_identification(input_data)
+fund_id_section = AnnexIVReportingService.build_fund_identification(fund_id_input)
 
-# 3. Build complete report (fund identification only for this slice)
-report = AnnexIVReportingService.build_report(fund_id_section)
+# 3. Create pre-aggregated asset breakdown rows
+rows = [
+    AnnexIVAssetBreakdownRow(
+        asset_class="Equities",
+        market_value=Decimal("600000.00"),
+        nav_percentage=Decimal("0.60"),
+        currency="EUR",
+    ),
+    AnnexIVAssetBreakdownRow(
+        asset_class="Bonds",
+        market_value=Decimal("300000.00"),
+        nav_percentage=Decimal("0.30"),
+        currency="EUR",
+    ),
+    AnnexIVAssetBreakdownRow(
+        asset_class="Cash",
+        market_value=Decimal("100000.00"),
+        nav_percentage=Decimal("0.10"),
+        currency="EUR",
+    ),
+]
 
-# 4. Export or display
+# 4. Create and build asset breakdown section
+asset_breakdown_input = AnnexIVAssetBreakdownInput(rows=rows)
+asset_breakdown_section = AnnexIVReportingService.build_asset_breakdown(
+    asset_breakdown_input
+)
+
+# 5. Build complete report with both sections
+report = AnnexIVReportingService.build_report(
+    fund_id_section,
+    asset_breakdown_section,
+)
+
+# 6. Export or display
 print(f"Fund: {report.fund_identification.fund_name}")
-print(f"Domicile: {report.fund_identification.domicile}")
 print(f"Sections: {report.included_sections}")
+for row in report.asset_breakdown.rows:
+    print(f"  {row.asset_class}: {row.nav_percentage * 100}%")
 ```
 
-### AIF Fund
+### AIF Fund with Asset Breakdown (Long/Short)
 
 ```python
-input_data = AnnexIVFundIdentificationInput(
+from datetime import date
+from decimal import Decimal
+from manco_risk.reporting import (
+    AnnexIVFundIdentificationInput,
+    AnnexIVAssetBreakdownInput,
+    AnnexIVAssetBreakdownRow,
+    AnnexIVReportingService,
+)
+
+fund_id_input = AnnexIVFundIdentificationInput(
     fund_id=202,
     fund_name="Strategic Opportunities AIF",
     fund_regime="AIF",
@@ -197,8 +359,66 @@ input_data = AnnexIVFundIdentificationInput(
     reporting_period_end=date(2024, 6, 30),
 )
 
+fund_id_section = AnnexIVReportingService.build_fund_identification(fund_id_input)
+
+# AIF with long and short positions
+rows = [
+    AnnexIVAssetBreakdownRow(
+        asset_class="Equities",
+        market_value=Decimal("400000.00"),
+        nav_percentage=Decimal("0.40"),
+        exposure_basis="Long",
+    ),
+    AnnexIVAssetBreakdownRow(
+        asset_class="Equities",
+        market_value=Decimal("100000.00"),
+        nav_percentage=Decimal("0.10"),
+        exposure_basis="Short",
+    ),
+    AnnexIVAssetBreakdownRow(
+        asset_class="Derivatives",
+        market_value=Decimal("500000.00"),
+        nav_percentage=Decimal("0.50"),
+        exposure_basis="Notional",
+    ),
+]
+
+asset_breakdown_section = AnnexIVReportingService.build_asset_breakdown(
+    AnnexIVAssetBreakdownInput(rows=rows)
+)
+
+report = AnnexIVReportingService.build_report(
+    fund_id_section,
+    asset_breakdown_section,
+)
+```
+
+### Fund Identification Only
+
+```python
+from datetime import date
+from manco_risk.reporting import (
+    AnnexIVFundIdentificationInput,
+    AnnexIVReportingService,
+)
+
+input_data = AnnexIVFundIdentificationInput(
+    fund_id=101,
+    fund_name="Test Fund",
+    fund_regime="UCITS",
+    domicile="LU",
+    base_currency="EUR",
+    valuation_date=date(2024, 6, 30),
+    reporting_period_end=date(2024, 6, 30),
+)
+
 section = AnnexIVReportingService.build_fund_identification(input_data)
+
+# Report with only fund identification (asset breakdown is optional)
 report = AnnexIVReportingService.build_report(section)
+
+print(f"Fund: {report.fund_identification.fund_name}")
+print(f"Sections: {report.included_sections}")
 ```
 
 ## Source Assumptions
@@ -208,27 +428,39 @@ report = AnnexIVReportingService.build_report(section)
 - `valuation_date` is the portfolio snapshot date
 - `reporting_period_end` is the end of the reporting period (typically equal to valuation_date for daily reports)
 
+**Asset Breakdown Data:**
+- Asset breakdown rows must be **pre-aggregated** by the caller
+- `market_value` and `nav_percentage` are supplied by the caller, not calculated
+- The reporting layer does NOT aggregate positions into asset classes
+- Multiple rows for the same asset class are accepted as-is (e.g., Long and Short equities)
+- NAV percentages do not need to sum to 1.0 (funds may have leverage or other structures)
+
 **No Calculations:**
 - No risk metrics are calculated in the reporting layer
 - No positions are aggregated
 - No portfolio analysis is performed
+- No market values or NAV percentages are calculated
 
 **Data Integrity:**
-- Callers are responsible for ensuring fund data is valid and up-to-date
+- Callers are responsible for ensuring all data is valid and up-to-date
 - Reporting validates required fields but does not query the database
+- Reporting accepts data exactly as supplied (no transformation or adjustment)
 
 ## Limitations
 
-**This slice does NOT implement:**
-- Asset breakdown or position grouping
+**Current limitations (by design, not bugs):**
+- Asset breakdown does NOT aggregate positions. Callers must supply pre-aggregated rows.
+- NAV percentages are not validated to sum to 1.0 (different fund structures may vary).
+- No calculation of market values or NAV percentages.
+- No position-level detail (only aggregated asset class rows).
+
+**Future slices will add:**
 - Risk measures (VaR, Expected Shortfall, backtesting results)
 - Leverage calculations or ratios
 - Liquidity profiling or time-to-liquidate
 - XML or PDF generation
 - CSSF or regulatory submission workflows
 - Streamlit dashboard integration
-
-**These capabilities are planned for future slices.**
 
 ## Out of Scope
 
@@ -256,10 +488,9 @@ uv run pytest tests/test_annex_iv_reporting.py -v
 
 Planned future slices will add sections for:
 
-1. **Asset Breakdown** — Position grouping by asset class, issuer, rating, maturity
-2. **Risk Measures** — VaR, Expected Shortfall, backtesting results
-3. **Leverage** — Leverage ratios, notional exposures
-4. **Liquidity Profile** — Time-to-liquidate buckets, redemption stress scenarios
+1. **Risk Measures** — VaR, Expected Shortfall, backtesting results
+2. **Leverage** — Leverage ratios, notional exposures
+3. **Liquidity Profile** — Time-to-liquidate buckets, redemption stress scenarios
 
 Each section will follow the same pattern:
 - Immutable input model

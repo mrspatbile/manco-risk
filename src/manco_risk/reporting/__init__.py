@@ -6,6 +6,9 @@ Does not perform risk calculations. Calculations are performed in the risk modul
 """
 
 from manco_risk.reporting.annex_iv import (
+    AnnexIVAssetBreakdownInput,
+    AnnexIVAssetBreakdownRow,
+    AnnexIVAssetBreakdownSection,
     AnnexIVFundIdentificationInput,
     AnnexIVFundIdentificationSection,
     AnnexIVReport,
@@ -15,6 +18,9 @@ from manco_risk.reporting.annex_iv_service import AnnexIVReportingService
 __all__ = [
     "AnnexIVFundIdentificationInput",
     "AnnexIVFundIdentificationSection",
+    "AnnexIVAssetBreakdownRow",
+    "AnnexIVAssetBreakdownInput",
+    "AnnexIVAssetBreakdownSection",
     "AnnexIVReport",
     "AnnexIVReportingService",
 ]
