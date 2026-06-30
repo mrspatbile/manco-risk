@@ -660,8 +660,8 @@ class TestLMTSimulationInput:
         )
 
         redemptions = [
-            MonthlyRedemptionInput(month_index=0, redemption_amount=Decimal("1000000")),
-            MonthlyRedemptionInput(month_index=1, redemption_amount=Decimal("500000")),
+            MonthlyRedemptionInput(month_index=m, redemption_amount=Decimal("1000000"))
+            for m in range(12)
         ]
 
         sim_input = LMTSimulationInput(
@@ -672,7 +672,7 @@ class TestLMTSimulationInput:
             monthly_redemptions=redemptions,
         )
         assert sim_input.fund_id == 1
-        assert len(sim_input.monthly_redemptions) == 2
+        assert len(sim_input.monthly_redemptions) == 12
 
     def test_fund_id_positive(self):
         """Fund ID must be positive."""
@@ -701,7 +701,8 @@ class TestLMTSimulationInput:
                     contagion_config=ContagionConfig(enabled=False),
                 ),
                 monthly_redemptions=[
-                    MonthlyRedemptionInput(month_index=0, redemption_amount=Decimal("1000000")),
+                    MonthlyRedemptionInput(month_index=m, redemption_amount=Decimal("1000000"))
+                    for m in range(12)
                 ],
             )
 
@@ -732,12 +733,20 @@ class TestLMTSimulationInput:
                     contagion_config=ContagionConfig(enabled=False),
                 ),
                 monthly_redemptions=[
-                    MonthlyRedemptionInput(month_index=0, redemption_amount=Decimal("1000000")),
+                    MonthlyRedemptionInput(month_index=m, redemption_amount=Decimal("1000000"))
+                    for m in range(12)
                 ],
             )
 
     def test_monthly_redemptions_sequential_indices(self):
-        """Monthly indices must be sequential starting from 0."""
+        """Monthly indices must be sequential starting from 0 and exactly 12 months."""
+        # Test non-sequential with 12 months
+        redemptions_nonseq = [
+            MonthlyRedemptionInput(
+                month_index=m if m != 5 else 6, redemption_amount=Decimal("1000000")
+            )
+            for m in range(12)
+        ]
         with pytest.raises(ValueError, match="must be sequential"):
             LMTSimulationInput(
                 fund_id=1,
@@ -762,10 +771,7 @@ class TestLMTSimulationInput:
                     ),
                     contagion_config=ContagionConfig(enabled=False),
                 ),
-                monthly_redemptions=[
-                    MonthlyRedemptionInput(month_index=0, redemption_amount=Decimal("1000000")),
-                    MonthlyRedemptionInput(month_index=2, redemption_amount=Decimal("500000")),
-                ],
+                monthly_redemptions=redemptions_nonseq,
             )
 
 

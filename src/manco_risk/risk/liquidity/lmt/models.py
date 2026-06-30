@@ -13,8 +13,31 @@ Conventions:
 
 from datetime import date
 from decimal import Decimal
+from enum import Enum
+from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
+
+if TYPE_CHECKING:
+    from manco_risk.risk.liquidity.models import (
+        InvestorConcentrationResult,
+        PortfolioLiquidityProfileResult,
+    )
+
+
+class ScenarioVariant(str, Enum):
+    """LMT simulation scenario type.
+
+    Enumerates variants of the 12-month simulation.
+
+    Values:
+    - BASE: Standard scenario using input monthly redemptions as-is.
+    - LARGEST_INVESTOR: Largest investor redemption scenario.
+      Month 0 redemption is replaced with largest investor amount from Issue #6.
+    """
+
+    BASE = "base"
+    LARGEST_INVESTOR = "largest_investor"
 
 
 class GateTriggerConfig(BaseModel):
@@ -269,6 +292,45 @@ class LMTScenarioConfig(BaseModel):
     model_config = ConfigDict(frozen=True)
 
 
+class LiquiditySnapshot(BaseModel):
+    """Monthly liquidity snapshot from Issue #6 analytics.
+
+    Pre-computed by caller (Issue #6 liquidity engines).
+    Orchestrator reads only; never fetches or computes liquidity data.
+
+    Fields:
+    - valuation_date: Date of snapshot.
+    - fund_nav: Fund NAV at snapshot (Decimal, > 0).
+    - available_liquidity: Liquid assets (Decimal, >= 0).
+    - coverage_ratio: available_liquidity / redemption_demand (Decimal, >= 0).
+    - portfolio_liquidity_profile: TTL bucket distribution (for traceability).
+    - investor_concentration: Investor metrics, optional (for largest-investor scenarios).
+    """
+
+    valuation_date: date
+    fund_nav: Decimal
+    available_liquidity: Decimal
+    coverage_ratio: Decimal
+    portfolio_liquidity_profile: "PortfolioLiquidityProfileResult"  # noqa: F821
+    investor_concentration: "InvestorConcentrationResult | None" = None  # noqa: F821
+
+    model_config = ConfigDict(frozen=True)
+
+    @field_validator("fund_nav")
+    @classmethod
+    def validate_fund_nav(cls, v: Decimal) -> Decimal:
+        if v <= 0:
+            raise ValueError("fund_nav must be positive")
+        return v
+
+    @field_validator("available_liquidity", "coverage_ratio")
+    @classmethod
+    def validate_non_negative(cls, v: Decimal) -> Decimal:
+        if v < 0:
+            raise ValueError("amount must be non-negative")
+        return v
+
+
 class MonthlyRedemptionInput(BaseModel):
     """Single month's redemption scenario input.
 
@@ -417,6 +479,7 @@ class LMTMonthlyResult(BaseModel):
     - contagion_triggered: Whether contagion linkage activated.
     - ending_nav: Fund NAV at end of month (Decimal, >= 0).
     - backlog_amount: Redemption backlog carried to next month (Decimal, >= 0).
+    - deferral_reason: Why redemptions were deferred, if any (e.g., "gate", "suspension").
     - warnings: Any warnings or notes (list of strings).
     """
 
@@ -435,6 +498,7 @@ class LMTMonthlyResult(BaseModel):
     contagion_triggered: bool
     ending_nav: Decimal
     backlog_amount: Decimal
+    deferral_reason: str | None = None
     warnings: list[str] = []
 
     model_config = ConfigDict(frozen=True)
@@ -552,16 +616,18 @@ class LMTSimulationInput(BaseModel):
     ) -> list[MonthlyRedemptionInput]:
         if not v:
             raise ValueError("monthly_redemptions must be non-empty")
+        if len(v) != 12:
+            raise ValueError(f"monthly_redemptions must contain exactly 12 months, got {len(v)}")
         return v
 
     @model_validator(mode="after")
     def validate_monthly_indices_sequential(self) -> "LMTSimulationInput":
         """Verify monthly indices are sequential starting from 0."""
         indices = sorted([r.month_index for r in self.monthly_redemptions])
-        expected = list(range(len(self.monthly_redemptions)))
+        expected = list(range(12))  # Always 12 months
         if indices != expected:
             raise ValueError(
-                f"month_index values must be sequential (0, 1, 2, ..., {len(self.monthly_redemptions) - 1})"
+                "month_index values must be sequential (0, 1, 2, ..., 11) for 12 months"
             )
         return self
 
