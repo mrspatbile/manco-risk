@@ -878,6 +878,81 @@ Comprehensive test suite in `tests/test_private_equity_analytics.py`:
 - Realistic scenarios (successful buyout, underperforming investment, fund with remaining NAV)
 - Large-scale examples
 
+---
+
+## Private Debt Monitoring Foundations (Slice 5)
+
+### Purpose
+
+Private debt monitoring packages point-in-time loan metrics and covenant status for private debt positions.
+
+This slice calculates loan-to-value and packages already-computed monitoring metrics.
+No covenant ratio calculation, borrower cash flow projection, default probability, or credit analysis performed.
+
+### Models
+
+**PrivateDebtLoanInput & PrivateDebtLoanResult**
+
+Input accepts:
+- valuation_date, outstanding_balance, covenant_breached, collateral_value (optional)
+- interest_coverage_ratio, debt_service_coverage_ratio, leverage_ratio (all optional)
+- loan_id, covenant_name, methodology_version (all optional)
+
+Result includes calculated loan_to_value (or None if no collateral).
+
+### Formula
+
+**Loan-to-Value**
+
+```
+loan_to_value = outstanding_balance / collateral_value
+```
+
+Returns None if collateral_value is None or zero.
+
+### Engine
+
+PrivateDebtEngine calculates LTV and packages all metrics.
+
+### Limitations
+
+Does **not**:
+- Calculate covenant ratios
+- Forecast cash flows
+- Estimate default probability
+- Calculate expected loss
+- Price loans
+- Perform credit scoring
+
+### Scope: Private Debt (Slice 5)
+
+**Implemented:**
+- PrivateDebtLoanInput/Result models (Pydantic v2, frozen)
+- PrivateDebtEngine with LTV calculation
+- Covenant tracking
+- Metric passthrough
+- 29 comprehensive tests
+- Realistic debt scenarios (direct lending, infrastructure, mezzanine, real estate, acquisition)
+
+---
+
+## Issue #14 Final Status
+
+**All 5 Slices Complete:**
+
+| Slice | Focus | Tests | Status |
+|-------|-------|-------|--------|
+| 1 | Private Equity: DPI, RVPI, TVPI, MOIC | 33 | ✅ |
+| 2 | Infrastructure: DSCR, LTV | 31 | ✅ |
+| 3 | Infrastructure: Duration, Sensitivity | 27 | ✅ |
+| 4 | Real Estate: Stress Calculations | 26 | ✅ |
+| 5 | Private Debt: Monitoring, LTV | 29 | ✅ |
+| **Total** | **5 Asset Classes** | **146** | **✅** |
+
+All models use Pydantic v2 with ConfigDict(frozen=True) for immutability.
+All engines follow stateless @staticmethod pattern.
+All decimals preserved exactly.
+
 ## References
 
 - **Private Equity Performance:** Cambridge Associates, Preqin (DPI, TVPI, MOIC definitions)
