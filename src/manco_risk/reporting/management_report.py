@@ -681,6 +681,196 @@ class ManagementLiquiditySection(BaseModel):
         return v
 
 
+class ManagementLeverageInput(BaseModel):
+    """Input to management leverage summary builder.
+
+    Contains already-computed leverage outputs required for the leverage section.
+
+    Fields:
+    - gross_leverage_ratio: Gross leverage ratio (Decimal, optional, non-negative).
+      Range typically 0+. Example: `2.5` = 250% gross leverage.
+    - commitment_leverage_ratio: Commitment leverage ratio (Decimal, optional, non-negative).
+      Range typically 0+. Example: `2.0` = 200% commitment leverage.
+    - gross_exposure: Gross exposure amount (Decimal, optional, non-negative).
+      In base currency.
+    - commitment_exposure: Commitment exposure amount (Decimal, optional, non-negative).
+      In base currency.
+    - nav: Net asset value (Decimal, optional, non-negative).
+      In base currency. May duplicate fund summary data.
+    - leverage_limit: Maximum allowed leverage ratio (Decimal, optional, non-negative).
+      Example: `3.0` = 300% maximum leverage.
+    - leverage_warning: Leverage warning message if applicable (str, optional, non-empty).
+      E.g., "Approaching leverage limit", "Excess concentration".
+    - methodology_version: Leverage methodology version (str, optional, non-empty when supplied).
+
+    Invariants:
+    - Ratios and monetary values must be non-negative when supplied.
+    - Not both gross_leverage_ratio and commitment_leverage_ratio must be present (either is ok).
+    - Optional string fields must be non-empty when supplied.
+
+    Note: These are already-computed outputs from the risk module.
+    This input model does not perform leverage calculations.
+    """
+
+    gross_leverage_ratio: Optional[Decimal] = None
+    commitment_leverage_ratio: Optional[Decimal] = None
+    gross_exposure: Optional[Decimal] = None
+    commitment_exposure: Optional[Decimal] = None
+    nav: Optional[Decimal] = None
+    leverage_limit: Optional[Decimal] = None
+    leverage_warning: Optional[str] = None
+    methodology_version: Optional[str] = None
+
+    model_config = ConfigDict(frozen=True)
+
+    @field_validator("gross_leverage_ratio")
+    @classmethod
+    def validate_gross_leverage_ratio(cls, v: Optional[Decimal]) -> Optional[Decimal]:
+        """Gross leverage ratio must be non-negative when supplied."""
+        if v is not None and v < 0:
+            raise ValueError("gross_leverage_ratio must be non-negative")
+        return v
+
+    @field_validator("commitment_leverage_ratio")
+    @classmethod
+    def validate_commitment_leverage_ratio(cls, v: Optional[Decimal]) -> Optional[Decimal]:
+        """Commitment leverage ratio must be non-negative when supplied."""
+        if v is not None and v < 0:
+            raise ValueError("commitment_leverage_ratio must be non-negative")
+        return v
+
+    @field_validator("gross_exposure")
+    @classmethod
+    def validate_gross_exposure(cls, v: Optional[Decimal]) -> Optional[Decimal]:
+        """Gross exposure must be non-negative when supplied."""
+        if v is not None and v < 0:
+            raise ValueError("gross_exposure must be non-negative")
+        return v
+
+    @field_validator("commitment_exposure")
+    @classmethod
+    def validate_commitment_exposure(cls, v: Optional[Decimal]) -> Optional[Decimal]:
+        """Commitment exposure must be non-negative when supplied."""
+        if v is not None and v < 0:
+            raise ValueError("commitment_exposure must be non-negative")
+        return v
+
+    @field_validator("nav")
+    @classmethod
+    def validate_nav(cls, v: Optional[Decimal]) -> Optional[Decimal]:
+        """NAV must be non-negative when supplied."""
+        if v is not None and v < 0:
+            raise ValueError("nav must be non-negative")
+        return v
+
+    @field_validator("leverage_limit")
+    @classmethod
+    def validate_leverage_limit(cls, v: Optional[Decimal]) -> Optional[Decimal]:
+        """Leverage limit must be non-negative when supplied."""
+        if v is not None and v < 0:
+            raise ValueError("leverage_limit must be non-negative")
+        return v
+
+    @field_validator("leverage_warning")
+    @classmethod
+    def validate_leverage_warning(cls, v: Optional[str]) -> Optional[str]:
+        """Leverage warning must be non-empty when supplied."""
+        if v is not None and (not v or not v.strip()):
+            raise ValueError("leverage_warning must be non-empty when supplied")
+        return v.strip() if v else None
+
+    @field_validator("methodology_version")
+    @classmethod
+    def validate_methodology_version(cls, v: Optional[str]) -> Optional[str]:
+        """Methodology version must be non-empty when supplied."""
+        if v is not None and (not v or not v.strip()):
+            raise ValueError("methodology_version must be non-empty when supplied")
+        return v.strip() if v else None
+
+
+class ManagementLeverageSection(BaseModel):
+    """Result of management leverage summary assembly.
+
+    Immutable leverage section for management reporting.
+    Contains already-computed leverage metrics.
+
+    Fields:
+    - gross_leverage_ratio: Gross leverage ratio (optional).
+    - commitment_leverage_ratio: Commitment leverage ratio (optional).
+    - gross_exposure: Gross exposure amount (optional).
+    - commitment_exposure: Commitment exposure amount (optional).
+    - nav: Net asset value (optional).
+    - leverage_limit: Maximum allowed leverage ratio (optional).
+    - leverage_warning: Leverage warning message (optional).
+    - methodology_version: Leverage methodology version (optional).
+
+    Invariants (defensive checks):
+    - Ratios and monetary values must be non-negative when present.
+
+    Note: These fields contain already-computed leverage outputs.
+    No calculations are performed by this model.
+    """
+
+    gross_leverage_ratio: Optional[Decimal] = None
+    commitment_leverage_ratio: Optional[Decimal] = None
+    gross_exposure: Optional[Decimal] = None
+    commitment_exposure: Optional[Decimal] = None
+    nav: Optional[Decimal] = None
+    leverage_limit: Optional[Decimal] = None
+    leverage_warning: Optional[str] = None
+    methodology_version: Optional[str] = None
+
+    model_config = ConfigDict(frozen=True)
+
+    @field_validator("gross_leverage_ratio")
+    @classmethod
+    def validate_gross_leverage_ratio(cls, v: Optional[Decimal]) -> Optional[Decimal]:
+        """Gross leverage ratio must be non-negative (defensive check)."""
+        if v is not None and v < 0:
+            raise ValueError("gross_leverage_ratio must be non-negative")
+        return v
+
+    @field_validator("commitment_leverage_ratio")
+    @classmethod
+    def validate_commitment_leverage_ratio(cls, v: Optional[Decimal]) -> Optional[Decimal]:
+        """Commitment leverage ratio must be non-negative (defensive check)."""
+        if v is not None and v < 0:
+            raise ValueError("commitment_leverage_ratio must be non-negative")
+        return v
+
+    @field_validator("gross_exposure")
+    @classmethod
+    def validate_gross_exposure(cls, v: Optional[Decimal]) -> Optional[Decimal]:
+        """Gross exposure must be non-negative (defensive check)."""
+        if v is not None and v < 0:
+            raise ValueError("gross_exposure must be non-negative")
+        return v
+
+    @field_validator("commitment_exposure")
+    @classmethod
+    def validate_commitment_exposure(cls, v: Optional[Decimal]) -> Optional[Decimal]:
+        """Commitment exposure must be non-negative (defensive check)."""
+        if v is not None and v < 0:
+            raise ValueError("commitment_exposure must be non-negative")
+        return v
+
+    @field_validator("nav")
+    @classmethod
+    def validate_nav(cls, v: Optional[Decimal]) -> Optional[Decimal]:
+        """NAV must be non-negative (defensive check)."""
+        if v is not None and v < 0:
+            raise ValueError("nav must be non-negative")
+        return v
+
+    @field_validator("leverage_limit")
+    @classmethod
+    def validate_leverage_limit(cls, v: Optional[Decimal]) -> Optional[Decimal]:
+        """Leverage limit must be non-negative (defensive check)."""
+        if v is not None and v < 0:
+            raise ValueError("leverage_limit must be non-negative")
+        return v
+
+
 class ManagementRiskReport(BaseModel):
     """Management risk report container.
 
@@ -689,12 +879,14 @@ class ManagementRiskReport(BaseModel):
     For Slice 2, optionally includes market risk.
     For Slice 3, optionally includes stress testing.
     For Slice 4, optionally includes liquidity.
+    For Slice 5, optionally includes leverage.
 
     Fields:
     - fund_summary: Fund summary section (required).
     - market_risk: Market risk section (optional).
     - stress_testing: Stress testing section (optional).
     - liquidity: Liquidity section (optional).
+    - leverage: Leverage section (optional).
     - included_sections: List of section names included in the report.
 
     Invariants:
@@ -706,6 +898,7 @@ class ManagementRiskReport(BaseModel):
     market_risk: Optional[ManagementMarketRiskSection] = None
     stress_testing: Optional[ManagementStressTestingSection] = None
     liquidity: Optional[ManagementLiquiditySection] = None
+    leverage: Optional[ManagementLeverageSection] = None
     included_sections: list[str]
 
     model_config = ConfigDict(frozen=True)

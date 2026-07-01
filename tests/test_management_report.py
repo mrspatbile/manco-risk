@@ -11,6 +11,8 @@ import pytest
 from manco_risk.reporting.management_report import (
     ManagementFundSummaryInput,
     ManagementFundSummarySection,
+    ManagementLeverageInput,
+    ManagementLeverageSection,
     ManagementLiquidityInput,
     ManagementLiquiditySection,
     ManagementMarketRiskInput,
@@ -1624,6 +1626,323 @@ class TestManagementReportServiceLiquidity:
         with pytest.raises(Exception):  # Pydantic frozen model raises
             section.liquidity_ratio = Decimal("0.50")  # type: ignore
 
+    def test_build_report_with_leverage(self) -> None:
+        """Build report with fund summary and leverage sections."""
+        fund_summary = ManagementFundSummarySection(
+            fund_id="FUND001",
+            fund_name="Test Fund",
+            fund_regime="UCITS",
+            base_currency="EUR",
+            valuation_date=date(2024, 6, 30),
+            nav=Decimal("1000000.00"),
+        )
+
+        leverage = ManagementLeverageSection(
+            gross_leverage_ratio=Decimal("1.5"),
+            commitment_leverage_ratio=Decimal("1.2"),
+        )
+
+        report = ManagementReportService.build_report(fund_summary, leverage=leverage)
+
+        assert report.fund_summary.fund_id == "FUND001"
+        assert report.leverage is not None
+        assert report.leverage.gross_leverage_ratio == Decimal("1.5")
+        assert "Fund Summary" in report.included_sections
+        assert "Leverage" in report.included_sections
+
+    def test_build_report_with_all_sections(self) -> None:
+        """Build report with all available sections."""
+        fund_summary = ManagementFundSummarySection(
+            fund_id="FUND001",
+            fund_name="Test Fund",
+            fund_regime="UCITS",
+            base_currency="EUR",
+            valuation_date=date(2024, 6, 30),
+            nav=Decimal("1000000.00"),
+        )
+
+        market_risk = ManagementMarketRiskSection(
+            var_value=Decimal("0.025"),
+            var_method="Historical Simulation",
+        )
+
+        stress_testing = ManagementStressTestingSection(
+            scenario_name="Lehman Crisis 2008",
+            scenario_type="Historical",
+            portfolio_impact=Decimal("-0.125"),
+        )
+
+        liquidity = ManagementLiquiditySection(
+            liquidity_ratio=Decimal("0.75"),
+            liquid_assets=Decimal("750000.00"),
+            illiquid_assets=Decimal("250000.00"),
+        )
+
+        leverage = ManagementLeverageSection(
+            gross_leverage_ratio=Decimal("1.5"),
+            commitment_leverage_ratio=Decimal("1.2"),
+        )
+
+        report = ManagementReportService.build_report(
+            fund_summary, market_risk, stress_testing, liquidity, leverage
+        )
+
+        assert len(report.included_sections) == 5
+        assert "Fund Summary" in report.included_sections
+        assert "Market Risk" in report.included_sections
+        assert "Stress Testing" in report.included_sections
+        assert "Liquidity" in report.included_sections
+        assert "Leverage" in report.included_sections
+
+    def test_build_report_without_leverage(self) -> None:
+        """Build report without leverage section."""
+        fund_summary = ManagementFundSummarySection(
+            fund_id="FUND001",
+            fund_name="Test Fund",
+            fund_regime="UCITS",
+            base_currency="EUR",
+            valuation_date=date(2024, 6, 30),
+            nav=Decimal("1000000.00"),
+        )
+
+        report = ManagementReportService.build_report(fund_summary)
+
+        assert report.leverage is None
+        assert report.included_sections == ["Fund Summary"]
+
+
+class TestManagementLeverageInput:
+    """Test input validation for leverage."""
+
+    def test_valid_input_with_both_leverage_ratios(self) -> None:
+        """Valid leverage input with both gross and commitment ratios."""
+        input_data = ManagementLeverageInput(
+            gross_leverage_ratio=Decimal("2.5"),
+            commitment_leverage_ratio=Decimal("2.0"),
+        )
+
+        assert input_data.gross_leverage_ratio == Decimal("2.5")
+        assert input_data.commitment_leverage_ratio == Decimal("2.0")
+
+    def test_valid_input_with_only_gross_leverage(self) -> None:
+        """Valid leverage input with only gross leverage ratio."""
+        input_data = ManagementLeverageInput(
+            gross_leverage_ratio=Decimal("1.5"),
+        )
+
+        assert input_data.gross_leverage_ratio == Decimal("1.5")
+        assert input_data.commitment_leverage_ratio is None
+
+    def test_valid_input_with_only_commitment_leverage(self) -> None:
+        """Valid leverage input with only commitment leverage ratio."""
+        input_data = ManagementLeverageInput(
+            commitment_leverage_ratio=Decimal("1.2"),
+        )
+
+        assert input_data.commitment_leverage_ratio == Decimal("1.2")
+        assert input_data.gross_leverage_ratio is None
+
+    def test_valid_input_with_all_fields(self) -> None:
+        """Valid leverage input with all optional fields."""
+        input_data = ManagementLeverageInput(
+            gross_leverage_ratio=Decimal("2.5"),
+            commitment_leverage_ratio=Decimal("2.0"),
+            gross_exposure=Decimal("2500000.00"),
+            commitment_exposure=Decimal("2000000.00"),
+            nav=Decimal("1000000.00"),
+            leverage_limit=Decimal("3.0"),
+            leverage_warning="Approaching leverage limit",
+            methodology_version="Leverage_v1.0",
+        )
+
+        assert input_data.gross_leverage_ratio == Decimal("2.5")
+        assert input_data.gross_exposure == Decimal("2500000.00")
+        assert input_data.leverage_limit == Decimal("3.0")
+
+    def test_negative_gross_leverage_ratio_rejected(self) -> None:
+        """Negative gross leverage ratio is rejected."""
+        with pytest.raises(ValueError, match="gross_leverage_ratio must be non-negative"):
+            ManagementLeverageInput(
+                gross_leverage_ratio=Decimal("-1.5"),
+            )
+
+    def test_negative_commitment_leverage_ratio_rejected(self) -> None:
+        """Negative commitment leverage ratio is rejected."""
+        with pytest.raises(ValueError, match="commitment_leverage_ratio must be non-negative"):
+            ManagementLeverageInput(
+                commitment_leverage_ratio=Decimal("-1.2"),
+            )
+
+    def test_negative_gross_exposure_rejected(self) -> None:
+        """Negative gross exposure is rejected."""
+        with pytest.raises(ValueError, match="gross_exposure must be non-negative"):
+            ManagementLeverageInput(
+                gross_exposure=Decimal("-1000000.00"),
+            )
+
+    def test_negative_commitment_exposure_rejected(self) -> None:
+        """Negative commitment exposure is rejected."""
+        with pytest.raises(ValueError, match="commitment_exposure must be non-negative"):
+            ManagementLeverageInput(
+                commitment_exposure=Decimal("-1000000.00"),
+            )
+
+    def test_negative_nav_rejected(self) -> None:
+        """Negative NAV is rejected."""
+        with pytest.raises(ValueError, match="nav must be non-negative"):
+            ManagementLeverageInput(
+                nav=Decimal("-1000000.00"),
+            )
+
+    def test_negative_leverage_limit_rejected(self) -> None:
+        """Negative leverage limit is rejected."""
+        with pytest.raises(ValueError, match="leverage_limit must be non-negative"):
+            ManagementLeverageInput(
+                leverage_limit=Decimal("-3.0"),
+            )
+
+    def test_empty_leverage_warning_rejected(self) -> None:
+        """Empty leverage warning is rejected."""
+        with pytest.raises(ValueError, match="leverage_warning must be non-empty when supplied"):
+            ManagementLeverageInput(
+                leverage_warning="",
+            )
+
+    def test_whitespace_leverage_warning_stripped(self) -> None:
+        """Leverage warning with whitespace is stripped."""
+        input_data = ManagementLeverageInput(
+            leverage_warning="  Approaching leverage limit  ",
+        )
+
+        assert input_data.leverage_warning == "Approaching leverage limit"
+
+    def test_empty_methodology_version_rejected(self) -> None:
+        """Empty methodology version is rejected."""
+        with pytest.raises(ValueError, match="methodology_version must be non-empty when supplied"):
+            ManagementLeverageInput(
+                methodology_version="",
+            )
+
+    def test_immutability(self) -> None:
+        """Leverage input is immutable."""
+        input_data = ManagementLeverageInput(
+            gross_leverage_ratio=Decimal("1.5"),
+        )
+
+        with pytest.raises(Exception):  # Pydantic frozen model raises
+            input_data.gross_leverage_ratio = Decimal("2.0")  # type: ignore
+
+    def test_decimal_preservation_in_input(self) -> None:
+        """Decimal values are preserved exactly in input."""
+        input_data = ManagementLeverageInput(
+            gross_leverage_ratio=Decimal("2.555"),
+            gross_exposure=Decimal("2555555.123"),
+            leverage_limit=Decimal("3.789"),
+        )
+
+        assert input_data.gross_leverage_ratio == Decimal("2.555")
+        assert input_data.gross_exposure == Decimal("2555555.123")
+        assert input_data.leverage_limit == Decimal("3.789")
+
+
+class TestManagementLeverageSection:
+    """Test leverage section model."""
+
+    def test_valid_section_with_both_leverage_ratios(self) -> None:
+        """Valid leverage section with both gross and commitment ratios."""
+        section = ManagementLeverageSection(
+            gross_leverage_ratio=Decimal("2.5"),
+            commitment_leverage_ratio=Decimal("2.0"),
+        )
+
+        assert section.gross_leverage_ratio == Decimal("2.5")
+        assert section.commitment_leverage_ratio == Decimal("2.0")
+
+    def test_valid_section_with_all_fields(self) -> None:
+        """Valid leverage section with all optional fields."""
+        section = ManagementLeverageSection(
+            gross_leverage_ratio=Decimal("2.5"),
+            commitment_leverage_ratio=Decimal("2.0"),
+            gross_exposure=Decimal("2500000.00"),
+            commitment_exposure=Decimal("2000000.00"),
+            nav=Decimal("1000000.00"),
+            leverage_limit=Decimal("3.0"),
+            leverage_warning="Approaching leverage limit",
+            methodology_version="Leverage_v1.0",
+        )
+
+        assert section.gross_leverage_ratio == Decimal("2.5")
+        assert section.gross_exposure == Decimal("2500000.00")
+        assert section.leverage_limit == Decimal("3.0")
+
+    def test_immutability(self) -> None:
+        """Leverage section is immutable."""
+        section = ManagementLeverageSection(
+            gross_leverage_ratio=Decimal("1.5"),
+        )
+
+        with pytest.raises(Exception):  # Pydantic frozen model raises
+            section.gross_leverage_ratio = Decimal("2.0")  # type: ignore
+
+    def test_decimal_preservation_in_section(self) -> None:
+        """Decimal values are preserved exactly in section."""
+        section = ManagementLeverageSection(
+            gross_leverage_ratio=Decimal("2.555"),
+            gross_exposure=Decimal("2555555.123"),
+            leverage_limit=Decimal("3.789"),
+        )
+
+        assert section.gross_leverage_ratio == Decimal("2.555")
+        assert section.gross_exposure == Decimal("2555555.123")
+        assert section.leverage_limit == Decimal("3.789")
+
+
+class TestManagementReportServiceLeverage:
+    """Test leverage service methods."""
+
+    def test_build_leverage_from_input(self) -> None:
+        """Build leverage section from input."""
+        input_data = ManagementLeverageInput(
+            gross_leverage_ratio=Decimal("2.5"),
+            commitment_leverage_ratio=Decimal("2.0"),
+        )
+
+        section = ManagementReportService.build_leverage(input_data)
+
+        assert isinstance(section, ManagementLeverageSection)
+        assert section.gross_leverage_ratio == Decimal("2.5")
+        assert section.commitment_leverage_ratio == Decimal("2.0")
+
+    def test_build_leverage_preserves_optional_fields(self) -> None:
+        """Build leverage preserves optional fields."""
+        input_data = ManagementLeverageInput(
+            gross_leverage_ratio=Decimal("2.5"),
+            commitment_leverage_ratio=Decimal("2.0"),
+            gross_exposure=Decimal("2500000.00"),
+            commitment_exposure=Decimal("2000000.00"),
+            nav=Decimal("1000000.00"),
+            leverage_limit=Decimal("3.0"),
+            leverage_warning="Approaching leverage limit",
+            methodology_version="Leverage_v1.0",
+        )
+
+        section = ManagementReportService.build_leverage(input_data)
+
+        assert section.gross_exposure == Decimal("2500000.00")
+        assert section.commitment_exposure == Decimal("2000000.00")
+        assert section.leverage_limit == Decimal("3.0")
+
+    def test_build_leverage_immutable_result(self) -> None:
+        """Build leverage returns immutable section."""
+        input_data = ManagementLeverageInput(
+            gross_leverage_ratio=Decimal("1.5"),
+        )
+
+        section = ManagementReportService.build_leverage(input_data)
+
+        with pytest.raises(Exception):  # Pydantic frozen model raises
+            section.gross_leverage_ratio = Decimal("2.0")  # type: ignore
+
 
 class TestRealisticExamples:
     """Test realistic fund examples."""
@@ -2015,3 +2334,158 @@ class TestRealisticExamples:
         assert "Market Risk" in report.included_sections
         assert "Stress Testing" in report.included_sections
         assert "Liquidity" in report.included_sections
+
+    def test_ucits_fund_with_leverage_example(self) -> None:
+        """Realistic UCITS fund with leverage example."""
+        fund_summary_input = ManagementFundSummaryInput(
+            fund_id="LU001234567890",
+            fund_name="Global Equity UCITS Fund",
+            fund_regime="UCITS",
+            base_currency="EUR",
+            valuation_date=date(2024, 6, 30),
+            nav=Decimal("250000000.00"),
+            aum=Decimal("250000000.00"),
+            inception_date=date(2010, 3, 15),
+            reporting_period_end=date(2024, 6, 30),
+            methodology_version="VaR_HistoricalSimulation_v1.0",
+        )
+
+        leverage_input = ManagementLeverageInput(
+            gross_leverage_ratio=Decimal("1.2"),
+            commitment_leverage_ratio=Decimal("1.1"),
+            gross_exposure=Decimal("300000000.00"),
+            commitment_exposure=Decimal("275000000.00"),
+            nav=Decimal("250000000.00"),
+            leverage_limit=Decimal("2.0"),
+            methodology_version="Leverage_v1.0",
+        )
+
+        fund_summary = ManagementReportService.build_fund_summary(fund_summary_input)
+        leverage = ManagementReportService.build_leverage(leverage_input)
+        report = ManagementReportService.build_report(fund_summary, leverage=leverage)
+
+        assert report.fund_summary.fund_regime == "UCITS"
+        assert report.leverage is not None
+        assert report.leverage.gross_leverage_ratio == Decimal("1.2")
+        assert report.leverage.commitment_leverage_ratio == Decimal("1.1")
+        assert report.leverage.leverage_limit == Decimal("2.0")
+        assert "Fund Summary" in report.included_sections
+        assert "Leverage" in report.included_sections
+
+    def test_aif_fund_with_high_leverage_example(self) -> None:
+        """Realistic AIF fund with high leverage and warning example."""
+        fund_summary_input = ManagementFundSummaryInput(
+            fund_id="IE0087654321234",
+            fund_name="Alternative Strategies AIF",
+            fund_regime="AIF",
+            base_currency="USD",
+            valuation_date=date(2024, 6, 30),
+            nav=Decimal("1500000000.50"),
+            aum=Decimal("1500000000.50"),
+            inception_date=date(2015, 6, 1),
+            reporting_period_end=date(2024, 6, 30),
+            methodology_version="VaR_Parametric_v2.0",
+        )
+
+        leverage_input = ManagementLeverageInput(
+            gross_leverage_ratio=Decimal("3.2"),
+            commitment_leverage_ratio=Decimal("2.8"),
+            gross_exposure=Decimal("4800000000.00"),
+            commitment_exposure=Decimal("4200000000.00"),
+            nav=Decimal("1500000000.50"),
+            leverage_limit=Decimal("4.0"),
+            leverage_warning="High leverage exposure; monitor concentration risk",
+            methodology_version="Leverage_v2.0",
+        )
+
+        fund_summary = ManagementReportService.build_fund_summary(fund_summary_input)
+        leverage = ManagementReportService.build_leverage(leverage_input)
+        report = ManagementReportService.build_report(fund_summary, leverage=leverage)
+
+        assert report.fund_summary.fund_regime == "AIF"
+        assert report.leverage is not None
+        assert report.leverage.gross_leverage_ratio == Decimal("3.2")
+        assert report.leverage.commitment_leverage_ratio == Decimal("2.8")
+        assert (
+            report.leverage.leverage_warning == "High leverage exposure; monitor concentration risk"
+        )
+        assert "Leverage" in report.included_sections
+
+    def test_comprehensive_fund_with_all_sections_example(self) -> None:
+        """Comprehensive fund report with all risk sections including leverage."""
+        fund_summary_input = ManagementFundSummaryInput(
+            fund_id="LU001234567890",
+            fund_name="Global Equity UCITS Fund",
+            fund_regime="UCITS",
+            base_currency="EUR",
+            valuation_date=date(2024, 6, 30),
+            nav=Decimal("250000000.00"),
+            aum=Decimal("250000000.00"),
+            inception_date=date(2010, 3, 15),
+            reporting_period_end=date(2024, 6, 30),
+            methodology_version="VaR_HistoricalSimulation_v1.0",
+        )
+
+        market_risk_input = ManagementMarketRiskInput(
+            var_value=Decimal("0.0275"),
+            var_method="Historical Simulation",
+            expected_shortfall=Decimal("0.0425"),
+            srri_class="5",
+            global_exposure=Decimal("1.2"),
+            stress_summary_reference="Stress Scenarios Q2 2024",
+            methodology_version="VaR_HistoricalSimulation_v1.0",
+        )
+
+        stress_testing_input = ManagementStressTestingInput(
+            scenario_name="Lehman Crisis 2008",
+            scenario_type="Historical",
+            portfolio_impact=Decimal("-0.125"),
+            nav_impact=Decimal("-0.125"),
+            worst_position="US0378331005",
+            worst_sector="Financial Services",
+            stress_date=date(2008, 9, 15),
+            methodology_version="Stress_HistoricalSimulation_v1.0",
+        )
+
+        liquidity_input = ManagementLiquidityInput(
+            liquidity_ratio=Decimal("0.85"),
+            liquid_assets=Decimal("212500000.00"),
+            illiquid_assets=Decimal("37500000.00"),
+            average_time_to_liquidate_days=5,
+            redemption_profile="Daily",
+            liquidity_bucket_summary="85% 0-1d, 10% 1-7d, 5% >7d",
+            active_lmts=1,
+            methodology_version="Liquidity_v1.0",
+        )
+
+        leverage_input = ManagementLeverageInput(
+            gross_leverage_ratio=Decimal("1.2"),
+            commitment_leverage_ratio=Decimal("1.1"),
+            gross_exposure=Decimal("300000000.00"),
+            commitment_exposure=Decimal("275000000.00"),
+            nav=Decimal("250000000.00"),
+            leverage_limit=Decimal("2.0"),
+            methodology_version="Leverage_v1.0",
+        )
+
+        fund_summary = ManagementReportService.build_fund_summary(fund_summary_input)
+        market_risk = ManagementReportService.build_market_risk(market_risk_input)
+        stress_testing = ManagementReportService.build_stress_testing(stress_testing_input)
+        liquidity = ManagementReportService.build_liquidity(liquidity_input)
+        leverage = ManagementReportService.build_leverage(leverage_input)
+        report = ManagementReportService.build_report(
+            fund_summary, market_risk, stress_testing, liquidity, leverage
+        )
+
+        assert report.fund_summary.fund_name == "Global Equity UCITS Fund"
+        assert report.market_risk is not None
+        assert report.stress_testing is not None
+        assert report.liquidity is not None
+        assert report.leverage is not None
+        assert report.leverage.gross_leverage_ratio == Decimal("1.2")
+        assert len(report.included_sections) == 5
+        assert "Fund Summary" in report.included_sections
+        assert "Market Risk" in report.included_sections
+        assert "Stress Testing" in report.included_sections
+        assert "Liquidity" in report.included_sections
+        assert "Leverage" in report.included_sections

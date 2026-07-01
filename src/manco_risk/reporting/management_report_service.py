@@ -12,6 +12,8 @@ from typing import Optional
 from manco_risk.reporting.management_report import (
     ManagementFundSummaryInput,
     ManagementFundSummarySection,
+    ManagementLeverageInput,
+    ManagementLeverageSection,
     ManagementLiquidityInput,
     ManagementLiquiditySection,
     ManagementMarketRiskInput,
@@ -179,16 +181,51 @@ class ManagementReportService:
         )
 
     @staticmethod
+    def build_leverage(
+        input_data: ManagementLeverageInput,
+    ) -> ManagementLeverageSection:
+        """Build leverage section from already-computed outputs.
+
+        Parameters
+        ----------
+        input_data : ManagementLeverageInput
+            Already-computed leverage data (gross_leverage_ratio, commitment_leverage_ratio,
+            gross_exposure, commitment_exposure, nav, leverage_limit, leverage_warning,
+            methodology_version).
+
+        Returns
+        -------
+        ManagementLeverageSection
+            Immutable leverage section.
+
+        Raises
+        ------
+        ValueError
+            If required fields are invalid.
+        """
+        return ManagementLeverageSection(
+            gross_leverage_ratio=input_data.gross_leverage_ratio,
+            commitment_leverage_ratio=input_data.commitment_leverage_ratio,
+            gross_exposure=input_data.gross_exposure,
+            commitment_exposure=input_data.commitment_exposure,
+            nav=input_data.nav,
+            leverage_limit=input_data.leverage_limit,
+            leverage_warning=input_data.leverage_warning,
+            methodology_version=input_data.methodology_version,
+        )
+
+    @staticmethod
     def build_report(
         fund_summary: ManagementFundSummarySection,
         market_risk: Optional[ManagementMarketRiskSection] = None,
         stress_testing: Optional[ManagementStressTestingSection] = None,
         liquidity: Optional[ManagementLiquiditySection] = None,
+        leverage: Optional[ManagementLeverageSection] = None,
     ) -> ManagementRiskReport:
         """Build management report from sections.
 
         For Slice 1, includes fund summary section only.
-        For Slice 2+, optionally includes market risk, stress testing, and liquidity.
+        For Slice 2+, optionally includes market risk, stress testing, liquidity, and leverage.
 
         Parameters
         ----------
@@ -200,6 +237,8 @@ class ManagementReportService:
             Stress testing section. If supplied, will be included in report.
         liquidity : Optional[ManagementLiquiditySection], optional
             Liquidity section. If supplied, will be included in report.
+        leverage : Optional[ManagementLeverageSection], optional
+            Leverage section. If supplied, will be included in report.
 
         Returns
         -------
@@ -218,11 +257,14 @@ class ManagementReportService:
             included_sections.append("Stress Testing")
         if liquidity is not None:
             included_sections.append("Liquidity")
+        if leverage is not None:
+            included_sections.append("Leverage")
 
         return ManagementRiskReport(
             fund_summary=fund_summary,
             market_risk=market_risk,
             stress_testing=stress_testing,
             liquidity=liquidity,
+            leverage=leverage,
             included_sections=included_sections,
         )

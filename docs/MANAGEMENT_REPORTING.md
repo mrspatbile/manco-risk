@@ -85,6 +85,18 @@ Management reporting does not:
 - Defensive validation (second-layer checks)
 - Contains pre-calculated liquidity metrics
 
+**ManagementLeverageInput**
+- Input validation model
+- Accepts already-computed leverage outputs
+- Validates field presence and non-negative ranges
+- Optional fields allowed (not all leverage measures required)
+
+**ManagementLeverageSection**
+- Immutable result model
+- Frozen Pydantic v2 model
+- Defensive validation (second-layer checks)
+- Contains pre-calculated leverage metrics
+
 **ManagementRiskReport**
 - Report container
 - Assembles sections into a consolidated report
@@ -93,7 +105,8 @@ Management reporting does not:
 - For Slice 2, optionally includes market risk
 - For Slice 3, optionally includes stress testing
 - For Slice 4, optionally includes liquidity
-- Future slices will add leverage, exception sections
+- For Slice 5, optionally includes leverage
+- Future slices will add exception section
 
 ### Service
 
@@ -115,12 +128,17 @@ Management reporting does not:
   - Accepts typed input with pre-calculated liquidity metrics
   - Returns immutable section
   - No calculations performed
-- `build_report(fund_summary, market_risk=None, stress_testing=None, liquidity=None) → ManagementRiskReport`
+- `build_leverage(input) → ManagementLeverageSection`
+  - Accepts typed input with pre-calculated leverage metrics
+  - Returns immutable section
+  - No calculations performed
+- `build_report(fund_summary, market_risk=None, stress_testing=None, liquidity=None, leverage=None) → ManagementRiskReport`
   - Assembles section(s) into report
   - fund_summary is always required
   - market_risk is optional
   - stress_testing is optional
   - liquidity is optional
+  - leverage is optional
   - Tracks included sections
 
 ## Inputs
@@ -190,6 +208,25 @@ Already-computed liquidity outputs required:
 - **liquidity_warning** (str, optional, non-empty when supplied) — Liquidity warning if applicable
   - Examples: "Position concentration in illiquid securities", "Tail liquidity risk"
 - **methodology_version** (str, optional, non-empty when supplied) — Liquidity methodology version identifier
+
+### Leverage Input
+
+Already-computed leverage outputs required:
+
+- **gross_leverage_ratio** (Decimal, optional, non-negative) — Gross leverage ratio
+  - Example: `2.5` = 250% gross leverage
+- **commitment_leverage_ratio** (Decimal, optional, non-negative) — Commitment leverage ratio
+  - Example: `2.0` = 200% commitment leverage
+- **gross_exposure** (Decimal, optional, non-negative) — Gross exposure amount in base currency
+- **commitment_exposure** (Decimal, optional, non-negative) — Commitment exposure amount in base currency
+- **nav** (Decimal, optional, non-negative) — Net asset value in base currency
+- **leverage_limit** (Decimal, optional, non-negative) — Maximum allowed leverage ratio
+  - Example: `3.0` = 300% maximum leverage
+- **leverage_warning** (str, optional, non-empty when supplied) — Leverage warning if applicable
+  - Examples: "Approaching leverage limit", "High concentration in derivatives"
+- **methodology_version** (str, optional, non-empty when supplied) — Leverage methodology version identifier
+
+Note: Not all leverage measures are required. May provide gross only, commitment only, or both.
 
 ### Data Conventions
 
@@ -344,6 +381,35 @@ liquidity = ManagementReportService.build_liquidity(liquidity_input)
 # liquidity.average_time_to_liquidate_days == 5
 ```
 
+### Leverage Section
+
+Immutable result containing:
+
+- gross_leverage_ratio, commitment_leverage_ratio, gross_exposure, commitment_exposure, nav, leverage_limit, leverage_warning, methodology_version (all optional)
+
+Example:
+
+```python
+from manco_risk.reporting import (
+    ManagementLeverageInput,
+    ManagementReportService,
+)
+
+leverage_input = ManagementLeverageInput(
+    gross_leverage_ratio=Decimal("2.5"),
+    commitment_leverage_ratio=Decimal("2.0"),
+    gross_exposure=Decimal("2500000.00"),
+    commitment_exposure=Decimal("2000000.00"),
+    nav=Decimal("1000000.00"),
+    leverage_limit=Decimal("3.0"),
+    methodology_version="Leverage_v1.0",
+)
+
+leverage = ManagementReportService.build_leverage(leverage_input)
+# leverage.gross_leverage_ratio == Decimal("2.5")
+# leverage.leverage_limit == Decimal("3.0")
+```
+
 ### Management Report
 
 Immutable container with:
@@ -352,19 +418,21 @@ Immutable container with:
 - market_risk (ManagementMarketRiskSection, optional)
 - stress_testing (ManagementStressTestingSection, optional)
 - liquidity (ManagementLiquiditySection, optional)
+- leverage (ManagementLeverageSection, optional)
 - included_sections (list of section names included)
 
 Example:
 
 ```python
 report = ManagementReportService.build_report(
-    fund_summary, market_risk, stress_testing, liquidity
+    fund_summary, market_risk, stress_testing, liquidity, leverage
 )
 # report.fund_summary.fund_name == "Global Equity UCITS Fund"
 # report.market_risk.var_value == Decimal("0.0275")
 # report.stress_testing.scenario_name == "Lehman Crisis 2008"
 # report.liquidity.liquidity_ratio == Decimal("0.85")
-# report.included_sections == ["Fund Summary", "Market Risk", "Stress Testing", "Liquidity"]
+# report.leverage.gross_leverage_ratio == Decimal("2.5")
+# report.included_sections == ["Fund Summary", "Market Risk", "Stress Testing", "Liquidity", "Leverage"]
 ```
 
 ## Scope by Slice
@@ -387,15 +455,21 @@ report = ManagementReportService.build_report(
 - ManagementReportService.build_stress_testing()
 - ManagementReportService.build_report() (includes fund summary, optional market risk, and optional stress testing)
 
-### Slice 4 (Current)
+### Slice 4
 
 - Liquidity summary section
 - ManagementReportService.build_liquidity()
-- ManagementReportService.build_report() (includes all optional sections: market risk, stress testing, liquidity)
+- ManagementReportService.build_report() (includes all previous optional sections plus liquidity)
+
+### Slice 5 (Current)
+
+- Leverage summary section
+- ManagementReportService.build_leverage()
+- ManagementReportService.build_report() (includes all optional sections: market risk, stress testing, liquidity, leverage)
 
 ### Future Slices
 
-- Leverage summary (gross, commitment, by asset class)
+- Exception summary (breaches, data quality, validation issues)
 - Leverage summary (gross, commitment, by asset class)
 - Liquidity summary (TTL profile, redemption capacity)
 - Exception summary (policy breaches, data gaps, validation issues)
@@ -457,6 +531,18 @@ report = ManagementReportService.build_report(
 - liquidity_warning flags any liquidity concerns (from risk monitoring)
 - All liquidity outputs are already-computed; no liquidity calculations performed here
 
+### Leverage Data
+
+- gross_leverage_ratio is supplied from leverage calculation module (not calculated here)
+- commitment_leverage_ratio is supplied from leverage calculation module
+- gross_exposure and commitment_exposure are supplied from portfolio aggregation
+- nav may be supplied (or duplicated from fund summary)
+- leverage_limit is policy constraint (supplied from fund configuration)
+- leverage_warning flags any leverage concerns (from risk monitoring)
+- No netting rules, hedging rules, or derivative aggregation performed here
+- No leverage limit calculation or validation performed here
+- All leverage outputs are already-computed; no leverage calculations performed here
+
 ## Limitations
 
 ### What This Reporting Module Does Not Do
@@ -477,7 +563,13 @@ report = ManagementReportService.build_report(
 - Calculate liquidity buckets (supplied from liquidity module)
 - Calculate redemption profiles (supplied from fund data)
 - Calculate LMT triggers or liquidity stress tests (supplied from risk module)
-- Calculate leverage metrics
+- Calculate gross leverage (supplied from leverage module)
+- Calculate commitment leverage (supplied from leverage module)
+- Calculate exposure amounts (supplied from portfolio aggregation)
+- Apply netting rules (supplied from leverage module)
+- Apply hedging rules (supplied from leverage module)
+- Aggregate derivatives or positions
+- Calculate leverage limits (supplied from fund policy)
 - Aggregate positions
 - Query databases
 - Fetch or manipulate market data
