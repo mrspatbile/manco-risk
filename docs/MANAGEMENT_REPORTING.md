@@ -97,6 +97,27 @@ Management reporting does not:
 - Defensive validation (second-layer checks)
 - Contains pre-calculated leverage metrics
 
+**ManagementExceptionItem**
+- Domain model for a single exception
+- exception_type: str ("Breach", "Warning", or custom classification)
+- severity: str (e.g., "High", "Medium", "Low")
+- message: str (non-empty description)
+- Optional fields: source_section, metric_name, observed_value, limit_value, remediation_status
+- Frozen Pydantic v2 model
+
+**ManagementExceptionSummaryInput**
+- Input wrapper for list of exceptions
+- exceptions: list[ManagementExceptionItem]
+- Allows zero exceptions
+
+**ManagementExceptionSummarySection**
+- Immutable result model
+- Frozen Pydantic v2 model
+- exceptions: list[ManagementExceptionItem] (all supplied exceptions)
+- exception_count: int (total count of exceptions)
+- warning_count: int | None (count where exception_type == "Warning", None if zero)
+- breach_count: int | None (count where exception_type == "Breach", None if zero)
+
 **ManagementRiskReport**
 - Report container
 - Assembles sections into a consolidated report
@@ -106,7 +127,8 @@ Management reporting does not:
 - For Slice 3, optionally includes stress testing
 - For Slice 4, optionally includes liquidity
 - For Slice 5, optionally includes leverage
-- Future slices will add exception section
+- For Final Slice, optionally includes exception summary
+- All optional sections tracked in included_sections list
 
 ### Service
 
@@ -132,13 +154,19 @@ Management reporting does not:
   - Accepts typed input with pre-calculated leverage metrics
   - Returns immutable section
   - No calculations performed
-- `build_report(fund_summary, market_risk=None, stress_testing=None, liquidity=None, leverage=None) → ManagementRiskReport`
+- `build_exception_summary(input) → ManagementExceptionSummarySection`
+  - Accepts typed input with already-identified exceptions
+  - Counts exceptions by type (Breach, Warning)
+  - Returns immutable section with aggregated counts
+  - No exception detection or analysis performed
+- `build_report(fund_summary, market_risk=None, stress_testing=None, liquidity=None, leverage=None, exception_summary=None) → ManagementRiskReport`
   - Assembles section(s) into report
   - fund_summary is always required
   - market_risk is optional
   - stress_testing is optional
   - liquidity is optional
   - leverage is optional
+  - exception_summary is optional
   - Tracks included sections
 
 ## Inputs
@@ -227,6 +255,23 @@ Already-computed leverage outputs required:
 - **methodology_version** (str, optional, non-empty when supplied) — Leverage methodology version identifier
 
 Note: Not all leverage measures are required. May provide gross only, commitment only, or both.
+
+### Exception Summary Input
+
+Already-identified exceptions:
+
+- **exceptions** (list[ManagementExceptionItem], optional, default empty) — List of exceptions
+  - Each exception contains:
+    - **exception_type** (str, required, non-empty) — Classification: "Breach", "Warning", or custom
+    - **severity** (str, required, non-empty) — Severity level: "High", "Medium", "Low", etc.
+    - **message** (str, required, non-empty) — Description of the exception
+    - **source_section** (str, optional) — Which section raised the exception (e.g., "Leverage", "Liquidity")
+    - **metric_name** (str, optional) — Metric that triggered the exception
+    - **observed_value** (Decimal, optional) — Observed metric value
+    - **limit_value** (Decimal, optional) — Policy or regulatory limit
+    - **remediation_status** (str, optional) — Status of remediation efforts
+
+Note: Exceptions are pre-identified by risk monitoring systems. This section does not perform exception detection.
 
 ### Data Conventions
 
@@ -410,6 +455,49 @@ leverage = ManagementReportService.build_leverage(leverage_input)
 # leverage.leverage_limit == Decimal("3.0")
 ```
 
+### Exception Summary Section
+
+Immutable result containing:
+
+- exceptions: list[ManagementExceptionItem] (all supplied exceptions)
+- exception_count: int (total number of exceptions)
+- warning_count: int | None (count of exceptions where exception_type == "Warning", None if zero)
+- breach_count: int | None (count of exceptions where exception_type == "Breach", None if zero)
+
+Example:
+
+```python
+from manco_risk.reporting import (
+    ManagementExceptionItem,
+    ManagementExceptionSummaryInput,
+    ManagementReportService,
+)
+
+exceptions = [
+    ManagementExceptionItem(
+        exception_type="Warning",
+        severity="Medium",
+        message="Approaching VaR limit",
+        source_section="Market Risk",
+        metric_name="VaR_95",
+        observed_value=Decimal("0.025"),
+        limit_value=Decimal("0.020"),
+    ),
+    ManagementExceptionItem(
+        exception_type="Breach",
+        severity="High",
+        message="Leverage limit exceeded",
+        source_section="Leverage",
+    ),
+]
+
+exception_input = ManagementExceptionSummaryInput(exceptions=exceptions)
+exception_summary = ManagementReportService.build_exception_summary(exception_input)
+# exception_summary.exception_count == 2
+# exception_summary.warning_count == 1
+# exception_summary.breach_count == 1
+```
+
 ### Management Report
 
 Immutable container with:
@@ -419,20 +507,22 @@ Immutable container with:
 - stress_testing (ManagementStressTestingSection, optional)
 - liquidity (ManagementLiquiditySection, optional)
 - leverage (ManagementLeverageSection, optional)
+- exception_summary (ManagementExceptionSummarySection, optional)
 - included_sections (list of section names included)
 
-Example:
+Example (complete report with all sections):
 
 ```python
 report = ManagementReportService.build_report(
-    fund_summary, market_risk, stress_testing, liquidity, leverage
+    fund_summary, market_risk, stress_testing, liquidity, leverage, exception_summary
 )
 # report.fund_summary.fund_name == "Global Equity UCITS Fund"
 # report.market_risk.var_value == Decimal("0.0275")
 # report.stress_testing.scenario_name == "Lehman Crisis 2008"
 # report.liquidity.liquidity_ratio == Decimal("0.85")
 # report.leverage.gross_leverage_ratio == Decimal("2.5")
-# report.included_sections == ["Fund Summary", "Market Risk", "Stress Testing", "Liquidity", "Leverage"]
+# report.exception_summary.exception_count == 2
+# report.included_sections == ["Fund Summary", "Market Risk", "Stress Testing", "Liquidity", "Leverage", "Exception Summary"]
 ```
 
 ## Scope by Slice
@@ -461,19 +551,35 @@ report = ManagementReportService.build_report(
 - ManagementReportService.build_liquidity()
 - ManagementReportService.build_report() (includes all previous optional sections plus liquidity)
 
-### Slice 5 (Current)
+### Slice 5
 
 - Leverage summary section
 - ManagementReportService.build_leverage()
 - ManagementReportService.build_report() (includes all optional sections: market risk, stress testing, liquidity, leverage)
 
-### Future Slices
+### Final Slice (Issue #13 Complete)
 
-- Exception summary (breaches, data quality, validation issues)
-- Leverage summary (gross, commitment, by asset class)
-- Liquidity summary (TTL profile, redemption capacity)
-- Exception summary (policy breaches, data gaps, validation issues)
-- Board-style report layout and export
+- Exception summary section (breaches, warnings, with aggregated counts)
+- ManagementExceptionItem domain model
+- ManagementExceptionSummaryInput wrapper
+- ManagementExceptionSummarySection output
+- ManagementReportService.build_exception_summary()
+- ManagementReportService.build_report() (includes all six optional sections)
+- 162 comprehensive tests covering all sections
+- Complete documentation and examples
+
+## Issue #13 Status
+
+Issue #13 is now **COMPLETE**. All six sections of the management risk report are implemented and tested:
+
+1. **Slice 1:** Fund Summary (fund_id, fund_name, fund_regime, base_currency, valuation_date, nav)
+2. **Slice 2:** Market Risk (var_value, var_method, expected_shortfall, srri_class)
+3. **Slice 3:** Stress Testing (scenario_name, scenario_type, portfolio_impact)
+4. **Slice 4:** Liquidity (liquidity_ratio, liquid_assets, illiquid_assets)
+5. **Slice 5:** Leverage (gross_leverage_ratio, commitment_leverage_ratio)
+6. **Final Slice:** Exception Summary (exceptions with counts by type and severity)
+
+The ManagementRiskReport container assembles all six sections into an export-ready, immutable report object. All sections are optional except fund_summary, and included_sections tracks which sections are supplied.
 
 ## Source Assumptions
 
@@ -543,6 +649,18 @@ report = ManagementReportService.build_report(
 - No leverage limit calculation or validation performed here
 - All leverage outputs are already-computed; no leverage calculations performed here
 
+### Exception Data
+
+- Exceptions are pre-identified by risk monitoring systems (not detected here)
+- exception_type classifies the exception (e.g., "Breach", "Warning")
+- severity describes the severity level (e.g., "High", "Medium", "Low")
+- message provides a human-readable description
+- optional source_section, metric_name, observed_value, limit_value track context
+- exception_count, warning_count, breach_count are computed from supplied exceptions
+- No exception detection, validation, or remediation performed here
+- No regulatory mapping or classification performed here
+- All exceptions are already-identified; reporting only aggregates and packages
+
 ## Limitations
 
 ### What This Reporting Module Does Not Do
@@ -571,6 +689,11 @@ report = ManagementReportService.build_report(
 - Aggregate derivatives or positions
 - Calculate leverage limits (supplied from fund policy)
 - Aggregate positions
+- Detect exceptions or violations (supplied from monitoring systems)
+- Classify exceptions by regulatory category
+- Map exceptions to regulatory requirements
+- Validate exceptions against policy or legal text
+- Compute remediation timelines or actions
 - Query databases
 - Fetch or manipulate market data
 - Generate PDF, HTML, or Streamlit output

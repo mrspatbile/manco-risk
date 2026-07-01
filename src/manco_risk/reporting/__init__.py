@@ -21,6 +21,9 @@ from manco_risk.reporting.annex_iv import (
 )
 from manco_risk.reporting.annex_iv_service import AnnexIVReportingService
 from manco_risk.reporting.management_report import (
+    ManagementExceptionItem,
+    ManagementExceptionSummaryInput,
+    ManagementExceptionSummarySection,
     ManagementFundSummaryInput,
     ManagementFundSummarySection,
     ManagementLeverageInput,
@@ -49,6 +52,9 @@ __all__ = [
     "AnnexIVLiquidityProfileSection",
     "AnnexIVReport",
     "AnnexIVReportingService",
+    "ManagementExceptionItem",
+    "ManagementExceptionSummaryInput",
+    "ManagementExceptionSummarySection",
     "ManagementFundSummaryInput",
     "ManagementFundSummarySection",
     "ManagementLeverageInput",

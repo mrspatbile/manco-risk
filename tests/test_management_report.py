@@ -1,6 +1,6 @@
 """Tests for management reporting layer.
 
-Tests fund summary, market risk, stress testing, liquidity, and report assembly.
+Tests fund summary, market risk, stress testing, liquidity, leverage, exceptions, and report assembly.
 """
 
 from datetime import date
@@ -9,6 +9,8 @@ from decimal import Decimal
 import pytest
 
 from manco_risk.reporting.management_report import (
+    ManagementExceptionItem,
+    ManagementExceptionSummaryInput,
     ManagementFundSummaryInput,
     ManagementFundSummarySection,
     ManagementLeverageInput,
@@ -1942,6 +1944,213 @@ class TestManagementReportServiceLeverage:
 
         with pytest.raises(Exception):  # Pydantic frozen model raises
             section.gross_leverage_ratio = Decimal("2.0")  # type: ignore
+
+
+class TestManagementExceptionItem:
+    """Test exception item model."""
+
+    def test_valid_exception_item(self) -> None:
+        """Valid exception item construction."""
+        item = ManagementExceptionItem(
+            exception_type="Breach",
+            severity="High",
+            message="Leverage ratio exceeded policy limit",
+        )
+
+        assert item.exception_type == "Breach"
+        assert item.severity == "High"
+        assert item.message == "Leverage ratio exceeded policy limit"
+
+    def test_valid_exception_with_optional_fields(self) -> None:
+        """Valid exception item with optional fields."""
+        item = ManagementExceptionItem(
+            exception_type="Warning",
+            severity="Medium",
+            message="Approaching liquidity threshold",
+            source_section="Liquidity",
+            metric_name="Liquidity Ratio",
+            observed_value=Decimal("0.65"),
+            limit_value=Decimal("0.60"),
+            remediation_status="In Progress",
+        )
+
+        assert item.exception_type == "Warning"
+        assert item.observed_value == Decimal("0.65")
+        assert item.remediation_status == "In Progress"
+
+    def test_empty_exception_type_rejected(self) -> None:
+        """Empty exception_type is rejected."""
+        with pytest.raises(ValueError, match="exception_type must be non-empty"):
+            ManagementExceptionItem(
+                exception_type="",
+                severity="High",
+                message="Test message",
+            )
+
+    def test_empty_severity_rejected(self) -> None:
+        """Empty severity is rejected."""
+        with pytest.raises(ValueError, match="severity must be non-empty"):
+            ManagementExceptionItem(
+                exception_type="Breach",
+                severity="",
+                message="Test message",
+            )
+
+    def test_empty_message_rejected(self) -> None:
+        """Empty message is rejected."""
+        with pytest.raises(ValueError, match="message must be non-empty"):
+            ManagementExceptionItem(
+                exception_type="Breach",
+                severity="High",
+                message="",
+            )
+
+    def test_immutability(self) -> None:
+        """Exception item is immutable."""
+        item = ManagementExceptionItem(
+            exception_type="Breach",
+            severity="High",
+            message="Test",
+        )
+
+        with pytest.raises(Exception):  # Pydantic frozen model raises
+            item.exception_type = "Warning"  # type: ignore
+
+
+class TestManagementExceptionSummary:
+    """Test exception summary models and service."""
+
+    def test_build_exception_summary_no_exceptions(self) -> None:
+        """Build exception summary with zero exceptions."""
+        input_data = ManagementExceptionSummaryInput(exceptions=[])
+        section = ManagementReportService.build_exception_summary(input_data)
+
+        assert section.exception_count == 0
+        assert section.warning_count is None
+        assert section.breach_count is None
+
+    def test_build_exception_summary_single_exception(self) -> None:
+        """Build exception summary with single exception."""
+        exception = ManagementExceptionItem(
+            exception_type="Breach",
+            severity="High",
+            message="Leverage exceeded",
+        )
+        input_data = ManagementExceptionSummaryInput(exceptions=[exception])
+        section = ManagementReportService.build_exception_summary(input_data)
+
+        assert section.exception_count == 1
+        assert section.breach_count == 1
+        assert section.warning_count is None
+
+    def test_build_exception_summary_multiple_exceptions(self) -> None:
+        """Build exception summary with multiple exceptions."""
+        exceptions = [
+            ManagementExceptionItem(
+                exception_type="Breach",
+                severity="High",
+                message="Leverage exceeded",
+            ),
+            ManagementExceptionItem(
+                exception_type="Warning",
+                severity="Medium",
+                message="Liquidity low",
+            ),
+            ManagementExceptionItem(
+                exception_type="Warning",
+                severity="Low",
+                message="Data quality issue",
+            ),
+        ]
+        input_data = ManagementExceptionSummaryInput(exceptions=exceptions)
+        section = ManagementReportService.build_exception_summary(input_data)
+
+        assert section.exception_count == 3
+        assert section.breach_count == 1
+        assert section.warning_count == 2
+
+    def test_build_report_with_exception_summary(self) -> None:
+        """Build report with exception summary section."""
+        fund_summary = ManagementFundSummarySection(
+            fund_id="FUND001",
+            fund_name="Test Fund",
+            fund_regime="UCITS",
+            base_currency="EUR",
+            valuation_date=date(2024, 6, 30),
+            nav=Decimal("1000000.00"),
+        )
+
+        exception = ManagementExceptionItem(
+            exception_type="Warning",
+            severity="Medium",
+            message="Policy breach detected",
+        )
+        exception_input = ManagementExceptionSummaryInput(exceptions=[exception])
+        exception_summary = ManagementReportService.build_exception_summary(exception_input)
+
+        report = ManagementReportService.build_report(
+            fund_summary, exception_summary=exception_summary
+        )
+
+        assert report.exception_summary is not None
+        assert report.exception_summary.exception_count == 1
+        assert "Exception Summary" in report.included_sections
+
+    def test_build_complete_report_all_sections(self) -> None:
+        """Build complete report with all sections including exceptions."""
+        fund_summary = ManagementFundSummarySection(
+            fund_id="FUND001",
+            fund_name="Test Fund",
+            fund_regime="UCITS",
+            base_currency="EUR",
+            valuation_date=date(2024, 6, 30),
+            nav=Decimal("1000000.00"),
+        )
+
+        market_risk = ManagementMarketRiskSection(
+            var_value=Decimal("0.025"),
+            var_method="Historical Simulation",
+        )
+
+        stress_testing = ManagementStressTestingSection(
+            scenario_name="Lehman Crisis",
+            scenario_type="Historical",
+            portfolio_impact=Decimal("-0.125"),
+        )
+
+        liquidity = ManagementLiquiditySection(
+            liquidity_ratio=Decimal("0.75"),
+            liquid_assets=Decimal("750000.00"),
+            illiquid_assets=Decimal("250000.00"),
+        )
+
+        leverage = ManagementLeverageSection(
+            gross_leverage_ratio=Decimal("1.5"),
+            commitment_leverage_ratio=Decimal("1.2"),
+        )
+
+        exceptions = [
+            ManagementExceptionItem(
+                exception_type="Warning",
+                severity="Medium",
+                message="Approaching VaR limit",
+            )
+        ]
+        exception_summary = ManagementReportService.build_exception_summary(
+            ManagementExceptionSummaryInput(exceptions=exceptions)
+        )
+
+        report = ManagementReportService.build_report(
+            fund_summary, market_risk, stress_testing, liquidity, leverage, exception_summary
+        )
+
+        assert len(report.included_sections) == 6
+        assert "Fund Summary" in report.included_sections
+        assert "Market Risk" in report.included_sections
+        assert "Stress Testing" in report.included_sections
+        assert "Liquidity" in report.included_sections
+        assert "Leverage" in report.included_sections
+        assert "Exception Summary" in report.included_sections
 
 
 class TestRealisticExamples:

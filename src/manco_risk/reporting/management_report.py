@@ -871,15 +871,175 @@ class ManagementLeverageSection(BaseModel):
         return v
 
 
+class ManagementExceptionItem(BaseModel):
+    """Single exception, warning, or breach item.
+
+    Fields:
+    - exception_type: Type of exception (str, non-empty).
+      E.g., "Breach", "Warning", "DataQuality", "PolicyViolation".
+    - severity: Severity level (str, non-empty).
+      E.g., "High", "Medium", "Low".
+    - message: Exception message (str, non-empty).
+    - source_section: Which section identified the issue (str, optional, non-empty when supplied).
+      E.g., "Market Risk", "Leverage", "Liquidity".
+    - metric_name: Name of the metric involved (str, optional, non-empty when supplied).
+      E.g., "Gross Leverage", "VaR".
+    - observed_value: The observed value (Decimal, optional).
+    - limit_value: The limit or threshold value (Decimal, optional).
+    - remediation_status: Status of remediation (str, optional, non-empty when supplied).
+      E.g., "Open", "In Progress", "Resolved".
+
+    Invariants:
+    - exception_type, severity, message must be non-empty.
+    - Optional string fields must be non-empty when supplied.
+
+    Note: These are already-identified exceptions from other modules.
+    This model does not perform breach calculations.
+    """
+
+    exception_type: str
+    severity: str
+    message: str
+    source_section: Optional[str] = None
+    metric_name: Optional[str] = None
+    observed_value: Optional[Decimal] = None
+    limit_value: Optional[Decimal] = None
+    remediation_status: Optional[str] = None
+
+    model_config = ConfigDict(frozen=True)
+
+    @field_validator("exception_type")
+    @classmethod
+    def validate_exception_type(cls, v: str) -> str:
+        """Exception type must be non-empty."""
+        if not v or not v.strip():
+            raise ValueError("exception_type must be non-empty")
+        return v.strip()
+
+    @field_validator("severity")
+    @classmethod
+    def validate_severity(cls, v: str) -> str:
+        """Severity must be non-empty."""
+        if not v or not v.strip():
+            raise ValueError("severity must be non-empty")
+        return v.strip()
+
+    @field_validator("message")
+    @classmethod
+    def validate_message(cls, v: str) -> str:
+        """Message must be non-empty."""
+        if not v or not v.strip():
+            raise ValueError("message must be non-empty")
+        return v.strip()
+
+    @field_validator("source_section")
+    @classmethod
+    def validate_source_section(cls, v: Optional[str]) -> Optional[str]:
+        """Source section must be non-empty when supplied."""
+        if v is not None and (not v or not v.strip()):
+            raise ValueError("source_section must be non-empty when supplied")
+        return v.strip() if v else None
+
+    @field_validator("metric_name")
+    @classmethod
+    def validate_metric_name(cls, v: Optional[str]) -> Optional[str]:
+        """Metric name must be non-empty when supplied."""
+        if v is not None and (not v or not v.strip()):
+            raise ValueError("metric_name must be non-empty when supplied")
+        return v.strip() if v else None
+
+    @field_validator("remediation_status")
+    @classmethod
+    def validate_remediation_status(cls, v: Optional[str]) -> Optional[str]:
+        """Remediation status must be non-empty when supplied."""
+        if v is not None and (not v or not v.strip()):
+            raise ValueError("remediation_status must be non-empty when supplied")
+        return v.strip() if v else None
+
+
+class ManagementExceptionSummaryInput(BaseModel):
+    """Input to management exception summary builder.
+
+    Contains already-identified exceptions required for the exception summary section.
+
+    Fields:
+    - exceptions: List of exception items (can be empty or contain multiple items).
+
+    Invariants:
+    - exceptions is a list (may be empty).
+    - Each exception item must be valid.
+
+    Note: These are already-identified exceptions from other modules.
+    This input model does not perform breach calculations.
+    """
+
+    exceptions: list[ManagementExceptionItem]
+
+    model_config = ConfigDict(frozen=True)
+
+
+class ManagementExceptionSummarySection(BaseModel):
+    """Result of management exception summary assembly.
+
+    Immutable exception summary section for management reporting.
+    Contains already-identified exceptions, warnings, and breaches.
+
+    Fields:
+    - exceptions: List of exception items.
+    - exception_count: Total count of exceptions.
+    - warning_count: Count of warning-severity items (optional).
+    - breach_count: Count of breach-type items (optional).
+
+    Invariants (defensive checks):
+    - exceptions must be a list (may be empty).
+    - exception_count matches length of exceptions list.
+
+    Note: These fields contain already-identified exceptions.
+    No breach calculations are performed by this model.
+    """
+
+    exceptions: list[ManagementExceptionItem]
+    exception_count: int
+    warning_count: Optional[int] = None
+    breach_count: Optional[int] = None
+
+    model_config = ConfigDict(frozen=True)
+
+    @field_validator("exception_count")
+    @classmethod
+    def validate_exception_count(cls, v: int) -> int:
+        """Exception count must be non-negative."""
+        if v < 0:
+            raise ValueError("exception_count must be non-negative")
+        return v
+
+    @field_validator("warning_count")
+    @classmethod
+    def validate_warning_count(cls, v: Optional[int]) -> Optional[int]:
+        """Warning count must be non-negative when supplied."""
+        if v is not None and v < 0:
+            raise ValueError("warning_count must be non-negative")
+        return v
+
+    @field_validator("breach_count")
+    @classmethod
+    def validate_breach_count(cls, v: Optional[int]) -> Optional[int]:
+        """Breach count must be non-negative when supplied."""
+        if v is not None and v < 0:
+            raise ValueError("breach_count must be non-negative")
+        return v
+
+
 class ManagementRiskReport(BaseModel):
     """Management risk report container.
 
-    Assembles management reporting sections into a consolidated report.
+    Assembles management reporting sections into a consolidated, export-ready report.
+    This is the final Issue #13 deliverable: a complete management reporting object
+    that packages source data and already-computed risk outputs for consumption by
+    PDF, HTML, Streamlit or other presentation layers.
+
     For Slice 1, includes fund summary only.
-    For Slice 2, optionally includes market risk.
-    For Slice 3, optionally includes stress testing.
-    For Slice 4, optionally includes liquidity.
-    For Slice 5, optionally includes leverage.
+    For Slice 2+, optionally includes market risk, stress testing, liquidity, leverage, exceptions.
 
     Fields:
     - fund_summary: Fund summary section (required).
@@ -887,11 +1047,15 @@ class ManagementRiskReport(BaseModel):
     - stress_testing: Stress testing section (optional).
     - liquidity: Liquidity section (optional).
     - leverage: Leverage section (optional).
+    - exception_summary: Exception summary section (optional).
     - included_sections: List of section names included in the report.
 
     Invariants:
     - fund_summary must be present.
     - included_sections is computed from supplied sections.
+
+    This object is export-ready data for downstream presentation layers.
+    It contains no display-specific logic and does not perform calculations.
     """
 
     fund_summary: ManagementFundSummarySection
@@ -899,6 +1063,7 @@ class ManagementRiskReport(BaseModel):
     stress_testing: Optional[ManagementStressTestingSection] = None
     liquidity: Optional[ManagementLiquiditySection] = None
     leverage: Optional[ManagementLeverageSection] = None
+    exception_summary: Optional[ManagementExceptionSummarySection] = None
     included_sections: list[str]
 
     model_config = ConfigDict(frozen=True)

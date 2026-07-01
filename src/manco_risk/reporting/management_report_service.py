@@ -10,6 +10,8 @@ and packages supplied data into immutable report objects.
 from typing import Optional
 
 from manco_risk.reporting.management_report import (
+    ManagementExceptionSummaryInput,
+    ManagementExceptionSummarySection,
     ManagementFundSummaryInput,
     ManagementFundSummarySection,
     ManagementLeverageInput,
@@ -215,17 +217,55 @@ class ManagementReportService:
         )
 
     @staticmethod
+    def build_exception_summary(
+        input_data: ManagementExceptionSummaryInput,
+    ) -> ManagementExceptionSummarySection:
+        """Build exception summary section from already-identified exceptions.
+
+        Parameters
+        ----------
+        input_data : ManagementExceptionSummaryInput
+            Already-identified exceptions (list of ManagementExceptionItem).
+
+        Returns
+        -------
+        ManagementExceptionSummarySection
+            Immutable exception summary section.
+
+        Raises
+        ------
+        ValueError
+            If exception data is invalid.
+        """
+        exception_count = len(input_data.exceptions)
+
+        warning_count = sum(
+            1 for exc in input_data.exceptions if exc.exception_type.lower() == "warning"
+        )
+        breach_count = sum(
+            1 for exc in input_data.exceptions if exc.exception_type.lower() == "breach"
+        )
+
+        return ManagementExceptionSummarySection(
+            exceptions=input_data.exceptions,
+            exception_count=exception_count,
+            warning_count=warning_count if warning_count > 0 else None,
+            breach_count=breach_count if breach_count > 0 else None,
+        )
+
+    @staticmethod
     def build_report(
         fund_summary: ManagementFundSummarySection,
         market_risk: Optional[ManagementMarketRiskSection] = None,
         stress_testing: Optional[ManagementStressTestingSection] = None,
         liquidity: Optional[ManagementLiquiditySection] = None,
         leverage: Optional[ManagementLeverageSection] = None,
+        exception_summary: Optional[ManagementExceptionSummarySection] = None,
     ) -> ManagementRiskReport:
-        """Build management report from sections.
+        """Build complete management report from sections.
 
-        For Slice 1, includes fund summary section only.
-        For Slice 2+, optionally includes market risk, stress testing, liquidity, and leverage.
+        Assembles all optional sections into a consolidated, export-ready report.
+        This is the final Issue #13 deliverable.
 
         Parameters
         ----------
@@ -239,11 +279,13 @@ class ManagementReportService:
             Liquidity section. If supplied, will be included in report.
         leverage : Optional[ManagementLeverageSection], optional
             Leverage section. If supplied, will be included in report.
+        exception_summary : Optional[ManagementExceptionSummarySection], optional
+            Exception summary section. If supplied, will be included in report.
 
         Returns
         -------
         ManagementRiskReport
-            Immutable management risk report.
+            Immutable, export-ready management risk report.
 
         Raises
         ------
@@ -259,6 +301,8 @@ class ManagementReportService:
             included_sections.append("Liquidity")
         if leverage is not None:
             included_sections.append("Leverage")
+        if exception_summary is not None:
+            included_sections.append("Exception Summary")
 
         return ManagementRiskReport(
             fund_summary=fund_summary,
@@ -266,5 +310,6 @@ class ManagementReportService:
             stress_testing=stress_testing,
             liquidity=liquidity,
             leverage=leverage,
+            exception_summary=exception_summary,
             included_sections=included_sections,
         )
