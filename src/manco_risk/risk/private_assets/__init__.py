@@ -36,6 +36,11 @@ from manco_risk.risk.private_assets.private_equity import (
     PrivateEquityInvestmentInput,
 )
 from manco_risk.risk.private_assets.private_equity_engine import PrivateEquityEngine
+from manco_risk.risk.private_assets.real_estate import (
+    RealEstateStressInput,
+    RealEstateStressResult,
+)
+from manco_risk.risk.private_assets.real_estate_engine import RealEstateStressEngine
 
 __all__ = [
     "PrivateEquityCashFlow",
@@ -48,4 +53,7 @@ __all__ = [
     "InfrastructureSensitivityInput",
     "InfrastructureSensitivityResult",
     "InfrastructureSensitivityEngine",
+    "RealEstateStressInput",
+    "RealEstateStressResult",
+    "RealEstateStressEngine",
 ]

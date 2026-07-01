@@ -620,7 +620,196 @@ Duration and sensitivity are snapshots as of the valuation_date, using supplied 
 - Inflation exposure estimation
 - Interest-rate stress scenarios
 - Sensitivity forecasting
-- Real estate stress calculations
+- Private debt loan and covenant monitoring
+
+---
+
+## Real Estate Stress Calculations (Slice 4)
+
+### Purpose
+
+Real estate stress analytics calculates single-period property outcomes under market shocks to value, rental income, and operating expenses.
+
+This slice applies deterministic shocks to financial metrics.
+No multi-period forecasting, cap-rate modelling, rental indexation, or valuation performed.
+
+### Models
+
+**RealEstateStressInput**
+
+Input data for real estate stress calculation.
+
+```python
+class RealEstateStressInput:
+    valuation_date: date              # Snapshot date
+    property_value: Decimal           # Non-negative
+    debt_outstanding: Decimal         # Non-negative
+    rental_income: Decimal            # Non-negative (annual)
+    operating_expenses: Decimal       # Non-negative (annual)
+    value_shock: Decimal              # Shock coefficient (-0.20 = -20%)
+    rental_income_shock: Decimal      # Shock coefficient
+    expense_shock: Decimal = 0        # Optional, default 0
+    property_id: str | None           # Optional identifier
+    methodology_version: str | None   # Optional
+```
+
+**RealEstateStressResult**
+
+Immutable result with stressed property metrics.
+
+```python
+class RealEstateStressResult:
+    property_id: str | None           # From input
+    valuation_date: date              # From input
+    stressed_property_value: Decimal  # After shock
+    stressed_rental_income: Decimal   # After shock
+    stressed_operating_expenses: Decimal  # After shock
+    stressed_noi: Decimal             # Rental income - expenses
+    stressed_ltv: Decimal | None      # Debt / stressed_value (None if value=0)
+    debt_outstanding: Decimal         # From input
+    methodology_version: str | None   # From input
+```
+
+### Formulas
+
+**Stressed Property Value**
+
+```
+stressed_property_value = property_value * (1 + value_shock)
+```
+
+Example: property_value = €5M, value_shock = -0.20 → stressed_property_value = €4M
+
+**Stressed Rental Income**
+
+```
+stressed_rental_income = rental_income * (1 + rental_income_shock)
+```
+
+Example: rental_income = €500K, rental_income_shock = -0.15 → stressed_rental_income = €425K
+
+**Stressed Operating Expenses**
+
+```
+stressed_operating_expenses = operating_expenses * (1 + expense_shock)
+```
+
+Default expense_shock = 0 (no change). Example: expense_shock = 0.10 → expenses increase 10%.
+
+**Stressed NOI (Net Operating Income)**
+
+```
+stressed_noi = stressed_rental_income - stressed_operating_expenses
+```
+
+**Stressed LTV**
+
+```
+stressed_ltv = debt_outstanding / stressed_property_value
+```
+
+Returns None if stressed_property_value = 0.
+
+### Shock Conventions
+
+Shocks are decimal coefficients representing percentage changes.
+
+- `-0.20` = -20% decrease
+- `0.10` = +10% increase
+- `0.00` = no change
+- `-1.0` = -100% (total loss)
+
+Examples:
+- property_value €5M with value_shock -0.30 → stressed_value = €3.5M
+- rental_income €400K with rental_income_shock -0.25 → stressed_income = €300K
+
+### Data Conventions
+
+**Monetary values:** `Decimal`, non-negative.
+
+**Shocks:** `Decimal`, positive or negative coefficients.
+
+```python
+from decimal import Decimal
+from datetime import date
+
+property_data = RealEstateStressInput(
+    valuation_date=date(2024, 6, 30),
+    property_value=Decimal("5000000"),
+    debt_outstanding=Decimal("3000000"),
+    rental_income=Decimal("500000"),
+    operating_expenses=Decimal("150000"),
+    value_shock=Decimal("-0.20"),
+    rental_income_shock=Decimal("-0.15"),
+    expense_shock=Decimal("0.10")
+)
+
+result = RealEstateStressEngine.analyze(property_data)
+# result.stressed_property_value == Decimal("4000000")
+# result.stressed_noi == Decimal("275000")
+# result.stressed_ltv == Decimal("0.75")
+```
+
+### Engine
+
+**RealEstateStressEngine**
+
+Stateless calculation of stressed property metrics.
+
+```python
+@staticmethod
+def analyze(property_data: RealEstateStressInput) -> RealEstateStressResult:
+    """Calculate property stress outcomes under shocks.
+    
+    Single-period calculation only. Returns stressed property value, income,
+    expenses, NOI, and LTV.
+    """
+```
+
+### Limitations
+
+This implementation calculates **single-period stress outcomes only**.
+
+It does **not**:
+
+- Perform multi-period forecasting or projections
+- Model cap-rate or discount-rate changes
+- Apply rental indexation or escalation
+- Calculate loan refinancing impact
+- Model expense inflation differently from shocks
+- Perform valuation (uses supplied property value)
+- Calculate construction or replacement costs
+- Model tenant turnover or lease expiration
+- Apply tax or regulatory impacts
+- Analyze portfolio-level effects
+- Stress-test market conditions endogenously
+
+Stress outcomes are deterministic point-in-time impacts from supplied shocks.
+
+### Scope: Real Estate Stress (Slice 4)
+
+**Implemented:**
+
+- RealEstateStressInput model (Pydantic v2, frozen)
+- RealEstateStressResult model (Pydantic v2, frozen)
+- RealEstateStressEngine with single-period calculation
+- Property value shock
+- Rental income shock
+- Operating expense shock (with default 0)
+- Stressed NOI calculation
+- Stressed LTV calculation with None handling
+- Comprehensive tests (26 tests)
+- Decimal precision preservation
+- Model immutability
+- Realistic property stress scenarios (office, retail, residential, industrial, hotel)
+
+**Deferred to future slices:**
+
+- Multi-period projections
+- Cap-rate stress
+- Refinancing analysis
+- Tenant turnover analysis
+- Rental escalation modelling
 - Private debt loan and covenant monitoring
 
 ## Out of Scope
