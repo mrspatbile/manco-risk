@@ -61,13 +61,26 @@ Management reporting does not:
 - Defensive validation (second-layer checks)
 - Contains pre-calculated risk metrics
 
+**ManagementStressTestingInput**
+- Input validation model
+- Accepts already-computed stress testing outputs
+- Validates field presence and string formats
+- Optional fields allowed
+
+**ManagementStressTestingSection**
+- Immutable result model
+- Frozen Pydantic v2 model
+- Defensive validation (second-layer checks)
+- Contains pre-calculated stress test outcomes
+
 **ManagementRiskReport**
 - Report container
 - Assembles sections into a consolidated report
 - Tracks which sections are included
 - For Slice 1, includes fund summary only
 - For Slice 2, optionally includes market risk
-- Future slices will add leverage, liquidity, stress, exception sections
+- For Slice 3, optionally includes stress testing
+- Future slices will add leverage, liquidity, exception sections
 
 ### Service
 
@@ -81,10 +94,15 @@ Management reporting does not:
   - Accepts typed input with pre-calculated risk metrics
   - Returns immutable section
   - No calculations performed
-- `build_report(fund_summary, market_risk=None) → ManagementRiskReport`
+- `build_stress_testing(input) → ManagementStressTestingSection`
+  - Accepts typed input with pre-calculated stress test outcomes
+  - Returns immutable section
+  - No calculations performed
+- `build_report(fund_summary, market_risk=None, stress_testing=None) → ManagementRiskReport`
   - Assembles section(s) into report
   - fund_summary is always required
   - market_risk is optional
+  - stress_testing is optional
   - Tracks included sections
 
 ## Inputs
@@ -117,6 +135,24 @@ Already-computed market risk outputs required:
 - **global_exposure** (Decimal, optional, non-negative when supplied) — Global exposure ratio (e.g., `1.5` = 150%)
 - **stress_summary_reference** (str, optional, non-empty when supplied) — Reference to stress testing results
 - **methodology_version** (str, optional, non-empty when supplied) — Risk methodology version identifier
+
+### Stress Testing Input
+
+Already-computed stress testing outputs required:
+
+- **scenario_name** (str, required, non-empty) — Name of the stress scenario
+  - Examples: "Lehman Crisis 2008", "COVID-19 March 2020", "Rates +100bps"
+- **scenario_type** (str, required, non-empty) — Type of stress scenario
+  - Valid values: "Historical", "Hypothetical", "Reverse Stress"
+- **portfolio_impact** (Decimal, required) — Portfolio P&L impact under stress
+  - Can be negative (loss) or positive (gain). Example: `-0.125` = 12.5% loss
+- **nav_impact** (Decimal, optional) — NAV impact under stress (can be negative or positive)
+- **worst_position** (str, optional, non-empty when supplied) — Worst performing position identifier
+  - Example: "US0378331005" (ISIN), "BOND_CUSIP_123"
+- **worst_sector** (str, optional, non-empty when supplied) — Worst performing sector
+  - Examples: "Financial Services", "Fixed Income", "Technology"
+- **stress_date** (date, optional) — Date of the stress scenario
+- **methodology_version** (str, optional, non-empty when supplied) — Stress testing methodology version identifier
 
 ### Data Conventions
 
@@ -209,21 +245,56 @@ market_risk = ManagementReportService.build_market_risk(market_risk_input)
 # market_risk.srri_class == "5"
 ```
 
+### Stress Testing Section
+
+Immutable result containing:
+
+- scenario_name, scenario_type, portfolio_impact (required)
+- (optional) nav_impact, worst_position, worst_sector, stress_date, methodology_version
+
+Example:
+
+```python
+from manco_risk.reporting import (
+    ManagementStressTestingInput,
+    ManagementReportService,
+)
+
+stress_testing_input = ManagementStressTestingInput(
+    scenario_name="Lehman Crisis 2008",
+    scenario_type="Historical",
+    portfolio_impact=Decimal("-0.125"),
+    nav_impact=Decimal("-0.125"),
+    worst_position="US0378331005",
+    worst_sector="Financial Services",
+    stress_date=date(2008, 9, 15),
+    methodology_version="Stress_HistoricalSimulation_v1.0",
+)
+
+stress_testing = ManagementReportService.build_stress_testing(stress_testing_input)
+# stress_testing.scenario_name == "Lehman Crisis 2008"
+# stress_testing.portfolio_impact == Decimal("-0.125")
+```
+
 ### Management Report
 
 Immutable container with:
 
 - fund_summary (ManagementFundSummarySection, required)
 - market_risk (ManagementMarketRiskSection, optional)
+- stress_testing (ManagementStressTestingSection, optional)
 - included_sections (list of section names included)
 
 Example:
 
 ```python
-report = ManagementReportService.build_report(section, market_risk)
+report = ManagementReportService.build_report(
+    fund_summary, market_risk, stress_testing
+)
 # report.fund_summary.fund_name == "Global Equity UCITS Fund"
 # report.market_risk.var_value == Decimal("0.0275")
-# report.included_sections == ["Fund Summary", "Market Risk"]
+# report.stress_testing.scenario_name == "Lehman Crisis 2008"
+# report.included_sections == ["Fund Summary", "Market Risk", "Stress Testing"]
 ```
 
 ## Scope by Slice
@@ -234,15 +305,21 @@ report = ManagementReportService.build_report(section, market_risk)
 - ManagementReportService.build_fund_summary()
 - ManagementReportService.build_report() (includes fund summary only)
 
-### Slice 2 (Current)
+### Slice 2
 
 - Market risk summary section
 - ManagementReportService.build_market_risk()
 - ManagementReportService.build_report() (includes fund summary and optional market risk)
 
+### Slice 3 (Current)
+
+- Stress testing summary section
+- ManagementReportService.build_stress_testing()
+- ManagementReportService.build_report() (includes fund summary, optional market risk, and optional stress testing)
+
 ### Future Slices
 
-- Stress testing summary (P&L outcomes vs. limits)
+- Leverage summary (gross, commitment, by asset class)
 - Leverage summary (gross, commitment, by asset class)
 - Liquidity summary (TTL profile, redemption capacity)
 - Exception summary (policy breaches, data gaps, validation issues)
@@ -282,6 +359,17 @@ report = ManagementReportService.build_report(section, market_risk)
 - stress_summary_reference points to stress testing results generated by risk module
 - All risk metrics are already-computed outputs; no calculations performed here
 
+### Stress Testing Data
+
+- scenario_name identifies the stress scenario (e.g., "Lehman Crisis 2008", "Rates +100bps")
+- scenario_type identifies the scenario origin (Historical, Hypothetical, Reverse Stress)
+- portfolio_impact is supplied from stress testing calculation module
+- nav_impact is supplied from stress testing calculation module
+- worst_position and worst_sector identify which holdings/sectors suffer most
+- stress_date is the date of the historical scenario (for historical scenarios)
+- All stress test outputs are already-computed; no stress calculations performed here
+- portfolio_impact and nav_impact can be positive (gains) or negative (losses)
+
 ## Limitations
 
 ### What This Reporting Module Does Not Do
@@ -293,8 +381,12 @@ report = ManagementReportService.build_report(section, market_risk)
 - Calculate Expected Shortfall (supplied from risk module)
 - Calculate SRRI class (supplied from PRIIPS or risk module)
 - Calculate global exposure (supplied from risk module)
-- Calculate stress tests (supplied from risk module)
+- Calculate stress scenarios (supplied from risk module)
+- Calculate portfolio impacts of stress scenarios (supplied from risk module)
+- Calculate stress test P&L outcomes (supplied from risk module)
+- Reverse stress testing (supplied from risk module)
 - Calculate leverage or liquidity metrics
+- Aggregate positions
 - Query databases
 - Fetch or manipulate market data
 - Generate PDF, HTML, or Streamlit output

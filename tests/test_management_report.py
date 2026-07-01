@@ -14,6 +14,8 @@ from manco_risk.reporting.management_report import (
     ManagementMarketRiskInput,
     ManagementMarketRiskSection,
     ManagementRiskReport,
+    ManagementStressTestingInput,
+    ManagementStressTestingSection,
 )
 from manco_risk.reporting.management_report_service import ManagementReportService
 
@@ -813,6 +815,409 @@ class TestManagementReportServiceMarketRisk:
         with pytest.raises(Exception):  # Pydantic frozen model raises
             section.var_method = "Modified"  # type: ignore
 
+    def test_build_report_with_stress_testing(self) -> None:
+        """Build report with fund summary and stress testing sections."""
+        fund_summary = ManagementFundSummarySection(
+            fund_id="FUND001",
+            fund_name="Test Fund",
+            fund_regime="UCITS",
+            base_currency="EUR",
+            valuation_date=date(2024, 6, 30),
+            nav=Decimal("1000000.00"),
+        )
+
+        stress_testing = ManagementStressTestingSection(
+            scenario_name="Lehman Crisis 2008",
+            scenario_type="Historical",
+            portfolio_impact=Decimal("-0.125"),
+        )
+
+        report = ManagementReportService.build_report(fund_summary, stress_testing=stress_testing)
+
+        assert report.fund_summary.fund_id == "FUND001"
+        assert report.stress_testing is not None
+        assert report.stress_testing.scenario_name == "Lehman Crisis 2008"
+        assert "Fund Summary" in report.included_sections
+        assert "Stress Testing" in report.included_sections
+
+    def test_build_report_with_market_risk_and_stress_testing(self) -> None:
+        """Build report with all sections."""
+        fund_summary = ManagementFundSummarySection(
+            fund_id="FUND001",
+            fund_name="Test Fund",
+            fund_regime="UCITS",
+            base_currency="EUR",
+            valuation_date=date(2024, 6, 30),
+            nav=Decimal("1000000.00"),
+        )
+
+        market_risk = ManagementMarketRiskSection(
+            var_value=Decimal("0.025"),
+            var_method="Historical Simulation",
+        )
+
+        stress_testing = ManagementStressTestingSection(
+            scenario_name="Lehman Crisis 2008",
+            scenario_type="Historical",
+            portfolio_impact=Decimal("-0.125"),
+        )
+
+        report = ManagementReportService.build_report(fund_summary, market_risk, stress_testing)
+
+        assert report.fund_summary.fund_id == "FUND001"
+        assert report.market_risk is not None
+        assert report.stress_testing is not None
+        assert len(report.included_sections) == 3
+        assert "Fund Summary" in report.included_sections
+        assert "Market Risk" in report.included_sections
+        assert "Stress Testing" in report.included_sections
+
+    def test_build_report_without_stress_testing(self) -> None:
+        """Build report without stress testing section."""
+        fund_summary = ManagementFundSummarySection(
+            fund_id="FUND001",
+            fund_name="Test Fund",
+            fund_regime="UCITS",
+            base_currency="EUR",
+            valuation_date=date(2024, 6, 30),
+            nav=Decimal("1000000.00"),
+        )
+
+        report = ManagementReportService.build_report(fund_summary)
+
+        assert report.stress_testing is None
+        assert report.included_sections == ["Fund Summary"]
+
+
+class TestManagementStressTestingInput:
+    """Test input validation for stress testing."""
+
+    def test_valid_input_required_fields_only(self) -> None:
+        """Valid stress testing input with required fields only."""
+        input_data = ManagementStressTestingInput(
+            scenario_name="Lehman Crisis 2008",
+            scenario_type="Historical",
+            portfolio_impact=Decimal("-0.125"),
+        )
+
+        assert input_data.scenario_name == "Lehman Crisis 2008"
+        assert input_data.scenario_type == "Historical"
+        assert input_data.portfolio_impact == Decimal("-0.125")
+        assert input_data.nav_impact is None
+        assert input_data.worst_position is None
+        assert input_data.worst_sector is None
+        assert input_data.stress_date is None
+        assert input_data.methodology_version is None
+
+    def test_valid_input_with_optional_fields(self) -> None:
+        """Valid stress testing input with all optional fields."""
+        input_data = ManagementStressTestingInput(
+            scenario_name="Rates +100bps",
+            scenario_type="Hypothetical",
+            portfolio_impact=Decimal("-0.045"),
+            nav_impact=Decimal("-0.045"),
+            worst_position="DE0005140008",
+            worst_sector="Fixed Income",
+            stress_date=date(2024, 6, 30),
+            methodology_version="Stress_v1.0",
+        )
+
+        assert input_data.scenario_name == "Rates +100bps"
+        assert input_data.scenario_type == "Hypothetical"
+        assert input_data.portfolio_impact == Decimal("-0.045")
+        assert input_data.nav_impact == Decimal("-0.045")
+        assert input_data.worst_position == "DE0005140008"
+        assert input_data.worst_sector == "Fixed Income"
+        assert input_data.stress_date == date(2024, 6, 30)
+        assert input_data.methodology_version == "Stress_v1.0"
+
+    def test_empty_scenario_name_rejected(self) -> None:
+        """Empty scenario_name is rejected."""
+        with pytest.raises(ValueError, match="scenario_name must be non-empty"):
+            ManagementStressTestingInput(
+                scenario_name="",
+                scenario_type="Historical",
+                portfolio_impact=Decimal("-0.125"),
+            )
+
+    def test_whitespace_scenario_name_stripped(self) -> None:
+        """Scenario name with whitespace is stripped."""
+        input_data = ManagementStressTestingInput(
+            scenario_name="  Lehman Crisis 2008  ",
+            scenario_type="Historical",
+            portfolio_impact=Decimal("-0.125"),
+        )
+
+        assert input_data.scenario_name == "Lehman Crisis 2008"
+
+    def test_empty_scenario_type_rejected(self) -> None:
+        """Empty scenario_type is rejected."""
+        with pytest.raises(ValueError, match="scenario_type must be non-empty"):
+            ManagementStressTestingInput(
+                scenario_name="Lehman Crisis 2008",
+                scenario_type="",
+                portfolio_impact=Decimal("-0.125"),
+            )
+
+    def test_whitespace_scenario_type_stripped(self) -> None:
+        """Scenario type with whitespace is stripped."""
+        input_data = ManagementStressTestingInput(
+            scenario_name="Lehman Crisis 2008",
+            scenario_type="  Historical  ",
+            portfolio_impact=Decimal("-0.125"),
+        )
+
+        assert input_data.scenario_type == "Historical"
+
+    def test_negative_portfolio_impact_accepted(self) -> None:
+        """Negative portfolio_impact (loss) is accepted."""
+        input_data = ManagementStressTestingInput(
+            scenario_name="Lehman Crisis 2008",
+            scenario_type="Historical",
+            portfolio_impact=Decimal("-0.125"),
+        )
+
+        assert input_data.portfolio_impact == Decimal("-0.125")
+
+    def test_positive_portfolio_impact_accepted(self) -> None:
+        """Positive portfolio_impact (gain) is accepted."""
+        input_data = ManagementStressTestingInput(
+            scenario_name="Gold Rally 2020",
+            scenario_type="Historical",
+            portfolio_impact=Decimal("0.085"),
+        )
+
+        assert input_data.portfolio_impact == Decimal("0.085")
+
+    def test_zero_portfolio_impact_accepted(self) -> None:
+        """Zero portfolio_impact is accepted."""
+        input_data = ManagementStressTestingInput(
+            scenario_name="Neutral Scenario",
+            scenario_type="Hypothetical",
+            portfolio_impact=Decimal("0.00"),
+        )
+
+        assert input_data.portfolio_impact == Decimal("0.00")
+
+    def test_negative_nav_impact_accepted(self) -> None:
+        """Negative nav_impact (loss) is accepted."""
+        input_data = ManagementStressTestingInput(
+            scenario_name="Lehman Crisis 2008",
+            scenario_type="Historical",
+            portfolio_impact=Decimal("-0.125"),
+            nav_impact=Decimal("-0.125"),
+        )
+
+        assert input_data.nav_impact == Decimal("-0.125")
+
+    def test_positive_nav_impact_accepted(self) -> None:
+        """Positive nav_impact (gain) is accepted."""
+        input_data = ManagementStressTestingInput(
+            scenario_name="Gold Rally 2020",
+            scenario_type="Historical",
+            portfolio_impact=Decimal("0.085"),
+            nav_impact=Decimal("0.085"),
+        )
+
+        assert input_data.nav_impact == Decimal("0.085")
+
+    def test_empty_worst_position_rejected(self) -> None:
+        """Empty worst_position is rejected."""
+        with pytest.raises(ValueError, match="worst_position must be non-empty when supplied"):
+            ManagementStressTestingInput(
+                scenario_name="Lehman Crisis 2008",
+                scenario_type="Historical",
+                portfolio_impact=Decimal("-0.125"),
+                worst_position="",
+            )
+
+    def test_whitespace_worst_position_stripped(self) -> None:
+        """Worst position with whitespace is stripped."""
+        input_data = ManagementStressTestingInput(
+            scenario_name="Lehman Crisis 2008",
+            scenario_type="Historical",
+            portfolio_impact=Decimal("-0.125"),
+            worst_position="  DE0005140008  ",
+        )
+
+        assert input_data.worst_position == "DE0005140008"
+
+    def test_empty_worst_sector_rejected(self) -> None:
+        """Empty worst_sector is rejected."""
+        with pytest.raises(ValueError, match="worst_sector must be non-empty when supplied"):
+            ManagementStressTestingInput(
+                scenario_name="Lehman Crisis 2008",
+                scenario_type="Historical",
+                portfolio_impact=Decimal("-0.125"),
+                worst_sector="",
+            )
+
+    def test_whitespace_worst_sector_stripped(self) -> None:
+        """Worst sector with whitespace is stripped."""
+        input_data = ManagementStressTestingInput(
+            scenario_name="Lehman Crisis 2008",
+            scenario_type="Historical",
+            portfolio_impact=Decimal("-0.125"),
+            worst_sector="  Financial Services  ",
+        )
+
+        assert input_data.worst_sector == "Financial Services"
+
+    def test_empty_methodology_version_rejected(self) -> None:
+        """Empty methodology_version is rejected."""
+        with pytest.raises(ValueError, match="methodology_version must be non-empty when supplied"):
+            ManagementStressTestingInput(
+                scenario_name="Lehman Crisis 2008",
+                scenario_type="Historical",
+                portfolio_impact=Decimal("-0.125"),
+                methodology_version="",
+            )
+
+    def test_whitespace_methodology_version_stripped(self) -> None:
+        """Methodology version with whitespace is stripped."""
+        input_data = ManagementStressTestingInput(
+            scenario_name="Lehman Crisis 2008",
+            scenario_type="Historical",
+            portfolio_impact=Decimal("-0.125"),
+            methodology_version="  Stress_v1.0  ",
+        )
+
+        assert input_data.methodology_version == "Stress_v1.0"
+
+    def test_immutability(self) -> None:
+        """Stress testing input is immutable."""
+        input_data = ManagementStressTestingInput(
+            scenario_name="Lehman Crisis 2008",
+            scenario_type="Historical",
+            portfolio_impact=Decimal("-0.125"),
+        )
+
+        with pytest.raises(Exception):  # Pydantic frozen model raises
+            input_data.scenario_name = "Modified"  # type: ignore
+
+    def test_decimal_preservation_in_input(self) -> None:
+        """Decimal values are preserved exactly in input."""
+        input_data = ManagementStressTestingInput(
+            scenario_name="Lehman Crisis 2008",
+            scenario_type="Historical",
+            portfolio_impact=Decimal("-0.125678"),
+            nav_impact=Decimal("-0.125678"),
+        )
+
+        assert input_data.portfolio_impact == Decimal("-0.125678")
+        assert input_data.nav_impact == Decimal("-0.125678")
+
+
+class TestManagementStressTestingSection:
+    """Test stress testing section model."""
+
+    def test_valid_section_required_fields_only(self) -> None:
+        """Valid stress testing section with required fields only."""
+        section = ManagementStressTestingSection(
+            scenario_name="Lehman Crisis 2008",
+            scenario_type="Historical",
+            portfolio_impact=Decimal("-0.125"),
+        )
+
+        assert section.scenario_name == "Lehman Crisis 2008"
+        assert section.scenario_type == "Historical"
+        assert section.portfolio_impact == Decimal("-0.125")
+        assert section.nav_impact is None
+
+    def test_valid_section_with_optional_fields(self) -> None:
+        """Valid stress testing section with all optional fields."""
+        section = ManagementStressTestingSection(
+            scenario_name="Rates +100bps",
+            scenario_type="Hypothetical",
+            portfolio_impact=Decimal("-0.045"),
+            nav_impact=Decimal("-0.045"),
+            worst_position="DE0005140008",
+            worst_sector="Fixed Income",
+            stress_date=date(2024, 6, 30),
+            methodology_version="Stress_v1.0",
+        )
+
+        assert section.scenario_name == "Rates +100bps"
+        assert section.nav_impact == Decimal("-0.045")
+        assert section.worst_position == "DE0005140008"
+        assert section.worst_sector == "Fixed Income"
+
+    def test_immutability(self) -> None:
+        """Stress testing section is immutable."""
+        section = ManagementStressTestingSection(
+            scenario_name="Lehman Crisis 2008",
+            scenario_type="Historical",
+            portfolio_impact=Decimal("-0.125"),
+        )
+
+        with pytest.raises(Exception):  # Pydantic frozen model raises
+            section.scenario_name = "Modified"  # type: ignore
+
+    def test_decimal_preservation_in_section(self) -> None:
+        """Decimal values are preserved exactly in section."""
+        section = ManagementStressTestingSection(
+            scenario_name="Lehman Crisis 2008",
+            scenario_type="Historical",
+            portfolio_impact=Decimal("-0.125678"),
+            nav_impact=Decimal("-0.125678"),
+        )
+
+        assert section.portfolio_impact == Decimal("-0.125678")
+        assert section.nav_impact == Decimal("-0.125678")
+
+
+class TestManagementReportServiceStressTesting:
+    """Test stress testing service methods."""
+
+    def test_build_stress_testing_from_input(self) -> None:
+        """Build stress testing section from input."""
+        input_data = ManagementStressTestingInput(
+            scenario_name="Lehman Crisis 2008",
+            scenario_type="Historical",
+            portfolio_impact=Decimal("-0.125"),
+        )
+
+        section = ManagementReportService.build_stress_testing(input_data)
+
+        assert isinstance(section, ManagementStressTestingSection)
+        assert section.scenario_name == "Lehman Crisis 2008"
+        assert section.scenario_type == "Historical"
+        assert section.portfolio_impact == Decimal("-0.125")
+
+    def test_build_stress_testing_preserves_optional_fields(self) -> None:
+        """Build stress testing preserves optional fields."""
+        input_data = ManagementStressTestingInput(
+            scenario_name="Rates +100bps",
+            scenario_type="Hypothetical",
+            portfolio_impact=Decimal("-0.045"),
+            nav_impact=Decimal("-0.045"),
+            worst_position="DE0005140008",
+            worst_sector="Fixed Income",
+            stress_date=date(2024, 6, 30),
+            methodology_version="Stress_v1.0",
+        )
+
+        section = ManagementReportService.build_stress_testing(input_data)
+
+        assert section.nav_impact == Decimal("-0.045")
+        assert section.worst_position == "DE0005140008"
+        assert section.worst_sector == "Fixed Income"
+        assert section.stress_date == date(2024, 6, 30)
+        assert section.methodology_version == "Stress_v1.0"
+
+    def test_build_stress_testing_immutable_result(self) -> None:
+        """Build stress testing returns immutable section."""
+        input_data = ManagementStressTestingInput(
+            scenario_name="Lehman Crisis 2008",
+            scenario_type="Historical",
+            portfolio_impact=Decimal("-0.125"),
+        )
+
+        section = ManagementReportService.build_stress_testing(input_data)
+
+        with pytest.raises(Exception):  # Pydantic frozen model raises
+            section.scenario_name = "Modified"  # type: ignore
+
 
 class TestRealisticExamples:
     """Test realistic fund examples."""
@@ -932,3 +1337,130 @@ class TestRealisticExamples:
         assert report.market_risk.var_value == Decimal("0.0350")
         assert report.market_risk.global_exposure == Decimal("2.5")
         assert "Market Risk" in report.included_sections
+
+    def test_ucits_fund_with_stress_testing_example(self) -> None:
+        """Realistic UCITS fund with stress testing example."""
+        fund_summary_input = ManagementFundSummaryInput(
+            fund_id="LU001234567890",
+            fund_name="Global Equity UCITS Fund",
+            fund_regime="UCITS",
+            base_currency="EUR",
+            valuation_date=date(2024, 6, 30),
+            nav=Decimal("250000000.00"),
+            aum=Decimal("250000000.00"),
+            inception_date=date(2010, 3, 15),
+            reporting_period_end=date(2024, 6, 30),
+            methodology_version="VaR_HistoricalSimulation_v1.0",
+        )
+
+        stress_testing_input = ManagementStressTestingInput(
+            scenario_name="Lehman Crisis 2008",
+            scenario_type="Historical",
+            portfolio_impact=Decimal("-0.125"),
+            nav_impact=Decimal("-0.125"),
+            worst_position="US0378331005",
+            worst_sector="Financial Services",
+            stress_date=date(2008, 9, 15),
+            methodology_version="Stress_HistoricalSimulation_v1.0",
+        )
+
+        fund_summary = ManagementReportService.build_fund_summary(fund_summary_input)
+        stress_testing = ManagementReportService.build_stress_testing(stress_testing_input)
+        report = ManagementReportService.build_report(fund_summary, stress_testing=stress_testing)
+
+        assert report.fund_summary.fund_regime == "UCITS"
+        assert report.stress_testing is not None
+        assert report.stress_testing.scenario_name == "Lehman Crisis 2008"
+        assert report.stress_testing.portfolio_impact == Decimal("-0.125")
+        assert report.stress_testing.worst_sector == "Financial Services"
+        assert "Fund Summary" in report.included_sections
+        assert "Stress Testing" in report.included_sections
+
+    def test_aif_fund_with_hypothetical_stress_example(self) -> None:
+        """Realistic AIF fund with hypothetical stress scenario example."""
+        fund_summary_input = ManagementFundSummaryInput(
+            fund_id="IE0087654321234",
+            fund_name="Alternative Strategies AIF",
+            fund_regime="AIF",
+            base_currency="USD",
+            valuation_date=date(2024, 6, 30),
+            nav=Decimal("1500000000.50"),
+            aum=Decimal("1500000000.50"),
+            inception_date=date(2015, 6, 1),
+            reporting_period_end=date(2024, 6, 30),
+            methodology_version="VaR_Parametric_v2.0",
+        )
+
+        stress_testing_input = ManagementStressTestingInput(
+            scenario_name="US Interest Rates +100bps",
+            scenario_type="Hypothetical",
+            portfolio_impact=Decimal("-0.045"),
+            nav_impact=Decimal("-0.045"),
+            worst_position="BOND_CUSIP_123",
+            worst_sector="Fixed Income",
+            stress_date=date(2024, 6, 30),
+            methodology_version="Stress_Parametric_v2.0",
+        )
+
+        fund_summary = ManagementReportService.build_fund_summary(fund_summary_input)
+        stress_testing = ManagementReportService.build_stress_testing(stress_testing_input)
+        report = ManagementReportService.build_report(fund_summary, stress_testing=stress_testing)
+
+        assert report.fund_summary.fund_regime == "AIF"
+        assert report.stress_testing is not None
+        assert report.stress_testing.scenario_type == "Hypothetical"
+        assert report.stress_testing.portfolio_impact == Decimal("-0.045")
+        assert report.stress_testing.worst_sector == "Fixed Income"
+        assert "Stress Testing" in report.included_sections
+
+    def test_comprehensive_fund_report_example(self) -> None:
+        """Comprehensive fund report with all sections."""
+        fund_summary_input = ManagementFundSummaryInput(
+            fund_id="LU001234567890",
+            fund_name="Global Equity UCITS Fund",
+            fund_regime="UCITS",
+            base_currency="EUR",
+            valuation_date=date(2024, 6, 30),
+            nav=Decimal("250000000.00"),
+            aum=Decimal("250000000.00"),
+            inception_date=date(2010, 3, 15),
+            reporting_period_end=date(2024, 6, 30),
+            methodology_version="VaR_HistoricalSimulation_v1.0",
+        )
+
+        market_risk_input = ManagementMarketRiskInput(
+            var_value=Decimal("0.0275"),
+            var_method="Historical Simulation",
+            expected_shortfall=Decimal("0.0425"),
+            srri_class="5",
+            global_exposure=Decimal("1.2"),
+            stress_summary_reference="Stress Scenarios Q2 2024",
+            methodology_version="VaR_HistoricalSimulation_v1.0",
+        )
+
+        stress_testing_input = ManagementStressTestingInput(
+            scenario_name="Lehman Crisis 2008",
+            scenario_type="Historical",
+            portfolio_impact=Decimal("-0.125"),
+            nav_impact=Decimal("-0.125"),
+            worst_position="US0378331005",
+            worst_sector="Financial Services",
+            stress_date=date(2008, 9, 15),
+            methodology_version="Stress_HistoricalSimulation_v1.0",
+        )
+
+        fund_summary = ManagementReportService.build_fund_summary(fund_summary_input)
+        market_risk = ManagementReportService.build_market_risk(market_risk_input)
+        stress_testing = ManagementReportService.build_stress_testing(stress_testing_input)
+        report = ManagementReportService.build_report(fund_summary, market_risk, stress_testing)
+
+        assert report.fund_summary.fund_name == "Global Equity UCITS Fund"
+        assert report.fund_summary.nav == Decimal("250000000.00")
+        assert report.market_risk is not None
+        assert report.market_risk.var_value == Decimal("0.0275")
+        assert report.stress_testing is not None
+        assert report.stress_testing.scenario_name == "Lehman Crisis 2008"
+        assert len(report.included_sections) == 3
+        assert "Fund Summary" in report.included_sections
+        assert "Market Risk" in report.included_sections
+        assert "Stress Testing" in report.included_sections

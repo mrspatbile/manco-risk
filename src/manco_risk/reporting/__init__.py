@@ -26,6 +26,8 @@ from manco_risk.reporting.management_report import (
     ManagementMarketRiskInput,
     ManagementMarketRiskSection,
     ManagementRiskReport,
+    ManagementStressTestingInput,
+    ManagementStressTestingSection,
 )
 from manco_risk.reporting.management_report_service import ManagementReportService
 
@@ -47,6 +49,8 @@ __all__ = [
     "ManagementFundSummarySection",
     "ManagementMarketRiskInput",
     "ManagementMarketRiskSection",
+    "ManagementStressTestingInput",
+    "ManagementStressTestingSection",
     "ManagementRiskReport",
     "ManagementReportService",
 ]

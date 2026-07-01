@@ -356,16 +356,148 @@ class ManagementMarketRiskSection(BaseModel):
         return v
 
 
+class ManagementStressTestingInput(BaseModel):
+    """Input to management stress testing summary builder.
+
+    Contains already-computed stress testing outputs required for the stress testing section.
+
+    Fields:
+    - scenario_name: Name of the stress scenario (str, non-empty).
+      E.g., "Lehman Crisis 2008", "COVID-19 March 2020", "Rates +100bps".
+    - scenario_type: Type of stress scenario (str, non-empty).
+      E.g., "Historical", "Hypothetical", "Reverse Stress".
+    - portfolio_impact: Portfolio P&L impact under stress (Decimal). Can be negative (loss).
+    - nav_impact: NAV impact under stress (Decimal, optional). Can be negative.
+    - worst_position: Worst performing position identifier (str, optional, non-empty when supplied).
+    - worst_sector: Worst performing sector (str, optional, non-empty when supplied).
+    - stress_date: Date of the stress scenario (date, optional).
+    - methodology_version: Stress testing methodology version (str, optional, non-empty when supplied).
+
+    Invariants:
+    - scenario_name and scenario_type must be non-empty.
+    - Decimal values can be positive or negative (losses/gains).
+    - Optional string fields must be non-empty when supplied.
+
+    Note: These are already-computed outputs from the risk module.
+    This input model does not perform stress calculations.
+    """
+
+    scenario_name: str
+    scenario_type: str
+    portfolio_impact: Decimal
+    nav_impact: Optional[Decimal] = None
+    worst_position: Optional[str] = None
+    worst_sector: Optional[str] = None
+    stress_date: Optional[date] = None
+    methodology_version: Optional[str] = None
+
+    model_config = ConfigDict(frozen=True)
+
+    @field_validator("scenario_name")
+    @classmethod
+    def validate_scenario_name(cls, v: str) -> str:
+        """Scenario name must be non-empty."""
+        if not v or not v.strip():
+            raise ValueError("scenario_name must be non-empty")
+        return v.strip()
+
+    @field_validator("scenario_type")
+    @classmethod
+    def validate_scenario_type(cls, v: str) -> str:
+        """Scenario type must be non-empty."""
+        if not v or not v.strip():
+            raise ValueError("scenario_type must be non-empty")
+        return v.strip()
+
+    @field_validator("worst_position")
+    @classmethod
+    def validate_worst_position(cls, v: Optional[str]) -> Optional[str]:
+        """Worst position must be non-empty when supplied."""
+        if v is not None and (not v or not v.strip()):
+            raise ValueError("worst_position must be non-empty when supplied")
+        return v.strip() if v else None
+
+    @field_validator("worst_sector")
+    @classmethod
+    def validate_worst_sector(cls, v: Optional[str]) -> Optional[str]:
+        """Worst sector must be non-empty when supplied."""
+        if v is not None and (not v or not v.strip()):
+            raise ValueError("worst_sector must be non-empty when supplied")
+        return v.strip() if v else None
+
+    @field_validator("methodology_version")
+    @classmethod
+    def validate_methodology_version(cls, v: Optional[str]) -> Optional[str]:
+        """Methodology version must be non-empty when supplied."""
+        if v is not None and (not v or not v.strip()):
+            raise ValueError("methodology_version must be non-empty when supplied")
+        return v.strip() if v else None
+
+
+class ManagementStressTestingSection(BaseModel):
+    """Result of management stress testing summary assembly.
+
+    Immutable stress testing section for management reporting.
+    Contains already-computed stress test scenario outcomes.
+
+    Fields:
+    - scenario_name: Name of the stress scenario.
+    - scenario_type: Type of scenario (Historical, Hypothetical, Reverse Stress).
+    - portfolio_impact: Portfolio P&L impact (can be negative).
+    - nav_impact: NAV impact (optional, can be negative).
+    - worst_position: Worst performing position (optional).
+    - worst_sector: Worst performing sector (optional).
+    - stress_date: Date of scenario (optional).
+    - methodology_version: Stress testing methodology version (optional).
+
+    Invariants (defensive checks):
+    - scenario_name and scenario_type must be non-empty.
+    - Decimal values can be positive or negative.
+
+    Note: These fields contain already-computed stress test outputs.
+    No calculations are performed by this model.
+    """
+
+    scenario_name: str
+    scenario_type: str
+    portfolio_impact: Decimal
+    nav_impact: Optional[Decimal] = None
+    worst_position: Optional[str] = None
+    worst_sector: Optional[str] = None
+    stress_date: Optional[date] = None
+    methodology_version: Optional[str] = None
+
+    model_config = ConfigDict(frozen=True)
+
+    @field_validator("scenario_name")
+    @classmethod
+    def validate_scenario_name(cls, v: str) -> str:
+        """Scenario name must be non-empty (defensive check)."""
+        if not v or not v.strip():
+            raise ValueError("scenario_name must be non-empty")
+        return v
+
+    @field_validator("scenario_type")
+    @classmethod
+    def validate_scenario_type(cls, v: str) -> str:
+        """Scenario type must be non-empty (defensive check)."""
+        if not v or not v.strip():
+            raise ValueError("scenario_type must be non-empty")
+        return v
+
+
 class ManagementRiskReport(BaseModel):
     """Management risk report container.
 
     Assembles management reporting sections into a consolidated report.
     For Slice 1, includes fund summary only.
     For Slice 2, optionally includes market risk.
+    For Slice 3, optionally includes stress testing.
 
     Fields:
     - fund_summary: Fund summary section (required).
     - market_risk: Market risk section (optional).
+    - stress_testing: Stress testing section (optional).
     - included_sections: List of section names included in the report.
 
     Invariants:
@@ -375,6 +507,7 @@ class ManagementRiskReport(BaseModel):
 
     fund_summary: ManagementFundSummarySection
     market_risk: Optional[ManagementMarketRiskSection] = None
+    stress_testing: Optional[ManagementStressTestingSection] = None
     included_sections: list[str]
 
     model_config = ConfigDict(frozen=True)

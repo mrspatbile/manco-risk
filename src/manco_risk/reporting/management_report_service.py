@@ -15,6 +15,8 @@ from manco_risk.reporting.management_report import (
     ManagementMarketRiskInput,
     ManagementMarketRiskSection,
     ManagementRiskReport,
+    ManagementStressTestingInput,
+    ManagementStressTestingSection,
 )
 
 
@@ -105,14 +107,49 @@ class ManagementReportService:
         )
 
     @staticmethod
+    def build_stress_testing(
+        input_data: ManagementStressTestingInput,
+    ) -> ManagementStressTestingSection:
+        """Build stress testing section from already-computed outputs.
+
+        Parameters
+        ----------
+        input_data : ManagementStressTestingInput
+            Already-computed stress testing data (scenario_name, scenario_type,
+            portfolio_impact, optional nav_impact, worst_position, worst_sector,
+            stress_date, methodology_version).
+
+        Returns
+        -------
+        ManagementStressTestingSection
+            Immutable stress testing section.
+
+        Raises
+        ------
+        ValueError
+            If required fields are empty or invalid.
+        """
+        return ManagementStressTestingSection(
+            scenario_name=input_data.scenario_name,
+            scenario_type=input_data.scenario_type,
+            portfolio_impact=input_data.portfolio_impact,
+            nav_impact=input_data.nav_impact,
+            worst_position=input_data.worst_position,
+            worst_sector=input_data.worst_sector,
+            stress_date=input_data.stress_date,
+            methodology_version=input_data.methodology_version,
+        )
+
+    @staticmethod
     def build_report(
         fund_summary: ManagementFundSummarySection,
         market_risk: Optional[ManagementMarketRiskSection] = None,
+        stress_testing: Optional[ManagementStressTestingSection] = None,
     ) -> ManagementRiskReport:
         """Build management report from sections.
 
         For Slice 1, includes fund summary section only.
-        For Slice 2+, optionally includes market risk.
+        For Slice 2+, optionally includes market risk and stress testing.
 
         Parameters
         ----------
@@ -120,6 +157,8 @@ class ManagementReportService:
             Fund summary section (required).
         market_risk : Optional[ManagementMarketRiskSection], optional
             Market risk section. If supplied, will be included in report.
+        stress_testing : Optional[ManagementStressTestingSection], optional
+            Stress testing section. If supplied, will be included in report.
 
         Returns
         -------
@@ -134,9 +173,12 @@ class ManagementReportService:
         included_sections = ["Fund Summary"]
         if market_risk is not None:
             included_sections.append("Market Risk")
+        if stress_testing is not None:
+            included_sections.append("Stress Testing")
 
         return ManagementRiskReport(
             fund_summary=fund_summary,
             market_risk=market_risk,
+            stress_testing=stress_testing,
             included_sections=included_sections,
         )
