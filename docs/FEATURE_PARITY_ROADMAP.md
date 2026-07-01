@@ -1,8 +1,8 @@
 # Feature Parity Roadmap
 
 **Roadmap created:** 2026-06-29  
-**Last reviewed:** 2026-06-29  
-**`manco-risk` version assumed:** 0.1.0  
+**Last reviewed:** 2026-07-01  
+**`manco-risk` version assumed:** 0.2.0  
 **Purpose:** Track what remains before `manco-risk` can replace `fund-risk-workflow`.
 
 ---
@@ -211,13 +211,13 @@ Dependent workflows (VaR, leverage, reporting, etc.) can only reach "Complete" w
 
 | Capability | Engine | Reporting | Visualization | Notebook/Demo | Milestone | Issue | Notes |
 |-----------|--------|-----------|----------------|---------------|-----------|-------|-------|
-| Fund identification & summary | Missing | Complete | — | — | v0.3.0 | TBD | ISIN, manager, strategy, AUM, start date. |
-| Asset breakdown table | Missing | Complete | — | — | v0.3.0 | TBD | By asset class, geography, sector. |
-| Risk measures section | Missing | Complete | — | — | v0.3.0 | TBD | VaR, ES, stress outcomes; regulatory format. |
-| Leverage section | Missing | Complete | — | — | v0.3.0 | TBD | Gross, commitment, concentration; Art. 7–8. |
-| Liquidity profile | Missing | Complete | — | — | v0.3.0 | TBD | Redemption frequency, notice period, gates. |
-| Counterparty register | Missing | Complete | — | — | v0.3.0 | TBD | Concentration by counterparty, collateral. |
-| Export-ready Annex IV tables | Missing | Complete | — | — | v0.3.0 | TBD | PDF or regulatory filing format (CSSF quarterly). |
+| Fund identification & summary | — | Complete | — | — | v0.2.0 | #12 | Implemented in Issue #12; ISIN, manager, strategy, AUM, start date. |
+| Asset breakdown table | — | Complete | — | — | v0.2.0 | #12 | Implemented in Issue #12; by asset class, geography, sector. |
+| Risk measures section | — | Complete | — | — | v0.2.0 | #12 | Implemented in Issue #12; VaR, ES, stress outcomes; regulatory format. |
+| Leverage section | — | Complete | — | — | v0.2.0 | #12 | Implemented in Issue #12; gross, commitment, concentration; Art. 7–8. |
+| Liquidity profile | — | Complete | — | — | v0.2.0 | #12 | Implemented in Issue #12; redemption frequency, notice period, gates. |
+| Counterparty register | Missing | — | — | — | v0.3.0 | TBD | Concentration by counterparty, collateral. |
+| Export-ready Annex IV tables | — | Complete | — | — | v0.2.0 | #12 | PDF or regulatory filing format (CSSF quarterly). |
 | Annex IV tables in notebook | Missing | — | Complete | — | v0.3.0 | TBD | HTML/table display for review. |
 
 ---
@@ -226,13 +226,13 @@ Dependent workflows (VaR, leverage, reporting, etc.) can only reach "Complete" w
 
 | Capability | Engine | Reporting | Visualization | Notebook/Demo | Milestone | Issue | Notes |
 |-----------|--------|-----------|----------------|---------------|-----------|-------|-------|
-| Fund summary dashboard | Missing | Complete | Complete | — | v0.2.0 | TBD | AUM, NAV, YTD return, key metrics snapshot. |
-| Market risk summary | Missing | Complete | Complete | — | v0.2.0 | TBD | VaR, ES, top risks, stress outcomes. |
-| Stress scenario summary | Missing | Complete | Complete | — | v0.2.0 | TBD | P&L outcomes under scenarios vs. policy limits. |
-| Liquidity summary | Missing | Complete | Complete | — | v0.3.0 | TBD | TTL profile, redemption capacity, stress outcomes. |
-| Leverage summary | Missing | Complete | Complete | — | v0.3.0 | TBD | Gross, commitment, by asset class/counterparty. |
-| Exception & breach summary | Missing | Complete | — | — | v0.2.0 | TBD | Policy breaches, data quality gaps, validation issues. |
-| Board-style report layout | Missing | Complete | Complete | — | v0.3.0 | TBD | Multi-page PDF, consistent branding, charts & tables. |
+| Fund summary dashboard | — | Complete | Missing | — | v0.2.0 | #13 | Data model complete (Issue #13); visualization pending (v0.3.0). |
+| Market risk summary | — | Complete | Missing | — | v0.2.0 | #13 | Data model complete (Issue #13); visualization pending (v0.3.0). |
+| Stress scenario summary | — | Complete | Missing | — | v0.2.0 | #13 | Data model complete (Issue #13); visualization pending (v0.3.0). |
+| Liquidity summary | — | Complete | Missing | — | v0.2.0 | #13 | Data model complete (Issue #13); visualization pending (v0.3.0). |
+| Leverage summary | — | Complete | Missing | — | v0.2.0 | #13 | Data model complete (Issue #13); visualization pending (v0.3.0). |
+| Exception & breach summary | — | Complete | Missing | — | v0.2.0 | #13 | Data model complete (Issue #13); visualization pending (v0.3.0). |
+| Board-style report layout | — | Missing | Missing | — | v0.3.0 | TBD | Multi-page PDF, consistent branding, charts & tables. |
 
 ---
 

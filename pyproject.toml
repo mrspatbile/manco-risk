@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "manco-risk"
-version = "0.1.0"
-description = ""
+version = "0.2.0"
+description = "Python analytics for investment fund risk, leverage, stress testing, liquidity and regulatory reporting (AIFMD/UCITS)"
 readme = "README.md"
 requires-python = ">=3.13"
 authors = [

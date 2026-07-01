@@ -56,6 +56,10 @@ Implemented areas include:
 * Greeks-to-exposure conversion
 * leverage limit monitoring
 * liquidity and LMT methodology design
+* **Management reporting** (Fund Summary, Market Risk, Stress Testing, Liquidity, Leverage, Exception Summary)
+* **Annex IV reporting** (Fund Identification, Asset Breakdown, Risk Measures, Leverage, Liquidity Profile)
+* **PRIIPs result objects** (for UCITS reporting)
+* **UCITS monitoring** (SRRI, VaR, leverage, liquidity tracking)
 
 Planned areas include:
 
@@ -63,8 +67,8 @@ Planned areas include:
 * time-to-liquidation analytics
 * redemption and asset liquidation stress testing
 * LMT inventory and calibration models
-* reporting outputs
 * Streamlit review interface
+* export-ready report formats (Excel, PDF)
 
 ---
 
