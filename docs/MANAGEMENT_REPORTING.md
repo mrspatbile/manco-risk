@@ -73,6 +73,18 @@ Management reporting does not:
 - Defensive validation (second-layer checks)
 - Contains pre-calculated stress test outcomes
 
+**ManagementLiquidityInput**
+- Input validation model
+- Accepts already-computed liquidity outputs
+- Validates field presence and non-negative ranges
+- Optional fields allowed
+
+**ManagementLiquiditySection**
+- Immutable result model
+- Frozen Pydantic v2 model
+- Defensive validation (second-layer checks)
+- Contains pre-calculated liquidity metrics
+
 **ManagementRiskReport**
 - Report container
 - Assembles sections into a consolidated report
@@ -80,7 +92,8 @@ Management reporting does not:
 - For Slice 1, includes fund summary only
 - For Slice 2, optionally includes market risk
 - For Slice 3, optionally includes stress testing
-- Future slices will add leverage, liquidity, exception sections
+- For Slice 4, optionally includes liquidity
+- Future slices will add leverage, exception sections
 
 ### Service
 
@@ -98,11 +111,16 @@ Management reporting does not:
   - Accepts typed input with pre-calculated stress test outcomes
   - Returns immutable section
   - No calculations performed
-- `build_report(fund_summary, market_risk=None, stress_testing=None) → ManagementRiskReport`
+- `build_liquidity(input) → ManagementLiquiditySection`
+  - Accepts typed input with pre-calculated liquidity metrics
+  - Returns immutable section
+  - No calculations performed
+- `build_report(fund_summary, market_risk=None, stress_testing=None, liquidity=None) → ManagementRiskReport`
   - Assembles section(s) into report
   - fund_summary is always required
   - market_risk is optional
   - stress_testing is optional
+  - liquidity is optional
   - Tracks included sections
 
 ## Inputs
@@ -153,6 +171,25 @@ Already-computed stress testing outputs required:
   - Examples: "Financial Services", "Fixed Income", "Technology"
 - **stress_date** (date, optional) — Date of the stress scenario
 - **methodology_version** (str, optional, non-empty when supplied) — Stress testing methodology version identifier
+
+### Liquidity Input
+
+Already-computed liquidity outputs required:
+
+- **liquidity_ratio** (Decimal, required, non-negative) — Liquidity ratio (0–1 range)
+  - Example: `0.75` = 75% of assets are liquid
+- **liquid_assets** (Decimal, required, non-negative) — Amount of liquid assets in base currency
+- **illiquid_assets** (Decimal, required, non-negative) — Amount of illiquid assets in base currency
+- **average_time_to_liquidate_days** (int, optional, non-negative) — Days to liquidate portfolio
+  - Example: `5` days, `10` days
+- **redemption_profile** (str, optional, non-empty when supplied) — Redemption frequency
+  - Examples: "Daily", "Weekly", "Monthly", "Quarterly"
+- **liquidity_bucket_summary** (str, optional, non-empty when supplied) — Distribution across liquidity buckets
+  - Example: "65% 0-1d, 20% 1-7d, 15% >7d"
+- **active_lmts** (int, optional, non-negative) — Number of active liquidity management tools
+- **liquidity_warning** (str, optional, non-empty when supplied) — Liquidity warning if applicable
+  - Examples: "Position concentration in illiquid securities", "Tail liquidity risk"
+- **methodology_version** (str, optional, non-empty when supplied) — Liquidity methodology version identifier
 
 ### Data Conventions
 
@@ -276,6 +313,37 @@ stress_testing = ManagementReportService.build_stress_testing(stress_testing_inp
 # stress_testing.portfolio_impact == Decimal("-0.125")
 ```
 
+### Liquidity Section
+
+Immutable result containing:
+
+- liquidity_ratio, liquid_assets, illiquid_assets (required)
+- (optional) average_time_to_liquidate_days, redemption_profile, liquidity_bucket_summary, active_lmts, liquidity_warning, methodology_version
+
+Example:
+
+```python
+from manco_risk.reporting import (
+    ManagementLiquidityInput,
+    ManagementReportService,
+)
+
+liquidity_input = ManagementLiquidityInput(
+    liquidity_ratio=Decimal("0.85"),
+    liquid_assets=Decimal("212500000.00"),
+    illiquid_assets=Decimal("37500000.00"),
+    average_time_to_liquidate_days=5,
+    redemption_profile="Daily",
+    liquidity_bucket_summary="85% 0-1d, 10% 1-7d, 5% >7d",
+    active_lmts=1,
+    methodology_version="Liquidity_v1.0",
+)
+
+liquidity = ManagementReportService.build_liquidity(liquidity_input)
+# liquidity.liquidity_ratio == Decimal("0.85")
+# liquidity.average_time_to_liquidate_days == 5
+```
+
 ### Management Report
 
 Immutable container with:
@@ -283,18 +351,20 @@ Immutable container with:
 - fund_summary (ManagementFundSummarySection, required)
 - market_risk (ManagementMarketRiskSection, optional)
 - stress_testing (ManagementStressTestingSection, optional)
+- liquidity (ManagementLiquiditySection, optional)
 - included_sections (list of section names included)
 
 Example:
 
 ```python
 report = ManagementReportService.build_report(
-    fund_summary, market_risk, stress_testing
+    fund_summary, market_risk, stress_testing, liquidity
 )
 # report.fund_summary.fund_name == "Global Equity UCITS Fund"
 # report.market_risk.var_value == Decimal("0.0275")
 # report.stress_testing.scenario_name == "Lehman Crisis 2008"
-# report.included_sections == ["Fund Summary", "Market Risk", "Stress Testing"]
+# report.liquidity.liquidity_ratio == Decimal("0.85")
+# report.included_sections == ["Fund Summary", "Market Risk", "Stress Testing", "Liquidity"]
 ```
 
 ## Scope by Slice
@@ -311,11 +381,17 @@ report = ManagementReportService.build_report(
 - ManagementReportService.build_market_risk()
 - ManagementReportService.build_report() (includes fund summary and optional market risk)
 
-### Slice 3 (Current)
+### Slice 3
 
 - Stress testing summary section
 - ManagementReportService.build_stress_testing()
 - ManagementReportService.build_report() (includes fund summary, optional market risk, and optional stress testing)
+
+### Slice 4 (Current)
+
+- Liquidity summary section
+- ManagementReportService.build_liquidity()
+- ManagementReportService.build_report() (includes all optional sections: market risk, stress testing, liquidity)
 
 ### Future Slices
 
@@ -370,6 +446,17 @@ report = ManagementReportService.build_report(
 - All stress test outputs are already-computed; no stress calculations performed here
 - portfolio_impact and nav_impact can be positive (gains) or negative (losses)
 
+### Liquidity Data
+
+- liquidity_ratio is supplied from liquidity analysis module (not calculated here)
+- liquid_assets and illiquid_assets are supplied from liquidity classification
+- average_time_to_liquidate_days is supplied from liquidation horizon calculation
+- redemption_profile describes the fund's redemption frequency (supplied from fund data)
+- liquidity_bucket_summary describes asset distribution across liquidity buckets (supplied from analysis)
+- active_lmts tracks liquidity management tools in place (count only, no calculations)
+- liquidity_warning flags any liquidity concerns (from risk monitoring)
+- All liquidity outputs are already-computed; no liquidity calculations performed here
+
 ## Limitations
 
 ### What This Reporting Module Does Not Do
@@ -385,7 +472,12 @@ report = ManagementReportService.build_report(
 - Calculate portfolio impacts of stress scenarios (supplied from risk module)
 - Calculate stress test P&L outcomes (supplied from risk module)
 - Reverse stress testing (supplied from risk module)
-- Calculate leverage or liquidity metrics
+- Calculate liquidity ratios (supplied from liquidity module)
+- Calculate liquidation horizons (supplied from liquidity module)
+- Calculate liquidity buckets (supplied from liquidity module)
+- Calculate redemption profiles (supplied from fund data)
+- Calculate LMT triggers or liquidity stress tests (supplied from risk module)
+- Calculate leverage metrics
 - Aggregate positions
 - Query databases
 - Fetch or manipulate market data

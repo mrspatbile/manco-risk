@@ -486,6 +486,201 @@ class ManagementStressTestingSection(BaseModel):
         return v
 
 
+class ManagementLiquidityInput(BaseModel):
+    """Input to management liquidity summary builder.
+
+    Contains already-computed liquidity outputs required for the liquidity section.
+
+    Fields:
+    - liquidity_ratio: Liquidity ratio (Decimal, required, non-negative).
+      Range 0–1. Example: `0.75` = 75% liquid assets.
+    - liquid_assets: Amount of liquid assets (Decimal, required, non-negative).
+      In base currency.
+    - illiquid_assets: Amount of illiquid assets (Decimal, required, non-negative).
+      In base currency.
+    - average_time_to_liquidate_days: Average time to liquidate portfolio (int, optional, non-negative).
+      In days.
+    - redemption_profile: Redemption frequency (str, optional, non-empty when supplied).
+      Examples: "Daily", "Weekly", "Monthly", "Quarterly".
+    - liquidity_bucket_summary: Summary of liquidity bucket distribution (str, optional, non-empty).
+      E.g., "65% 0-1d, 20% 1-7d, 15% >7d".
+    - active_lmts: Number of active liquidity management tools (int, optional, non-negative).
+    - liquidity_warning: Liquidity warning message if applicable (str, optional, non-empty).
+      E.g., "Position concentration in illiquid securities".
+    - methodology_version: Liquidity methodology version (str, optional, non-empty when supplied).
+
+    Invariants:
+    - liquidity_ratio, liquid_assets, illiquid_assets must be non-negative.
+    - average_time_to_liquidate_days and active_lmts must be non-negative when supplied.
+    - Optional string fields must be non-empty when supplied.
+
+    Note: These are already-computed outputs from the risk module.
+    This input model does not perform liquidity calculations.
+    """
+
+    liquidity_ratio: Decimal
+    liquid_assets: Decimal
+    illiquid_assets: Decimal
+    average_time_to_liquidate_days: Optional[int] = None
+    redemption_profile: Optional[str] = None
+    liquidity_bucket_summary: Optional[str] = None
+    active_lmts: Optional[int] = None
+    liquidity_warning: Optional[str] = None
+    methodology_version: Optional[str] = None
+
+    model_config = ConfigDict(frozen=True)
+
+    @field_validator("liquidity_ratio")
+    @classmethod
+    def validate_liquidity_ratio(cls, v: Decimal) -> Decimal:
+        """Liquidity ratio must be non-negative."""
+        if v < 0:
+            raise ValueError("liquidity_ratio must be non-negative")
+        return v
+
+    @field_validator("liquid_assets")
+    @classmethod
+    def validate_liquid_assets(cls, v: Decimal) -> Decimal:
+        """Liquid assets must be non-negative."""
+        if v < 0:
+            raise ValueError("liquid_assets must be non-negative")
+        return v
+
+    @field_validator("illiquid_assets")
+    @classmethod
+    def validate_illiquid_assets(cls, v: Decimal) -> Decimal:
+        """Illiquid assets must be non-negative."""
+        if v < 0:
+            raise ValueError("illiquid_assets must be non-negative")
+        return v
+
+    @field_validator("average_time_to_liquidate_days")
+    @classmethod
+    def validate_average_time_to_liquidate_days(cls, v: Optional[int]) -> Optional[int]:
+        """Average time to liquidate days must be non-negative when supplied."""
+        if v is not None and v < 0:
+            raise ValueError("average_time_to_liquidate_days must be non-negative")
+        return v
+
+    @field_validator("active_lmts")
+    @classmethod
+    def validate_active_lmts(cls, v: Optional[int]) -> Optional[int]:
+        """Active LMTs must be non-negative when supplied."""
+        if v is not None and v < 0:
+            raise ValueError("active_lmts must be non-negative")
+        return v
+
+    @field_validator("redemption_profile")
+    @classmethod
+    def validate_redemption_profile(cls, v: Optional[str]) -> Optional[str]:
+        """Redemption profile must be non-empty when supplied."""
+        if v is not None and (not v or not v.strip()):
+            raise ValueError("redemption_profile must be non-empty when supplied")
+        return v.strip() if v else None
+
+    @field_validator("liquidity_bucket_summary")
+    @classmethod
+    def validate_liquidity_bucket_summary(cls, v: Optional[str]) -> Optional[str]:
+        """Liquidity bucket summary must be non-empty when supplied."""
+        if v is not None and (not v or not v.strip()):
+            raise ValueError("liquidity_bucket_summary must be non-empty when supplied")
+        return v.strip() if v else None
+
+    @field_validator("liquidity_warning")
+    @classmethod
+    def validate_liquidity_warning(cls, v: Optional[str]) -> Optional[str]:
+        """Liquidity warning must be non-empty when supplied."""
+        if v is not None and (not v or not v.strip()):
+            raise ValueError("liquidity_warning must be non-empty when supplied")
+        return v.strip() if v else None
+
+    @field_validator("methodology_version")
+    @classmethod
+    def validate_methodology_version(cls, v: Optional[str]) -> Optional[str]:
+        """Methodology version must be non-empty when supplied."""
+        if v is not None and (not v or not v.strip()):
+            raise ValueError("methodology_version must be non-empty when supplied")
+        return v.strip() if v else None
+
+
+class ManagementLiquiditySection(BaseModel):
+    """Result of management liquidity summary assembly.
+
+    Immutable liquidity section for management reporting.
+    Contains already-computed liquidity metrics.
+
+    Fields:
+    - liquidity_ratio: Liquidity ratio (0–1 range).
+    - liquid_assets: Amount of liquid assets in base currency.
+    - illiquid_assets: Amount of illiquid assets in base currency.
+    - average_time_to_liquidate_days: Average time to liquidate (optional, in days).
+    - redemption_profile: Redemption frequency (optional).
+    - liquidity_bucket_summary: Bucket distribution summary (optional).
+    - active_lmts: Number of active liquidity management tools (optional).
+    - liquidity_warning: Liquidity warning message (optional).
+    - methodology_version: Liquidity methodology version (optional).
+
+    Invariants (defensive checks):
+    - liquidity_ratio, liquid_assets, illiquid_assets must be non-negative.
+    - average_time_to_liquidate_days and active_lmts must be non-negative when present.
+
+    Note: These fields contain already-computed liquidity outputs.
+    No calculations are performed by this model.
+    """
+
+    liquidity_ratio: Decimal
+    liquid_assets: Decimal
+    illiquid_assets: Decimal
+    average_time_to_liquidate_days: Optional[int] = None
+    redemption_profile: Optional[str] = None
+    liquidity_bucket_summary: Optional[str] = None
+    active_lmts: Optional[int] = None
+    liquidity_warning: Optional[str] = None
+    methodology_version: Optional[str] = None
+
+    model_config = ConfigDict(frozen=True)
+
+    @field_validator("liquidity_ratio")
+    @classmethod
+    def validate_liquidity_ratio(cls, v: Decimal) -> Decimal:
+        """Liquidity ratio must be non-negative (defensive check)."""
+        if v < 0:
+            raise ValueError("liquidity_ratio must be non-negative")
+        return v
+
+    @field_validator("liquid_assets")
+    @classmethod
+    def validate_liquid_assets(cls, v: Decimal) -> Decimal:
+        """Liquid assets must be non-negative (defensive check)."""
+        if v < 0:
+            raise ValueError("liquid_assets must be non-negative")
+        return v
+
+    @field_validator("illiquid_assets")
+    @classmethod
+    def validate_illiquid_assets(cls, v: Decimal) -> Decimal:
+        """Illiquid assets must be non-negative (defensive check)."""
+        if v < 0:
+            raise ValueError("illiquid_assets must be non-negative")
+        return v
+
+    @field_validator("average_time_to_liquidate_days")
+    @classmethod
+    def validate_average_time_to_liquidate_days(cls, v: Optional[int]) -> Optional[int]:
+        """Average time to liquidate days must be non-negative (defensive check)."""
+        if v is not None and v < 0:
+            raise ValueError("average_time_to_liquidate_days must be non-negative")
+        return v
+
+    @field_validator("active_lmts")
+    @classmethod
+    def validate_active_lmts(cls, v: Optional[int]) -> Optional[int]:
+        """Active LMTs must be non-negative (defensive check)."""
+        if v is not None and v < 0:
+            raise ValueError("active_lmts must be non-negative")
+        return v
+
+
 class ManagementRiskReport(BaseModel):
     """Management risk report container.
 
@@ -493,11 +688,13 @@ class ManagementRiskReport(BaseModel):
     For Slice 1, includes fund summary only.
     For Slice 2, optionally includes market risk.
     For Slice 3, optionally includes stress testing.
+    For Slice 4, optionally includes liquidity.
 
     Fields:
     - fund_summary: Fund summary section (required).
     - market_risk: Market risk section (optional).
     - stress_testing: Stress testing section (optional).
+    - liquidity: Liquidity section (optional).
     - included_sections: List of section names included in the report.
 
     Invariants:
@@ -508,6 +705,7 @@ class ManagementRiskReport(BaseModel):
     fund_summary: ManagementFundSummarySection
     market_risk: Optional[ManagementMarketRiskSection] = None
     stress_testing: Optional[ManagementStressTestingSection] = None
+    liquidity: Optional[ManagementLiquiditySection] = None
     included_sections: list[str]
 
     model_config = ConfigDict(frozen=True)

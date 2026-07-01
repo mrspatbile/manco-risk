@@ -1,6 +1,6 @@
 """Tests for management reporting layer.
 
-Tests fund summary, market risk, management report assembly, and service functionality.
+Tests fund summary, market risk, stress testing, liquidity, and report assembly.
 """
 
 from datetime import date
@@ -11,6 +11,8 @@ import pytest
 from manco_risk.reporting.management_report import (
     ManagementFundSummaryInput,
     ManagementFundSummarySection,
+    ManagementLiquidityInput,
+    ManagementLiquiditySection,
     ManagementMarketRiskInput,
     ManagementMarketRiskSection,
     ManagementRiskReport,
@@ -1218,6 +1220,410 @@ class TestManagementReportServiceStressTesting:
         with pytest.raises(Exception):  # Pydantic frozen model raises
             section.scenario_name = "Modified"  # type: ignore
 
+    def test_build_report_with_liquidity(self) -> None:
+        """Build report with fund summary and liquidity sections."""
+        fund_summary = ManagementFundSummarySection(
+            fund_id="FUND001",
+            fund_name="Test Fund",
+            fund_regime="UCITS",
+            base_currency="EUR",
+            valuation_date=date(2024, 6, 30),
+            nav=Decimal("1000000.00"),
+        )
+
+        liquidity = ManagementLiquiditySection(
+            liquidity_ratio=Decimal("0.75"),
+            liquid_assets=Decimal("750000.00"),
+            illiquid_assets=Decimal("250000.00"),
+        )
+
+        report = ManagementReportService.build_report(fund_summary, liquidity=liquidity)
+
+        assert report.fund_summary.fund_id == "FUND001"
+        assert report.liquidity is not None
+        assert report.liquidity.liquidity_ratio == Decimal("0.75")
+        assert "Fund Summary" in report.included_sections
+        assert "Liquidity" in report.included_sections
+
+    def test_build_report_with_all_sections(self) -> None:
+        """Build report with all available sections."""
+        fund_summary = ManagementFundSummarySection(
+            fund_id="FUND001",
+            fund_name="Test Fund",
+            fund_regime="UCITS",
+            base_currency="EUR",
+            valuation_date=date(2024, 6, 30),
+            nav=Decimal("1000000.00"),
+        )
+
+        market_risk = ManagementMarketRiskSection(
+            var_value=Decimal("0.025"),
+            var_method="Historical Simulation",
+        )
+
+        stress_testing = ManagementStressTestingSection(
+            scenario_name="Lehman Crisis 2008",
+            scenario_type="Historical",
+            portfolio_impact=Decimal("-0.125"),
+        )
+
+        liquidity = ManagementLiquiditySection(
+            liquidity_ratio=Decimal("0.75"),
+            liquid_assets=Decimal("750000.00"),
+            illiquid_assets=Decimal("250000.00"),
+        )
+
+        report = ManagementReportService.build_report(
+            fund_summary, market_risk, stress_testing, liquidity
+        )
+
+        assert len(report.included_sections) == 4
+        assert "Fund Summary" in report.included_sections
+        assert "Market Risk" in report.included_sections
+        assert "Stress Testing" in report.included_sections
+        assert "Liquidity" in report.included_sections
+
+    def test_build_report_without_liquidity(self) -> None:
+        """Build report without liquidity section."""
+        fund_summary = ManagementFundSummarySection(
+            fund_id="FUND001",
+            fund_name="Test Fund",
+            fund_regime="UCITS",
+            base_currency="EUR",
+            valuation_date=date(2024, 6, 30),
+            nav=Decimal("1000000.00"),
+        )
+
+        report = ManagementReportService.build_report(fund_summary)
+
+        assert report.liquidity is None
+        assert report.included_sections == ["Fund Summary"]
+
+
+class TestManagementLiquidityInput:
+    """Test input validation for liquidity."""
+
+    def test_valid_input_required_fields_only(self) -> None:
+        """Valid liquidity input with required fields only."""
+        input_data = ManagementLiquidityInput(
+            liquidity_ratio=Decimal("0.75"),
+            liquid_assets=Decimal("750000.00"),
+            illiquid_assets=Decimal("250000.00"),
+        )
+
+        assert input_data.liquidity_ratio == Decimal("0.75")
+        assert input_data.liquid_assets == Decimal("750000.00")
+        assert input_data.illiquid_assets == Decimal("250000.00")
+        assert input_data.average_time_to_liquidate_days is None
+        assert input_data.redemption_profile is None
+
+    def test_valid_input_with_optional_fields(self) -> None:
+        """Valid liquidity input with all optional fields."""
+        input_data = ManagementLiquidityInput(
+            liquidity_ratio=Decimal("0.75"),
+            liquid_assets=Decimal("750000.00"),
+            illiquid_assets=Decimal("250000.00"),
+            average_time_to_liquidate_days=10,
+            redemption_profile="Daily",
+            liquidity_bucket_summary="65% 0-1d, 20% 1-7d, 15% >7d",
+            active_lmts=2,
+            liquidity_warning="Position concentration in illiquid securities",
+            methodology_version="Liquidity_v1.0",
+        )
+
+        assert input_data.liquidity_ratio == Decimal("0.75")
+        assert input_data.average_time_to_liquidate_days == 10
+        assert input_data.redemption_profile == "Daily"
+        assert input_data.active_lmts == 2
+
+    def test_zero_liquidity_ratio_accepted(self) -> None:
+        """Zero liquidity ratio is accepted."""
+        input_data = ManagementLiquidityInput(
+            liquidity_ratio=Decimal("0.00"),
+            liquid_assets=Decimal("0.00"),
+            illiquid_assets=Decimal("1000000.00"),
+        )
+
+        assert input_data.liquidity_ratio == Decimal("0.00")
+
+    def test_negative_liquidity_ratio_rejected(self) -> None:
+        """Negative liquidity ratio is rejected."""
+        with pytest.raises(ValueError, match="liquidity_ratio must be non-negative"):
+            ManagementLiquidityInput(
+                liquidity_ratio=Decimal("-0.10"),
+                liquid_assets=Decimal("750000.00"),
+                illiquid_assets=Decimal("250000.00"),
+            )
+
+    def test_negative_liquid_assets_rejected(self) -> None:
+        """Negative liquid assets is rejected."""
+        with pytest.raises(ValueError, match="liquid_assets must be non-negative"):
+            ManagementLiquidityInput(
+                liquidity_ratio=Decimal("0.75"),
+                liquid_assets=Decimal("-100000.00"),
+                illiquid_assets=Decimal("250000.00"),
+            )
+
+    def test_negative_illiquid_assets_rejected(self) -> None:
+        """Negative illiquid assets is rejected."""
+        with pytest.raises(ValueError, match="illiquid_assets must be non-negative"):
+            ManagementLiquidityInput(
+                liquidity_ratio=Decimal("0.75"),
+                liquid_assets=Decimal("750000.00"),
+                illiquid_assets=Decimal("-100000.00"),
+            )
+
+    def test_negative_average_time_to_liquidate_days_rejected(self) -> None:
+        """Negative average time to liquidate days is rejected."""
+        with pytest.raises(ValueError, match="average_time_to_liquidate_days must be non-negative"):
+            ManagementLiquidityInput(
+                liquidity_ratio=Decimal("0.75"),
+                liquid_assets=Decimal("750000.00"),
+                illiquid_assets=Decimal("250000.00"),
+                average_time_to_liquidate_days=-5,
+            )
+
+    def test_zero_average_time_to_liquidate_days_accepted(self) -> None:
+        """Zero average time to liquidate days is accepted."""
+        input_data = ManagementLiquidityInput(
+            liquidity_ratio=Decimal("0.75"),
+            liquid_assets=Decimal("750000.00"),
+            illiquid_assets=Decimal("250000.00"),
+            average_time_to_liquidate_days=0,
+        )
+
+        assert input_data.average_time_to_liquidate_days == 0
+
+    def test_negative_active_lmts_rejected(self) -> None:
+        """Negative active LMTs is rejected."""
+        with pytest.raises(ValueError, match="active_lmts must be non-negative"):
+            ManagementLiquidityInput(
+                liquidity_ratio=Decimal("0.75"),
+                liquid_assets=Decimal("750000.00"),
+                illiquid_assets=Decimal("250000.00"),
+                active_lmts=-1,
+            )
+
+    def test_zero_active_lmts_accepted(self) -> None:
+        """Zero active LMTs is accepted."""
+        input_data = ManagementLiquidityInput(
+            liquidity_ratio=Decimal("0.75"),
+            liquid_assets=Decimal("750000.00"),
+            illiquid_assets=Decimal("250000.00"),
+            active_lmts=0,
+        )
+
+        assert input_data.active_lmts == 0
+
+    def test_empty_redemption_profile_rejected(self) -> None:
+        """Empty redemption profile is rejected."""
+        with pytest.raises(ValueError, match="redemption_profile must be non-empty when supplied"):
+            ManagementLiquidityInput(
+                liquidity_ratio=Decimal("0.75"),
+                liquid_assets=Decimal("750000.00"),
+                illiquid_assets=Decimal("250000.00"),
+                redemption_profile="",
+            )
+
+    def test_whitespace_redemption_profile_stripped(self) -> None:
+        """Redemption profile with whitespace is stripped."""
+        input_data = ManagementLiquidityInput(
+            liquidity_ratio=Decimal("0.75"),
+            liquid_assets=Decimal("750000.00"),
+            illiquid_assets=Decimal("250000.00"),
+            redemption_profile="  Daily  ",
+        )
+
+        assert input_data.redemption_profile == "Daily"
+
+    def test_empty_liquidity_bucket_summary_rejected(self) -> None:
+        """Empty liquidity bucket summary is rejected."""
+        with pytest.raises(
+            ValueError,
+            match="liquidity_bucket_summary must be non-empty when supplied",
+        ):
+            ManagementLiquidityInput(
+                liquidity_ratio=Decimal("0.75"),
+                liquid_assets=Decimal("750000.00"),
+                illiquid_assets=Decimal("250000.00"),
+                liquidity_bucket_summary="",
+            )
+
+    def test_whitespace_liquidity_bucket_summary_stripped(self) -> None:
+        """Liquidity bucket summary with whitespace is stripped."""
+        input_data = ManagementLiquidityInput(
+            liquidity_ratio=Decimal("0.75"),
+            liquid_assets=Decimal("750000.00"),
+            illiquid_assets=Decimal("250000.00"),
+            liquidity_bucket_summary="  65% 0-1d, 20% 1-7d, 15% >7d  ",
+        )
+
+        assert input_data.liquidity_bucket_summary == "65% 0-1d, 20% 1-7d, 15% >7d"
+
+    def test_empty_liquidity_warning_rejected(self) -> None:
+        """Empty liquidity warning is rejected."""
+        with pytest.raises(ValueError, match="liquidity_warning must be non-empty when supplied"):
+            ManagementLiquidityInput(
+                liquidity_ratio=Decimal("0.75"),
+                liquid_assets=Decimal("750000.00"),
+                illiquid_assets=Decimal("250000.00"),
+                liquidity_warning="",
+            )
+
+    def test_whitespace_liquidity_warning_stripped(self) -> None:
+        """Liquidity warning with whitespace is stripped."""
+        input_data = ManagementLiquidityInput(
+            liquidity_ratio=Decimal("0.75"),
+            liquid_assets=Decimal("750000.00"),
+            illiquid_assets=Decimal("250000.00"),
+            liquidity_warning="  Position concentration in illiquid securities  ",
+        )
+
+        assert input_data.liquidity_warning == "Position concentration in illiquid securities"
+
+    def test_empty_methodology_version_rejected(self) -> None:
+        """Empty methodology version is rejected."""
+        with pytest.raises(ValueError, match="methodology_version must be non-empty when supplied"):
+            ManagementLiquidityInput(
+                liquidity_ratio=Decimal("0.75"),
+                liquid_assets=Decimal("750000.00"),
+                illiquid_assets=Decimal("250000.00"),
+                methodology_version="",
+            )
+
+    def test_immutability(self) -> None:
+        """Liquidity input is immutable."""
+        input_data = ManagementLiquidityInput(
+            liquidity_ratio=Decimal("0.75"),
+            liquid_assets=Decimal("750000.00"),
+            illiquid_assets=Decimal("250000.00"),
+        )
+
+        with pytest.raises(Exception):  # Pydantic frozen model raises
+            input_data.liquidity_ratio = Decimal("0.50")  # type: ignore
+
+    def test_decimal_preservation_in_input(self) -> None:
+        """Decimal values are preserved exactly in input."""
+        input_data = ManagementLiquidityInput(
+            liquidity_ratio=Decimal("0.75123"),
+            liquid_assets=Decimal("750000.456"),
+            illiquid_assets=Decimal("250000.789"),
+        )
+
+        assert input_data.liquidity_ratio == Decimal("0.75123")
+        assert input_data.liquid_assets == Decimal("750000.456")
+        assert input_data.illiquid_assets == Decimal("250000.789")
+
+
+class TestManagementLiquiditySection:
+    """Test liquidity section model."""
+
+    def test_valid_section_required_fields_only(self) -> None:
+        """Valid liquidity section with required fields only."""
+        section = ManagementLiquiditySection(
+            liquidity_ratio=Decimal("0.75"),
+            liquid_assets=Decimal("750000.00"),
+            illiquid_assets=Decimal("250000.00"),
+        )
+
+        assert section.liquidity_ratio == Decimal("0.75")
+        assert section.liquid_assets == Decimal("750000.00")
+        assert section.illiquid_assets == Decimal("250000.00")
+
+    def test_valid_section_with_optional_fields(self) -> None:
+        """Valid liquidity section with all optional fields."""
+        section = ManagementLiquiditySection(
+            liquidity_ratio=Decimal("0.75"),
+            liquid_assets=Decimal("750000.00"),
+            illiquid_assets=Decimal("250000.00"),
+            average_time_to_liquidate_days=10,
+            redemption_profile="Daily",
+            liquidity_bucket_summary="65% 0-1d, 20% 1-7d, 15% >7d",
+            active_lmts=2,
+            liquidity_warning="Position concentration in illiquid securities",
+            methodology_version="Liquidity_v1.0",
+        )
+
+        assert section.liquidity_ratio == Decimal("0.75")
+        assert section.average_time_to_liquidate_days == 10
+        assert section.redemption_profile == "Daily"
+        assert section.active_lmts == 2
+
+    def test_immutability(self) -> None:
+        """Liquidity section is immutable."""
+        section = ManagementLiquiditySection(
+            liquidity_ratio=Decimal("0.75"),
+            liquid_assets=Decimal("750000.00"),
+            illiquid_assets=Decimal("250000.00"),
+        )
+
+        with pytest.raises(Exception):  # Pydantic frozen model raises
+            section.liquidity_ratio = Decimal("0.50")  # type: ignore
+
+    def test_decimal_preservation_in_section(self) -> None:
+        """Decimal values are preserved exactly in section."""
+        section = ManagementLiquiditySection(
+            liquidity_ratio=Decimal("0.75123"),
+            liquid_assets=Decimal("750000.456"),
+            illiquid_assets=Decimal("250000.789"),
+        )
+
+        assert section.liquidity_ratio == Decimal("0.75123")
+        assert section.liquid_assets == Decimal("750000.456")
+        assert section.illiquid_assets == Decimal("250000.789")
+
+
+class TestManagementReportServiceLiquidity:
+    """Test liquidity service methods."""
+
+    def test_build_liquidity_from_input(self) -> None:
+        """Build liquidity section from input."""
+        input_data = ManagementLiquidityInput(
+            liquidity_ratio=Decimal("0.75"),
+            liquid_assets=Decimal("750000.00"),
+            illiquid_assets=Decimal("250000.00"),
+        )
+
+        section = ManagementReportService.build_liquidity(input_data)
+
+        assert isinstance(section, ManagementLiquiditySection)
+        assert section.liquidity_ratio == Decimal("0.75")
+        assert section.liquid_assets == Decimal("750000.00")
+
+    def test_build_liquidity_preserves_optional_fields(self) -> None:
+        """Build liquidity preserves optional fields."""
+        input_data = ManagementLiquidityInput(
+            liquidity_ratio=Decimal("0.75"),
+            liquid_assets=Decimal("750000.00"),
+            illiquid_assets=Decimal("250000.00"),
+            average_time_to_liquidate_days=10,
+            redemption_profile="Daily",
+            liquidity_bucket_summary="65% 0-1d, 20% 1-7d, 15% >7d",
+            active_lmts=2,
+            liquidity_warning="Position concentration in illiquid securities",
+            methodology_version="Liquidity_v1.0",
+        )
+
+        section = ManagementReportService.build_liquidity(input_data)
+
+        assert section.average_time_to_liquidate_days == 10
+        assert section.redemption_profile == "Daily"
+        assert section.liquidity_bucket_summary == "65% 0-1d, 20% 1-7d, 15% >7d"
+        assert section.active_lmts == 2
+
+    def test_build_liquidity_immutable_result(self) -> None:
+        """Build liquidity returns immutable section."""
+        input_data = ManagementLiquidityInput(
+            liquidity_ratio=Decimal("0.75"),
+            liquid_assets=Decimal("750000.00"),
+            illiquid_assets=Decimal("250000.00"),
+        )
+
+        section = ManagementReportService.build_liquidity(input_data)
+
+        with pytest.raises(Exception):  # Pydantic frozen model raises
+            section.liquidity_ratio = Decimal("0.50")  # type: ignore
+
 
 class TestRealisticExamples:
     """Test realistic fund examples."""
@@ -1464,3 +1870,148 @@ class TestRealisticExamples:
         assert "Fund Summary" in report.included_sections
         assert "Market Risk" in report.included_sections
         assert "Stress Testing" in report.included_sections
+
+    def test_ucits_fund_with_liquidity_example(self) -> None:
+        """Realistic UCITS fund with liquidity example."""
+        fund_summary_input = ManagementFundSummaryInput(
+            fund_id="LU001234567890",
+            fund_name="Global Equity UCITS Fund",
+            fund_regime="UCITS",
+            base_currency="EUR",
+            valuation_date=date(2024, 6, 30),
+            nav=Decimal("250000000.00"),
+            aum=Decimal("250000000.00"),
+            inception_date=date(2010, 3, 15),
+            reporting_period_end=date(2024, 6, 30),
+            methodology_version="VaR_HistoricalSimulation_v1.0",
+        )
+
+        liquidity_input = ManagementLiquidityInput(
+            liquidity_ratio=Decimal("0.85"),
+            liquid_assets=Decimal("212500000.00"),
+            illiquid_assets=Decimal("37500000.00"),
+            average_time_to_liquidate_days=5,
+            redemption_profile="Daily",
+            liquidity_bucket_summary="85% 0-1d, 10% 1-7d, 5% >7d",
+            active_lmts=1,
+            methodology_version="Liquidity_v1.0",
+        )
+
+        fund_summary = ManagementReportService.build_fund_summary(fund_summary_input)
+        liquidity = ManagementReportService.build_liquidity(liquidity_input)
+        report = ManagementReportService.build_report(fund_summary, liquidity=liquidity)
+
+        assert report.fund_summary.fund_regime == "UCITS"
+        assert report.liquidity is not None
+        assert report.liquidity.liquidity_ratio == Decimal("0.85")
+        assert report.liquidity.average_time_to_liquidate_days == 5
+        assert "Fund Summary" in report.included_sections
+        assert "Liquidity" in report.included_sections
+
+    def test_aif_fund_with_liquidity_warning_example(self) -> None:
+        """Realistic AIF fund with liquidity warning example."""
+        fund_summary_input = ManagementFundSummaryInput(
+            fund_id="IE0087654321234",
+            fund_name="Alternative Strategies AIF",
+            fund_regime="AIF",
+            base_currency="USD",
+            valuation_date=date(2024, 6, 30),
+            nav=Decimal("1500000000.50"),
+            aum=Decimal("1500000000.50"),
+            inception_date=date(2015, 6, 1),
+            reporting_period_end=date(2024, 6, 30),
+            methodology_version="VaR_Parametric_v2.0",
+        )
+
+        liquidity_input = ManagementLiquidityInput(
+            liquidity_ratio=Decimal("0.55"),
+            liquid_assets=Decimal("825000000.00"),
+            illiquid_assets=Decimal("675000000.50"),
+            average_time_to_liquidate_days=30,
+            redemption_profile="Quarterly",
+            liquidity_bucket_summary="25% 0-7d, 30% 7-30d, 45% >30d",
+            active_lmts=3,
+            liquidity_warning="Significant illiquid positions in private equity holdings",
+            methodology_version="Liquidity_v2.0",
+        )
+
+        fund_summary = ManagementReportService.build_fund_summary(fund_summary_input)
+        liquidity = ManagementReportService.build_liquidity(liquidity_input)
+        report = ManagementReportService.build_report(fund_summary, liquidity=liquidity)
+
+        assert report.fund_summary.fund_regime == "AIF"
+        assert report.liquidity is not None
+        assert report.liquidity.liquidity_ratio == Decimal("0.55")
+        assert report.liquidity.average_time_to_liquidate_days == 30
+        assert (
+            report.liquidity.liquidity_warning
+            == "Significant illiquid positions in private equity holdings"
+        )
+        assert report.liquidity.active_lmts == 3
+        assert "Liquidity" in report.included_sections
+
+    def test_comprehensive_fund_with_liquidity_example(self) -> None:
+        """Comprehensive fund report with liquidity and all sections."""
+        fund_summary_input = ManagementFundSummaryInput(
+            fund_id="LU001234567890",
+            fund_name="Global Equity UCITS Fund",
+            fund_regime="UCITS",
+            base_currency="EUR",
+            valuation_date=date(2024, 6, 30),
+            nav=Decimal("250000000.00"),
+            aum=Decimal("250000000.00"),
+            inception_date=date(2010, 3, 15),
+            reporting_period_end=date(2024, 6, 30),
+            methodology_version="VaR_HistoricalSimulation_v1.0",
+        )
+
+        market_risk_input = ManagementMarketRiskInput(
+            var_value=Decimal("0.0275"),
+            var_method="Historical Simulation",
+            expected_shortfall=Decimal("0.0425"),
+            srri_class="5",
+            global_exposure=Decimal("1.2"),
+            stress_summary_reference="Stress Scenarios Q2 2024",
+            methodology_version="VaR_HistoricalSimulation_v1.0",
+        )
+
+        stress_testing_input = ManagementStressTestingInput(
+            scenario_name="Lehman Crisis 2008",
+            scenario_type="Historical",
+            portfolio_impact=Decimal("-0.125"),
+            nav_impact=Decimal("-0.125"),
+            worst_position="US0378331005",
+            worst_sector="Financial Services",
+            stress_date=date(2008, 9, 15),
+            methodology_version="Stress_HistoricalSimulation_v1.0",
+        )
+
+        liquidity_input = ManagementLiquidityInput(
+            liquidity_ratio=Decimal("0.85"),
+            liquid_assets=Decimal("212500000.00"),
+            illiquid_assets=Decimal("37500000.00"),
+            average_time_to_liquidate_days=5,
+            redemption_profile="Daily",
+            liquidity_bucket_summary="85% 0-1d, 10% 1-7d, 5% >7d",
+            active_lmts=1,
+            methodology_version="Liquidity_v1.0",
+        )
+
+        fund_summary = ManagementReportService.build_fund_summary(fund_summary_input)
+        market_risk = ManagementReportService.build_market_risk(market_risk_input)
+        stress_testing = ManagementReportService.build_stress_testing(stress_testing_input)
+        liquidity = ManagementReportService.build_liquidity(liquidity_input)
+        report = ManagementReportService.build_report(
+            fund_summary, market_risk, stress_testing, liquidity
+        )
+
+        assert report.fund_summary.fund_name == "Global Equity UCITS Fund"
+        assert report.market_risk is not None
+        assert report.stress_testing is not None
+        assert report.liquidity is not None
+        assert report.liquidity.liquidity_ratio == Decimal("0.85")
+        assert len(report.included_sections) == 4
+        assert "Fund Summary" in report.included_sections
+        assert "Market Risk" in report.included_sections
+        assert "Stress Testing" in report.included_sections
+        assert "Liquidity" in report.included_sections
