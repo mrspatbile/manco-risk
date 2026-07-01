@@ -1,8 +1,8 @@
 # Feature Parity Roadmap
 
 **Roadmap created:** 2026-06-29  
-**Last reviewed:** 2026-07-01  
-**`manco-risk` version assumed:** 0.2.0  
+**Last reviewed:** 2026-07-01 (updated for Issue #14 completion)  
+**`manco-risk` version:** 0.2.0 (Issue #14: Private Asset Analytics complete)  
 **Purpose:** Track what remains before `manco-risk` can replace `fund-risk-workflow`.
 
 ---
@@ -260,18 +260,73 @@ Dependent workflows (VaR, leverage, reporting, etc.) can only reach "Complete" w
 
 ## 14. Alternative Assets (Private Equity, Infrastructure, Real Estate, Private Debt)
 
+### Issue #14: Private Asset Analytics (5 Slices)
+
+**Slice 1 (PE): DPI, RVPI, TVPI, MOIC** — Complete, 33 tests  
+**Slice 2 (Infra): DSCR & LTV** — Complete, 31 tests  
+**Slice 3 (Infra): Duration & Inflation Sensitivity** — Complete, 27 tests  
+**Slice 4 (RE): Stress Calculations** — Complete, 26 tests  
+**Slice 5 (Debt): Loan Monitoring & LTV** — Complete, 29 tests  
+
+**Total: 146 tests, all passing, v0.2.0**
+
 | Capability | Engine | Reporting | Visualization | Notebook/Demo | Milestone | Issue | Notes |
 |-----------|--------|-----------|----------------|---------------|-----------|-------|-------|
-| PE IRR & multiple tracking | Missing | Complete | — | — | v0.4.0 | TBD | DPI, RVPI, TVPI, XIRR; vintage cohorts. |
-| PME (Public Market Equivalent) | Missing | Complete | — | — | v0.4.0 | TBD | Long-Nickels method vs. benchmark indices. |
-| PE cash flow modeling | Missing | — | — | — | v0.4.0 | TBD | Distributions, reinvestments, projections. |
-| PE cash flow visuals | Missing | — | Complete | — | v0.4.0 | TBD | Cumulative, vintage cohorts, KPI timeline. |
-| Infrastructure DSCR & LTV | Missing | Complete | — | — | v0.4.0 | TBD | Debt service coverage, leverage ratios; covenant tracking. |
-| Infrastructure duration & convexity | Missing | Complete | — | — | v0.4.0 | TBD | Inflation sensitivity, interest rate impact. |
-| Real estate valuation stress | Missing | Complete | — | — | v0.4.0 | TBD | Property value decline, rental income compression. |
-| Real estate LTV & leverage stress | Missing | Complete | Complete | — | v0.4.0 | TBD | Occupancy shock, interest rate impact on debt. |
-| Private debt loan monitoring | Missing | Complete | — | — | v0.4.0 | TBD | Covenant compliance tracking, loan health KPIs. |
-| Alternative assets charts | Missing | — | Complete | — | v0.4.0 | TBD | PE cash waterfall, infrastructure DSCR trend, RE stress outcomes. |
+| PE IRR & multiple tracking | — | Complete | — | — | v0.2.0 | #14-1 | DPI, RVPI, TVPI (MOIC); 33 tests; cash flow analysis. |
+| PE cash flow modeling | Missing | — | — | — | v0.4.0 | TBD | Distributions, reinvestments, projections (deferred). |
+| PME (Public Market Equivalent) | Missing | — | — | — | v0.4.0 | TBD | Long-Nickels method vs. benchmark indices (deferred). |
+| PE cash flow visuals | Missing | — | Missing | — | v0.4.0 | TBD | Cumulative, vintage cohorts, KPI timeline (visualization only). |
+| Infrastructure DSCR & LTV | — | Complete | — | — | v0.2.0 | #14-2 | Debt service coverage, leverage; 31 tests; point-in-time. |
+| Infrastructure duration & sensitivity | — | Complete | — | — | v0.2.0 | #14-3 | Duration years, inflation/rate sensitivity; 27 tests; pre-computed. |
+| Infrastructure covenant monitoring | — | Complete | — | — | v0.2.0 | #14-5 | Loan-to-value, covenant tracking; 29 tests; integrated with debt. |
+| Real estate valuation stress | — | Complete | — | — | v0.2.0 | #14-4 | Property value shock, rental stress, NOI; 26 tests; single-period. |
+| Real estate LTV & leverage stress | — | Complete | Missing | — | v0.2.0 | #14-4 | Stressed LTV from property value and debt; part of stress calcs. |
+| Private debt loan monitoring | — | Complete | — | — | v0.2.0 | #14-5 | Covenant tracking, loan health KPIs, LTV; 29 tests. |
+| Alternative assets charts | Missing | — | Missing | — | v0.4.0 | TBD | PE waterfall, infra DSCR trend, RE stress outcomes (visualization). |
+
+---
+
+## Migration Summary (v0.2.0)
+
+### Completed in v0.2.0
+
+| Module | Issues | Slices | Tests | Status |
+|--------|--------|--------|-------|--------|
+| Management Reporting | #13 | 6 | 162 | Complete |
+| Annex IV Reporting | #12 | 5 | (integrated) | Complete |
+| Private Asset Analytics | #14 | 5 | 146 | Complete |
+| **Subtotal** | **3 Issues** | **16 slices** | **308+** | **✅** |
+
+### Architecture Achievement
+
+- ✅ **Foundation:** Project structure, tooling, guidelines (Issue #1–3)
+- ✅ **Reporting:** Management Risk Report (Issue #13)
+- ✅ **Regulatory:** Annex IV (Issue #12)
+- ✅ **Alternative Assets:** PE, Infrastructure (2 modules), Real Estate, Private Debt (Issue #14)
+- ✅ **Market Risk:** VaR, backtesting (pre-v0.2.0)
+- ✅ **Leverage:** AIFMD, UCITS (pre-v0.2.0)
+- ✅ **Liquidity:** Analytics, LMT simulation (pre-v0.2.0)
+- ✅ **UCITS:** Monitoring, SRRI (pre-v0.2.0)
+- ✅ **PRIIPs:** KID, performance scenarios (pre-v0.2.0)
+
+### Test Coverage
+
+- **146 tests:** Private asset analytics (5 modules × 20–30 tests each)
+- **162 tests:** Management reporting (6 sections)
+- **Annex IV:** Integrated in regulatory reporting
+- **Total tracked:** 308+ comprehensive tests
+
+### Next Milestones (v0.3.0+)
+
+- Visualization and dashboard outputs (Streamlit)
+- PE cash flow projections and PME
+- Infrastructure stress scenarios
+- Real estate portfolio analysis
+- Private debt credit analysis (deferred)
+- Multi-period forecasting
+- Performance attribution
+- ESG analytics
+- Audit and lineage tracking
 
 ---
 

@@ -60,6 +60,7 @@ Implemented areas include:
 * **Annex IV reporting** (Fund Identification, Asset Breakdown, Risk Measures, Leverage, Liquidity Profile)
 * **PRIIPs result objects** (for UCITS reporting)
 * **UCITS monitoring** (SRRI, VaR, leverage, liquidity tracking)
+* **Private asset analytics** (PE: DPI/RVPI/TVPI/MOIC, Infrastructure: DSCR/LTV/duration, Real Estate: stress calcs, Private Debt: loan monitoring)
 
 Planned areas include:
 

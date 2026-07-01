@@ -68,6 +68,7 @@ Responsibilities:
 - leverage calculations
 - liquidity risk analytics
 - LMT simulation
+- private asset analytics (private equity, infrastructure, real estate, private debt)
 
 ### reporting
 
