@@ -320,6 +320,155 @@ assert result.residual_value == Decimal("5000000")
 - Real estate stress calculations
 - Private debt loan and covenant monitoring
 
+---
+
+## Infrastructure Analytics (Slice 2)
+
+### Purpose
+
+Infrastructure asset analytics monitors financial performance and leverage of infrastructure investments through point-in-time DSCR and LTV ratios.
+
+This slice calculates only snapshot metrics from supplied financial data.
+It does not forecast cash flows, value assets, calculate duration, or calculate inflation sensitivity.
+
+### Models
+
+**InfrastructureAssetInput**
+
+Input data for infrastructure asset analysis.
+
+```python
+class InfrastructureAssetInput:
+    valuation_date: date              # Snapshot date
+    cash_available_for_debt_service: Decimal  # Non-negative
+    debt_service_amount: Decimal      # Non-negative
+    asset_value: Decimal              # Non-negative
+    debt_outstanding: Decimal         # Non-negative
+    asset_id: str | None              # Optional identifier
+```
+
+**InfrastructureAnalyticsResult**
+
+Immutable result with point-in-time metrics.
+
+```python
+class InfrastructureAnalyticsResult:
+    asset_id: str | None              # From input
+    valuation_date: date              # From input
+    dscr: Decimal | None              # Debt Service Coverage Ratio
+    ltv: Decimal | None               # Loan-to-Value Ratio
+    cash_available_for_debt_service: Decimal
+    debt_service_amount: Decimal
+    asset_value: Decimal
+    debt_outstanding: Decimal
+```
+
+### Formulas
+
+**DSCR (Debt Service Coverage Ratio)**
+
+```
+DSCR = Cash Available for Debt Service / Debt Service Amount
+```
+
+Measures ability to service debt from available cash.
+
+- DSCR = 1.0 → cash exactly covers debt service
+- DSCR > 1.0 → surplus coverage (healthy)
+- DSCR < 1.0 → cash shortfall (stressed)
+- DSCR = None if debt_service_amount = 0
+
+**LTV (Loan-to-Value Ratio)**
+
+```
+LTV = Debt Outstanding / Asset Value
+```
+
+Measures leverage as proportion of debt to asset value.
+
+- LTV = 0.0 → no debt (unlevered)
+- LTV = 0.5 → 50% leverage
+- LTV = 0.75 → 75% leverage
+- LTV = None if asset_value = 0
+
+### Data Conventions
+
+**Monetary values:** All amounts are `Decimal`, non-negative.
+
+```python
+from decimal import Decimal
+
+asset = InfrastructureAssetInput(
+    valuation_date=date(2024, 6, 30),
+    cash_available_for_debt_service=Decimal("500000"),   # €500K
+    debt_service_amount=Decimal("400000"),                # €400K
+    asset_value=Decimal("5000000"),                       # €5M
+    debt_outstanding=Decimal("3000000")                   # €3M
+)
+
+result = InfrastructureEngine.analyze(asset)
+# result.dscr == Decimal("1.25")  # 125% DSCR
+# result.ltv == Decimal("0.60")   # 60% LTV
+```
+
+### Engine
+
+**InfrastructureEngine**
+
+Stateless orchestration for infrastructure asset analysis.
+
+```python
+@staticmethod
+def analyze(asset: InfrastructureAssetInput) -> InfrastructureAnalyticsResult:
+    """Analyze infrastructure asset and compute metrics.
+    
+    Returns DSCR and LTV ratios.
+    DSCR is None if debt_service_amount = 0.
+    LTV is None if asset_value = 0.
+    """
+```
+
+### Limitations
+
+This implementation calculates **point-in-time DSCR and LTV only**.
+
+It does **not**:
+
+- Forecast cash flows or revenues
+- Calculate forward-looking debt service coverage
+- Value or revalue infrastructure assets
+- Calculate asset duration or inflation sensitivity
+- Account for seasonality in cash flows
+- Apply stress scenarios to revenues or debt service
+- Model refinancing risk or maturity profiles
+- Calculate loan-to-cost (LTC)
+- Calculate operational metrics (IRR, NPV, payback period)
+
+DSCR and LTV are snapshots as of the valuation_date, using supplied financial data.
+
+### Scope: Infrastructure (Slice 2)
+
+**Implemented:**
+
+- InfrastructureAssetInput model (Pydantic v2, frozen)
+- InfrastructureAnalyticsResult model (Pydantic v2, frozen)
+- InfrastructureEngine calculation
+- DSCR metric (with None handling for zero debt service)
+- LTV metric (with None handling for zero asset value)
+- Comprehensive tests (31 tests)
+- Decimal preservation
+- Model immutability
+- Realistic infrastructure examples (toll roads, wind farms, utilities, airports)
+
+**Deferred to future slices:**
+
+- Duration calculation
+- Inflation sensitivity analysis
+- Cash flow forecasting
+- Stress testing
+- Real estate stress calculations
+- Private debt loan and covenant monitoring
+
 ## Out of Scope
 
 The following are **not** implemented and are out of scope for private asset analytics:

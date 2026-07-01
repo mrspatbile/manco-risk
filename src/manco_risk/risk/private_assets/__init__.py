@@ -18,6 +18,11 @@ Must not contain:
 - Valuation platform logic
 """
 
+from manco_risk.risk.private_assets.infrastructure import (
+    InfrastructureAnalyticsResult,
+    InfrastructureAssetInput,
+)
+from manco_risk.risk.private_assets.infrastructure_engine import InfrastructureEngine
 from manco_risk.risk.private_assets.private_equity import (
     PrivateEquityAnalyticsResult,
     PrivateEquityCashFlow,
@@ -30,4 +35,7 @@ __all__ = [
     "PrivateEquityInvestmentInput",
     "PrivateEquityAnalyticsResult",
     "PrivateEquityEngine",
+    "InfrastructureAssetInput",
+    "InfrastructureAnalyticsResult",
+    "InfrastructureEngine",
 ]
