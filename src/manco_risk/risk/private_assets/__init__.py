@@ -23,6 +23,13 @@ from manco_risk.risk.private_assets.infrastructure import (
     InfrastructureAssetInput,
 )
 from manco_risk.risk.private_assets.infrastructure_engine import InfrastructureEngine
+from manco_risk.risk.private_assets.infrastructure_sensitivity import (
+    InfrastructureSensitivityInput,
+    InfrastructureSensitivityResult,
+)
+from manco_risk.risk.private_assets.infrastructure_sensitivity_engine import (
+    InfrastructureSensitivityEngine,
+)
 from manco_risk.risk.private_assets.private_equity import (
     PrivateEquityAnalyticsResult,
     PrivateEquityCashFlow,
@@ -38,4 +45,7 @@ __all__ = [
     "InfrastructureAssetInput",
     "InfrastructureAnalyticsResult",
     "InfrastructureEngine",
+    "InfrastructureSensitivityInput",
+    "InfrastructureSensitivityResult",
+    "InfrastructureSensitivityEngine",
 ]

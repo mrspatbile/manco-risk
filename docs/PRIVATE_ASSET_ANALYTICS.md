@@ -462,10 +462,164 @@ DSCR and LTV are snapshots as of the valuation_date, using supplied financial da
 
 **Deferred to future slices:**
 
-- Duration calculation
-- Inflation sensitivity analysis
+- Inflation sensitivity analysis (now in Slice 3)
 - Cash flow forecasting
 - Stress testing
+- Real estate stress calculations
+- Private debt loan and covenant monitoring
+
+---
+
+## Infrastructure Sensitivity (Slice 3)
+
+### Purpose
+
+Infrastructure sensitivity analytics packages point-in-time duration and inflation/interest-rate sensitivity measures.
+
+This slice consumes already-computed duration and sensitivity measures from external analysis.
+No derivation, estimation, or forecasting performed.
+
+Duration represents weighted average time to cash flow receipt. Sensitivity measures represent
+estimated portfolio value changes per unit change in inflation or interest rates.
+
+### Models
+
+**InfrastructureSensitivityInput**
+
+Input data for sensitivity analysis.
+
+```python
+class InfrastructureSensitivityInput:
+    valuation_date: date              # Snapshot date
+    duration_years: Decimal           # Non-negative, in years
+    inflation_sensitivity: Decimal    # Sensitivity coefficient
+    asset_id: str | None              # Optional identifier
+    interest_rate_sensitivity: Decimal | None  # Optional
+    methodology_version: str | None   # Optional version identifier
+```
+
+**InfrastructureSensitivityResult**
+
+Immutable result with packaged sensitivity metrics.
+
+```python
+class InfrastructureSensitivityResult:
+    asset_id: str | None              # From input
+    valuation_date: date              # From input
+    duration_years: Decimal           # Non-negative
+    inflation_sensitivity: Decimal    # Coefficient
+    interest_rate_sensitivity: Decimal | None  # Optional
+    methodology_version: str | None   # Optional
+```
+
+### Concepts
+
+**Duration (years)**
+
+Weighted average time to cash flow receipt/obligation. Represents price sensitivity to interest rates.
+
+Example interpretations:
+- Duration = 0 → instantaneous cash flow (immediate/zero-coupon bond)
+- Duration = 5 → 5-year weighted time to cash flows
+- Duration = 15 → long-duration asset (30-year concession, pension-like)
+
+**Inflation Sensitivity**
+
+Coefficient representing portfolio value changes per 1% inflation change.
+
+Example interpretations:
+- Inflation sensitivity = 0.75 → asset value increases 0.75% when inflation rises 1%
+- Inflation sensitivity = 1.0 → asset value changes 1% per 1% inflation (full pass-through)
+- Inflation sensitivity = 0.0 → inflation neutral (no relationship)
+- Inflation sensitivity = -0.30 → asset value decreases 0.30% when inflation rises 1%
+
+**Interest Rate Sensitivity**
+
+Coefficient representing portfolio value changes per 1% interest rate change.
+
+Example interpretations:
+- Interest rate sensitivity = -2.50 → asset value decreases 2.50% when rates rise 1%
+- Interest rate sensitivity = 0.50 → asset value increases 0.50% when rates rise 1%
+- Interest rate sensitivity = 0.0 → rate neutral (no relationship)
+
+### Data Conventions
+
+**Duration:** `Decimal` non-negative, measured in years.
+
+**Sensitivities:** `Decimal`, positive or negative coefficients.
+
+```python
+from decimal import Decimal
+from datetime import date
+
+asset = InfrastructureSensitivityInput(
+    valuation_date=date(2024, 6, 30),
+    duration_years=Decimal("8.5"),
+    inflation_sensitivity=Decimal("0.85"),
+    interest_rate_sensitivity=Decimal("-2.10")
+)
+
+result = InfrastructureSensitivityEngine.analyze(asset)
+# result.duration_years == Decimal("8.5")
+# result.inflation_sensitivity == Decimal("0.85")
+# result.interest_rate_sensitivity == Decimal("-2.10")
+```
+
+### Engine
+
+**InfrastructureSensitivityEngine**
+
+Stateless packaging of sensitivity measures.
+
+```python
+@staticmethod
+def analyze(asset: InfrastructureSensitivityInput) -> InfrastructureSensitivityResult:
+    """Package duration and sensitivity metrics from supplied input.
+    
+    No calculations performed. Input is validated and packaged into
+    an immutable result object.
+    """
+```
+
+### Limitations
+
+This implementation packages **already-computed duration and sensitivity measures only**.
+
+It does **not**:
+
+- Derive duration from projected cash flows
+- Estimate inflation beta or exposure
+- Forecast inflation or interest rates
+- Model interest-rate scenarios or stress tests
+- Calculate modified or effective duration
+- Apply convexity adjustments
+- Value or revalue infrastructure assets
+- Perform scenario analysis
+- Estimate sensitivity changes over time
+
+Duration and sensitivity are snapshots as of the valuation_date, using supplied methodology.
+
+### Scope: Infrastructure Sensitivity (Slice 3)
+
+**Implemented:**
+
+- InfrastructureSensitivityInput model (Pydantic v2, frozen)
+- InfrastructureSensitivityResult model (Pydantic v2, frozen)
+- InfrastructureSensitivityEngine
+- Point-in-time duration packaging
+- Inflation sensitivity packaging
+- Optional interest-rate sensitivity packaging
+- Comprehensive tests (27 tests)
+- Decimal precision preservation
+- Model immutability
+- Realistic infrastructure sensitivity scenarios
+
+**Deferred to future slices:**
+
+- Duration derivation from cash flows
+- Inflation exposure estimation
+- Interest-rate stress scenarios
+- Sensitivity forecasting
 - Real estate stress calculations
 - Private debt loan and covenant monitoring
 
